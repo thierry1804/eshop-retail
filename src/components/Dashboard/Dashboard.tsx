@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Euro, TrendingUp, Users, AlertCircle, CreditCard, Target } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { StatCard } from './StatCard';
 import { supabase } from '../../lib/supabase';
 import { DashboardStats, Client, ClientWithSales } from '../../types';
 
 export const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats>({
     total_sales: 0,
     cash_sales: 0,
@@ -131,10 +133,10 @@ export const Dashboard: React.FC = () => {
 
   const getTrustRatingLabel = (rating: string) => {
     switch (rating) {
-      case 'good': return 'Bon payeur';
-      case 'average': return 'Payeur moyen';
-      case 'poor': return 'Mauvais payeur';
-      default: return 'Non évalué';
+      case 'good': return t('common.goodPayer');
+      case 'average': return t('common.averagePayer');
+      case 'poor': return t('common.poorPayer');
+      default: return t('common.notEvaluated');
     }
   };
 
@@ -155,61 +157,61 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Tableau de Bord</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
         <div className="text-sm text-gray-500">
-          Dernière mise à jour: {new Date().toLocaleString('fr-FR')}
+          {t('common.lastUpdate')}: {new Date().toLocaleString()}
         </div>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
-          title="Chiffre d'Affaires Total"
+          title={t('dashboard.totalSales')}
           value={formatCurrency(stats.total_sales)}
           icon={Euro}
           color="blue"
-          subtitle="Toutes ventes confondues"
+          subtitle={t('dashboard.allSales')}
         />
         <StatCard
-          title="Ventes au Comptant"
+          title={t('dashboard.cashSales')}
           value={formatCurrency(stats.cash_sales)}
           icon={TrendingUp}
           color="green"
-          subtitle="Paiements immédiats"
+          subtitle={t('dashboard.immediatePayments')}
         />
         <StatCard
-          title="Ventes à Crédit"
+          title={t('dashboard.creditSales')}
           value={formatCurrency(stats.credit_sales)}
           icon={CreditCard}
           color="yellow"
-          subtitle="Avec solde restant"
+          subtitle={t('dashboard.withRemainingBalance')}
         />
         <StatCard
-          title="Total Encaissements"
+          title={t('dashboard.totalPayments')}
           value={formatCurrency(stats.total_payments)}
           icon={Target}
           color="purple"
-          subtitle="Paiements reçus"
+          subtitle={t('dashboard.receivedPayments')}
         />
         <StatCard
-          title="Créances en Cours"
+          title={t('dashboard.outstandingDebt')}
           value={formatCurrency(stats.outstanding_debt)}
           icon={AlertCircle}
           color="red"
-          subtitle="Montants impayés"
+          subtitle={t('dashboard.unpaidAmounts')}
         />
         <StatCard
-          title="Nombre de Clients"
+          title={t('dashboard.totalClients')}
           value={stats.total_clients}
           icon={Users}
           color="blue"
-          subtitle="Clients enregistrés"
+          subtitle={t('dashboard.registeredClients')}
         />
       </div>
 
       {/* Top Clients */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Clients</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topClients')}</h2>
         <div className="space-y-3">
           {topClients.map((client) => (
             <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -235,7 +237,7 @@ export const Dashboard: React.FC = () => {
             </div>
           ))}
           {topClients.length === 0 && (
-            <p className="text-gray-500 text-center py-4">Aucun client trouvé</p>
+            <p className="text-gray-500 text-center py-4">{t('clients.noClients')}</p>
           )}
         </div>
       </div>

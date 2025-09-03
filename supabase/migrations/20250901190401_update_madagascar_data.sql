@@ -4,7 +4,7 @@
   Cette migration met à jour les données existantes pour correspondre à Madagascar :
   - Changement des indicatifs téléphoniques de +225 (Côte d'Ivoire) vers +261 (Madagascar)
   - Mise à jour des noms et adresses pour correspondre à Madagascar
-  - Les montants restent les mêmes mais seront affichés en MGA (Ariary) au lieu de XOF (FCFA)
+  - Les montants restent les mêmes mais seront affichés en MGA (Ariary)
 */
 
 -- Mise à jour des clients existants avec des données malgaches

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface NavbarProps {
   user: UserType;
@@ -10,6 +12,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange }) => {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -18,10 +21,10 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Tableau de Bord', icon: BarChart3 },
-    { id: 'clients', label: 'Clients', icon: Users },
-    { id: 'sales', label: 'Ventes', icon: ShoppingCart },
-    { id: 'payments', label: 'Paiements', icon: CreditCard },
+    { id: 'dashboard', label: t('navigation.dashboard'), icon: BarChart3 },
+    { id: 'clients', label: t('navigation.clients'), icon: Users },
+    { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
+    { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
   ];
 
   return (
@@ -33,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-blue-600">SaleManager</h1>
+            <h1 className="text-xl font-bold text-blue-600">{t('app.title')}</h1>
             <button
               onClick={() => setSidebarOpen(false)}
               className="md:hidden text-gray-400 hover:text-gray-600"
@@ -66,6 +69,11 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
             })}
           </nav>
 
+          {/* Language Switcher */}
+          <div className="p-4 border-t border-gray-200">
+            <LanguageSwitcher />
+          </div>
+
           {/* User Info */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
@@ -88,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
               className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
             >
               <LogOut size={16} />
-              <span>Déconnexion</span>
+              <span>{t('auth.logout')}</span>
             </button>
           </div>
         </div>

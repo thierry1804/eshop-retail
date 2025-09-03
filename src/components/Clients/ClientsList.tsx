@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Phone, MapPin } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ClientForm } from './ClientForm';
 import { ClientDetails } from './ClientDetails';
 import { supabase } from '../../lib/supabase';
 import { Client } from '../../types';
 
 export const ClientsList: React.FC = () => {
+  const { t } = useTranslation();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +56,7 @@ export const ClientsList: React.FC = () => {
   };
 
   const handleDelete = async (client: Client) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${client.first_name} ${client.last_name} ?`)) {
+    if (!confirm(t('clients.confirmDelete', { name: `${client.first_name} ${client.last_name}` }))) {
       return;
     }
 
@@ -67,20 +69,20 @@ export const ClientsList: React.FC = () => {
       if (error) throw error;
       fetchClients();
     } catch (error: any) {
-      alert('Erreur lors de la suppression : ' + error.message);
+      alert(t('clients.deleteError') + ': ' + error.message);
     }
   };
 
   const getTrustRatingDisplay = (rating: string) => {
     switch (rating) {
       case 'good':
-        return { label: '✅ Bon payeur', className: 'text-green-600 bg-green-100' };
+        return { label: `✅ ${t('common.goodPayer')}`, className: 'text-green-600 bg-green-100' };
       case 'average':
-        return { label: '⚠️ Payeur moyen', className: 'text-yellow-600 bg-yellow-100' };
+        return { label: `⚠️ ${t('common.averagePayer')}`, className: 'text-yellow-600 bg-yellow-100' };
       case 'poor':
-        return { label: '❌ Mauvais payeur', className: 'text-red-600 bg-red-100' };
+        return { label: `❌ ${t('common.poorPayer')}`, className: 'text-red-600 bg-red-100' };
       default:
-        return { label: 'Non évalué', className: 'text-gray-600 bg-gray-100' };
+        return { label: t('common.notEvaluated'), className: 'text-gray-600 bg-gray-100' };
     }
   };
 
@@ -101,7 +103,7 @@ export const ClientsList: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Clients</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
         <button
           onClick={() => {
             setSelectedClient(null);
@@ -110,7 +112,7 @@ export const ClientsList: React.FC = () => {
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           <Plus size={20} />
-          <span>Nouveau Client</span>
+          <span>{t('clients.newClient')}</span>
         </button>
       </div>
 
@@ -120,7 +122,7 @@ export const ClientsList: React.FC = () => {
           <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Rechercher par nom ou téléphone..."
+            placeholder={t('clients.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -135,19 +137,19 @@ export const ClientsList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client
+                  {t('clients.table.client')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
+                  {t('clients.table.contact')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Confiance
+                  {t('clients.table.trust')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date de Création
+                  {t('clients.table.createdAt')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('common.actions')}
                 </th>
               </tr>
             </thead>
@@ -198,7 +200,7 @@ export const ClientsList: React.FC = () => {
                             setShowDetails(true);
                           }}
                           className="text-blue-600 hover:text-blue-800 transition-colors"
-                          title="Voir détails"
+                          title={t('clients.viewDetails')}
                         >
                           <Eye size={18} />
                         </button>
@@ -208,14 +210,14 @@ export const ClientsList: React.FC = () => {
                             setShowForm(true);
                           }}
                           className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                          title="Modifier"
+                          title={t('common.edit')}
                         >
                           <Edit size={18} />
                         </button>
                         <button
                           onClick={() => handleDelete(client)}
                           className="text-red-600 hover:text-red-800 transition-colors"
-                          title="Supprimer"
+                          title={t('common.delete')}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -231,7 +233,7 @@ export const ClientsList: React.FC = () => {
         {filteredClients.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">
-              {searchTerm ? 'Aucun client trouvé pour cette recherche' : 'Aucun client enregistré'}
+              {searchTerm ? t('clients.noClientsFound') : t('clients.noClients')}
             </p>
           </div>
         )}

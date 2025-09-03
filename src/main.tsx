@@ -7,6 +7,7 @@ import { SupabaseTest } from './components/Debug/SupabaseTest.tsx';
 import { RLSTest } from './components/Debug/RLSTest.tsx';
 import { DatabaseTest } from './components/Debug/DatabaseTest.tsx';
 import './index.css';
+import './i18n';
 
 // Temporairement utiliser DatabaseTest pour diagnostiquer
 const useDatabaseTest = import.meta.env.VITE_DATABASE_TEST === 'true';

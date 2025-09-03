@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Eye, CreditCard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
 import { supabase } from '../../lib/supabase';
 import { Sale } from '../../types';
 
 export const SalesList: React.FC = () => {
+  const { t } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +56,7 @@ export const SalesList: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (salesError) {
-        setError(`Erreur de récupération: ${salesError.message}`);
+        setError(t('sales.fetchError') + ': ' + salesError.message);
         return;
       }
 
@@ -64,7 +66,7 @@ export const SalesList: React.FC = () => {
         .select('*');
 
       if (clientsError) {
-        setError(`Erreur de récupération clients: ${clientsError.message}`);
+        setError(t('sales.clientsFetchError') + ': ' + clientsError.message);
         return;
       }
 
@@ -79,7 +81,7 @@ export const SalesList: React.FC = () => {
 
       setSales(salesWithClients);
     } catch (error: any) {
-      setError(`Erreur: ${error.message}`);
+      setError(t('sales.generalError') + ': ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -97,11 +99,11 @@ export const SalesList: React.FC = () => {
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case 'paid':
-        return { label: 'Réglée', className: 'text-green-600 bg-green-100' };
+        return { label: t('sales.status.paid'), className: 'text-green-600 bg-green-100' };
       case 'ongoing':
-        return { label: 'En cours', className: 'text-yellow-600 bg-yellow-100' };
+        return { label: t('sales.status.ongoing'), className: 'text-yellow-600 bg-yellow-100' };
       default:
-        return { label: 'Inconnue', className: 'text-gray-600 bg-gray-100' };
+        return { label: t('sales.status.unknown'), className: 'text-gray-600 bg-gray-100' };
     }
   };
 
@@ -111,7 +113,7 @@ export const SalesList: React.FC = () => {
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des ventes...</p>
+            <p className="text-gray-600">{t('sales.loading')}</p>
           </div>
         </div>
       </div>
@@ -121,14 +123,14 @@ export const SalesList: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Ventes</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('sales.title')}</h1>
                   <div className="flex items-center space-x-3">
             <button
               onClick={fetchSales}
               className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
             >
               <span>🔄</span>
-              <span>Actualiser</span>
+            <span>{t('app.refresh')}</span>
             </button>
 
             <button
@@ -139,7 +141,7 @@ export const SalesList: React.FC = () => {
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               <Plus size={20} />
-              <span>Nouvelle Vente</span>
+            <span>{t('sales.newSale')}</span>
             </button>
           </div>
       </div>
@@ -151,7 +153,7 @@ export const SalesList: React.FC = () => {
             <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Rechercher par client, téléphone ou description..."
+              placeholder={t('sales.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -164,9 +166,9 @@ export const SalesList: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="all">Tous les statuts</option>
-            <option value="ongoing">En cours</option>
-            <option value="paid">Réglées</option>
+            <option value="all">{t('sales.filters.allStatuses')}</option>
+            <option value="ongoing">{t('sales.status.ongoing')}</option>
+            <option value="paid">{t('sales.status.paid')}</option>
           </select>
           <button
             onClick={() => {
@@ -175,7 +177,7 @@ export const SalesList: React.FC = () => {
             }}
             className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
           >
-            Effacer filtres
+            {t('sales.filters.clearFilters')}
           </button>
         </div>
       </div>
@@ -185,20 +187,20 @@ export const SalesList: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <span className="text-blue-600 font-medium">Ventes totales:</span>
+              <span className="text-blue-600 font-medium">{t('sales.summary.totalSales')}:</span>
               <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
                 {sales.length}
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-blue-600 font-medium">Affichées:</span>
+              <span className="text-blue-600 font-medium">{t('sales.summary.displayed')}:</span>
               <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
                 {filteredSales.length}
               </span>
             </div>
           </div>
           <div className="text-sm text-blue-600">
-            Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR')}
+            {t('common.lastUpdate')}: {new Date().toLocaleTimeString()}
           </div>
         </div>
       </div>
@@ -213,7 +215,7 @@ export const SalesList: React.FC = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Erreur de récupération des données</h3>
+              <h3 className="text-sm font-medium text-red-800">{t('sales.error.title')}</h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>{error}</p>
                 <button
@@ -223,7 +225,7 @@ export const SalesList: React.FC = () => {
                   }}
                   className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
                 >
-                  Réessayer
+                  {t('sales.error.retry')}
                 </button>
               </div>
             </div>
@@ -240,22 +242,22 @@ export const SalesList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client
+                  {t('sales.table.client')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                  {t('common.description')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Montants
+                  {t('sales.table.amounts')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statut
+                  {t('common.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  {t('common.date')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('common.actions')}
                 </th>
               </tr>
             </thead>
@@ -273,9 +275,9 @@ export const SalesList: React.FC = () => {
                         </div>
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">
-                            {sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}` : 'Client non trouvé'}
+                            {sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}` : t('sales.client.notFound')}
                           </div>
-                          <div className="text-sm text-gray-500">{sale.client?.phone || 'Téléphone non disponible'}</div>
+                          <div className="text-sm text-gray-500">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
                         </div>
                       </div>
                     </td>
@@ -287,13 +289,13 @@ export const SalesList: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm">
                         <div className="font-medium text-gray-900">
-                          Total: {formatCurrency(sale.total_amount)}
+                          {t('sales.amounts.total')}: {formatCurrency(sale.total_amount)}
                         </div>
                         <div className="text-gray-500">
-                          Acompte: {formatCurrency(sale.deposit)}
+                          {t('sales.amounts.deposit')}: {formatCurrency(sale.deposit)}
                         </div>
                         <div className={`font-medium ${sale.remaining_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          Reste: {formatCurrency(sale.remaining_balance)}
+                          {t('sales.amounts.remaining')}: {formatCurrency(sale.remaining_balance)}
                         </div>
                       </div>
                     </td>
@@ -314,7 +316,7 @@ export const SalesList: React.FC = () => {
                               setShowPaymentForm(true);
                             }}
                             className="text-green-600 hover:text-green-800 transition-colors"
-                            title="Ajouter un paiement"
+                            title={t('sales.actions.addPayment')}
                           >
                             <CreditCard size={18} />
                           </button>
@@ -325,7 +327,7 @@ export const SalesList: React.FC = () => {
                             setShowForm(true);
                           }}
                           className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                          title="Modifier"
+                          title={t('common.edit')}
                         >
                           <Edit size={18} />
                         </button>
@@ -341,10 +343,10 @@ export const SalesList: React.FC = () => {
         {filteredSales.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' ? 'Aucune vente trouvée pour ces critères' : 'Aucune vente enregistrée'}
+              {searchTerm || statusFilter !== 'all' ? t('sales.noSalesFound') : t('sales.noSales')}
             </p>
             <p className="text-xs text-gray-400 mt-2">
-              Ventes totales: {sales.length} | Ventes filtrées: {filteredSales.length}
+              {t('sales.summary.totalSales')}: {sales.length} | {t('sales.summary.filteredSales')}: {filteredSales.length}
             </p>
           </div>
         )}
