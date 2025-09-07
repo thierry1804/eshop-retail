@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, ShoppingCart, Plus, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, ShoppingCart, Plus, User, Search, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Client, Sale } from '../../types';
 
@@ -11,6 +11,10 @@ interface SaleFormProps {
 
 export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientSearchRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     client_id: sale?.client_id || '',
     description: sale?.description || '',
@@ -33,6 +37,46 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     fetchClients();
   }, []);
 
+  // Effet pour filtrer les clients selon le terme de recherche
+  useEffect(() => {
+    if (clientSearchTerm.trim() === '') {
+      setFilteredClients(clients);
+    } else {
+      const filtered = clients.filter(client => {
+        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+        const phone = client.phone.toLowerCase();
+        const searchTerm = clientSearchTerm.toLowerCase();
+
+        return fullName.includes(searchTerm) || phone.includes(searchTerm);
+      });
+      setFilteredClients(filtered);
+    }
+  }, [clients, clientSearchTerm]);
+
+  // Effet pour gérer le client sélectionné initialement
+  useEffect(() => {
+    if (sale?.client_id && clients.length > 0) {
+      const client = clients.find(c => c.id === sale.client_id);
+      if (client) {
+        setClientSearchTerm(`${client.first_name} ${client.last_name} - ${client.phone}`);
+      }
+    }
+  }, [sale?.client_id, clients]);
+
+  // Effet pour gérer les clics en dehors du composant de recherche
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clientSearchRef.current && !clientSearchRef.current.contains(event.target as Node)) {
+        setShowClientDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const fetchClients = async () => {
     try {
       const { data, error } = await supabase
@@ -41,9 +85,25 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         .order('first_name');
 
       if (error) throw error;
-      setClients(data || []);
+      setClients((data as Client[]) || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
+    }
+  };
+
+  const handleClientSelect = (client: Client) => {
+    setClientSearchTerm(`${client.first_name} ${client.last_name} - ${client.phone}`);
+    setFormData({ ...formData, client_id: client.id });
+    setShowClientDropdown(false);
+  };
+
+  const handleClientSearchChange = (value: string) => {
+    setClientSearchTerm(value);
+    setShowClientDropdown(true);
+
+    // Si le champ est vidé, réinitialiser la sélection
+    if (value.trim() === '') {
+      setFormData({ ...formData, client_id: '' });
     }
   };
 
@@ -60,7 +120,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       const { data: { user } } = await supabase.auth.getUser();
 
       // Vérifier si l'utilisateur a un profil
-      let userProfileId = user?.id;
+      let userProfileId: string | undefined = user?.id;
 
       if (user?.id) {
         const { data: profile } = await supabase
@@ -78,16 +138,16 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
               email: user.email || '',
               name: user.user_metadata?.full_name || user.email || 'Utilisateur',
               role: 'employee'
-            })
+            } as any)
             .select()
             .single();
 
           if (profileError) {
             console.error('Erreur création profil:', profileError);
             // Continuer sans created_by si on ne peut pas créer le profil
-            userProfileId = null;
+            userProfileId = undefined;
           } else {
-            userProfileId = newProfile.id;
+            userProfileId = (newProfile as any)?.id;
           }
         }
       }
@@ -97,17 +157,18 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         .insert({
           ...newClientData,
           created_by: userProfileId,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
 
       // Ajouter le nouveau client à la liste
-      setClients(prev => [...prev, data]);
+      setClients(prev => [...prev, data as Client]);
 
       // Sélectionner automatiquement le nouveau client
-      setFormData(prev => ({ ...prev, client_id: data.id }));
+      setClientSearchTerm(`${(data as Client).first_name} ${(data as Client).last_name} - ${(data as Client).phone}`);
+      setFormData(prev => ({ ...prev, client_id: (data as Client).id }));
 
       // Réinitialiser le formulaire de client
       setNewClientData({
@@ -143,7 +204,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       const status = remainingBalance === 0 ? 'paid' : 'ongoing';
 
       // Vérifier si l'utilisateur a un profil
-      let userProfileId = user?.id;
+      let userProfileId: string | undefined = user?.id;
 
       if (user?.id) {
         const { data: profile } = await supabase
@@ -161,32 +222,34 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
               email: user.email || '',
               name: user.user_metadata?.full_name || user.email || 'Utilisateur',
               role: 'employee'
-            })
+            } as any)
             .select()
             .single();
 
           if (profileError) {
             console.error('Erreur création profil:', profileError);
             // Continuer sans created_by si on ne peut pas créer le profil
-            userProfileId = null;
+            userProfileId = undefined;
           } else {
-            userProfileId = newProfile.id;
+            userProfileId = (newProfile as any)?.id;
           }
         }
       }
 
       if (sale) {
         // Update existing sale
-        const { error } = await supabase
+        const updateData = {
+          client_id: formData.client_id,
+          description: formData.description,
+          total_amount: formData.total_amount,
+          deposit: formData.deposit,
+          remaining_balance: remainingBalance,
+          status,
+        };
+
+        const { error } = await (supabase as any)
           .from('sales')
-          .update({
-            client_id: formData.client_id,
-            description: formData.description,
-            total_amount: formData.total_amount,
-            deposit: formData.deposit,
-            remaining_balance: remainingBalance,
-            status,
-          })
+          .update(updateData)
           .eq('id', sale.id);
         
         if (error) throw error;
@@ -199,7 +262,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
             remaining_balance: remainingBalance,
             status,
             created_by: userProfileId,
-          });
+          } as any);
         
         if (error) throw error;
       }
@@ -265,19 +328,53 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
               </div>
 
               {!showNewClientForm ? (
-                <select
-                  required
-                  value={formData.client_id}
-                  onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Sélectionner un client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.first_name} {client.last_name} - {client.phone}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={clientSearchRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={clientSearchTerm}
+                      onChange={(e) => handleClientSearchChange(e.target.value)}
+                      onFocus={() => setShowClientDropdown(true)}
+                      placeholder="Rechercher un client par nom ou téléphone..."
+                      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowClientDropdown(!showClientDropdown)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+
+                  {showClientDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      {filteredClients.length > 0 ? (
+                        filteredClients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => handleClientSelect(client)}
+                            className="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {client.first_name} {client.last_name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {client.phone}
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-gray-500 text-sm">
+                          {clientSearchTerm.trim() ? 'Aucun client trouvé' : 'Aucun client disponible'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-3 p-4 border border-blue-200 rounded-md bg-blue-50">
                   <div className="flex items-center space-x-2 mb-3">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Eye, CreditCard } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
@@ -12,6 +12,11 @@ export const SalesList: React.FC = () => {
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paid'>('all');
+  const [dateFilter, setDateFilter] = useState<string>(() => {
+    // Par défaut, filtrer par la date du jour
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format YYYY-MM-DD
+  });
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -41,8 +46,16 @@ export const SalesList: React.FC = () => {
       filtered = filtered.filter(sale => sale.status === statusFilter);
     }
 
+    // Si il y a un filtre de date, filtrer
+    if (dateFilter) {
+      filtered = filtered.filter(sale => {
+        const saleDate = new Date(sale.created_at).toISOString().split('T')[0];
+        return saleDate === dateFilter;
+      });
+    }
+
     setFilteredSales(filtered);
-  }, [sales, searchTerm, statusFilter]);
+  }, [sales, searchTerm, statusFilter, dateFilter]);
 
   const fetchSales = async () => {
     setLoading(true);
@@ -71,10 +84,10 @@ export const SalesList: React.FC = () => {
       }
 
       // Créer un map des clients par ID
-      const clientsMap = new Map(clientsData?.map(client => [client.id, client]) || []);
+      const clientsMap = new Map(clientsData?.map((client: any) => [client.id, client]) || []);
 
       // Associer les clients aux ventes
-      const salesWithClients = salesData?.map(sale => ({
+      const salesWithClients = salesData?.map((sale: any) => ({
         ...sale,
         client: clientsMap.get(sale.client_id) || null
       })) || [];
@@ -170,10 +183,18 @@ export const SalesList: React.FC = () => {
             <option value="ongoing">{t('sales.status.ongoing')}</option>
             <option value="paid">{t('sales.status.paid')}</option>
           </select>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            title={t('sales.filters.dateFilter')}
+          />
           <button
             onClick={() => {
               setSearchTerm('');
               setStatusFilter('all');
+              setDateFilter(new Date().toISOString().split('T')[0]); // Reset à la date du jour
             }}
             className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
           >
@@ -355,7 +376,7 @@ export const SalesList: React.FC = () => {
       {/* Modals */}
       {showForm && (
         <SaleForm
-          sale={selectedSale}
+          sale={selectedSale || undefined}
           onClose={() => {
             setShowForm(false);
             setSelectedSale(null);
@@ -370,7 +391,7 @@ export const SalesList: React.FC = () => {
 
       {showPaymentForm && selectedSale && (
         <PaymentForm
-          sale={selectedSale}
+          sale={selectedSale as Sale}
           onClose={() => {
             setShowPaymentForm(false);
             setSelectedSale(null);

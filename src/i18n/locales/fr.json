@@ -62,7 +62,25 @@
     "recentSales": "Ventes récentes",
     "recentClients": "Clients récents",
     "salesChart": "Graphique des ventes",
-    "revenueChart": "Graphique des revenus"
+    "revenueChart": "Graphique des revenus",
+    "filters": {
+      "dateRange": "Période",
+      "allTime": "Toutes les périodes",
+      "today": "Aujourd'hui",
+      "thisWeek": "Cette semaine",
+      "thisMonth": "Ce mois",
+      "lastMonth": "Mois dernier",
+      "custom": "Période personnalisée",
+      "fromDate": "Du",
+      "toDate": "Au"
+    },
+    "chart": {
+      "title": "Évolution des Ventes",
+      "cashSales": "Ventes au Comptant",
+      "creditSales": "Ventes à Crédit",
+      "totalRevenue": "CA Total",
+      "noData": "Aucune donnée disponible pour la période sélectionnée"
+    }
   },
   "clients": {
     "title": "Gestion des Clients",
@@ -137,7 +155,10 @@
     },
     "filters": {
       "allStatuses": "Tous les statuts",
-      "clearFilters": "Effacer filtres"
+      "clearFilters": "Effacer filtres",
+      "dateFilter": "Filtrer par date",
+      "allDates": "Toutes les dates",
+      "today": "Aujourd'hui"
     },
     "summary": {
       "totalSales": "Ventes totales",
