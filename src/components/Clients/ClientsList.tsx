@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { ClientForm } from './ClientForm';
 import { ClientDetails } from './ClientDetails';
 import { supabase } from '../../lib/supabase';
-import { Client } from '../../types';
+import { Client, User } from '../../types';
 
-export const ClientsList: React.FC = () => {
+interface ClientsListProps {
+  user: User;
+}
+
+export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   const { t } = useTranslation();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
@@ -204,23 +208,28 @@ export const ClientsList: React.FC = () => {
                         >
                           <Eye size={18} />
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedClient(client);
-                            setShowForm(true);
-                          }}
-                          className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                          title={t('common.edit')}
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(client)}
-                          className="text-red-600 hover:text-red-800 transition-colors"
-                          title={t('common.delete')}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {/* Seuls les admins peuvent modifier et supprimer */}
+                        {user.role === 'admin' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setShowForm(true);
+                              }}
+                              className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                              title={t('common.edit')}
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(client)}
+                              className="text-red-600 hover:text-red-800 transition-colors"
+                              title={t('common.delete')}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

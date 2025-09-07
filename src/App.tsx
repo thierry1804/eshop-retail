@@ -85,37 +85,98 @@ function App() {
     console.log('👤 App: Récupération du profil utilisateur...');
     const startTime = performance.now();
     
-    // Créer directement un profil temporaire sans appels à Supabase
-    console.log('🔄 App: Création d\'un profil temporaire...');
-    
-    // Profil temporaire simple
-    const tempProfile = {
-      id: userId,
-      email: 'utilisateur@example.com',
-      name: 'Utilisateur',
-      role: 'employee' as const,
-      created_at: new Date().toISOString(),
-    };
-    
-    console.log('✅ App: Profil temporaire créé:', tempProfile.name);
-    setUser(tempProfile);
-    setLoading(false);
+    try {
+      // Récupérer les informations de l'utilisateur connecté avec timeout
+      console.log('ETO');
+
+      // Ajouter un timeout pour éviter le blocage
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout après 5 secondes')), 5000)
+      );
+
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+      const authUser = session?.user;
+      console.log('👤 App: Utilisateur connecté:', authUser);
+      console.log('ETO2');
+
+      if (error) {
+        console.error('❌ App: Erreur lors de la récupération de l\'utilisateur:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (!authUser) {
+        console.error('❌ App: Aucun utilisateur trouvé');
+        setLoading(false);
+        return;
+      }
+
+      // Emails des administrateurs
+      const adminEmails = [
+        'laoban@eshopbyvalsue.mg',
+        'admin@eshopbyvalsue.mg',
+        'thierry1804@gmail.com'
+      ];
+
+      // Déterminer le rôle basé sur l'email
+      const userEmail = authUser.email || '';
+      const isAdmin = adminEmails.includes(userEmail);
+
+      // Créer le profil utilisateur
+      const userProfile = {
+        id: userId,
+        email: userEmail,
+        name: userEmail, // Afficher l'email au lieu de "Utilisateur"
+        role: isAdmin ? 'admin' as const : 'employee' as const,
+        created_at: new Date().toISOString(),
+      };
+
+      console.log('✅ App: Profil utilisateur créé:', userProfile.name, 'Rôle:', userProfile.role);
+      setUser(userProfile);
+
+      // Définir la page par défaut selon le rôle
+      if (userProfile.role !== 'admin') {
+        setCurrentPage('clients');
+      }
+
+      setLoading(false);
+
+    } catch (error) {
+      console.error('❌ App: Erreur lors de la création du profil:', error);
+      setLoading(false);
+    }
     
     const endTime = performance.now();
     console.log(`⏱️ App: Récupération profil terminée en ${(endTime - startTime).toFixed(2)}ms`);
   };
 
   const renderCurrentPage = () => {
+    // Vérifier si l'utilisateur a accès à la page demandée
+    if (user && user.role !== 'admin') {
+      // Les employés n'ont accès qu'aux clients et ventes
+      if (currentPage === 'dashboard' || currentPage === 'payments') {
+        // Rediriger vers la page clients par défaut
+        setCurrentPage('clients');
+        return <ClientsList user={user} />;
+      }
+    }
+
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard />;
       case 'clients':
-        return <ClientsList />;
+        return <ClientsList user={user} />;
       case 'sales':
-        return <SalesList />;
+        return <SalesList user={user} />;
       case 'payments':
         return <PaymentsList />;
       default:
+        // Par défaut, rediriger selon le rôle
+        if (user && user.role !== 'admin') {
+          setCurrentPage('clients');
+          return <ClientsList user={user} />;
+        }
         return <Dashboard />;
     }
   };

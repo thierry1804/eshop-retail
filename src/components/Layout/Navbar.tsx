@@ -20,12 +20,26 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
     window.location.reload();
   };
 
-  const navItems = [
-    { id: 'dashboard', label: t('navigation.dashboard'), icon: BarChart3 },
-    { id: 'clients', label: t('navigation.clients'), icon: Users },
-    { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
-    { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
-  ];
+  // Définir les éléments de navigation selon le rôle
+  const getNavItems = () => {
+    if (user.role === 'admin') {
+      // Admin a accès à tous les menus
+      return [
+        { id: 'dashboard', label: t('navigation.dashboard'), icon: BarChart3 },
+        { id: 'clients', label: t('navigation.clients'), icon: Users },
+        { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
+        { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
+      ];
+    } else {
+      // Employé a accès uniquement aux clients et ventes
+      return [
+        { id: 'clients', label: t('navigation.clients'), icon: Users },
+        { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
+      ];
+    }
+  };
+
+  const navItems = getNavItems();
 
   return (
     <>

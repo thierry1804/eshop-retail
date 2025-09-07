@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
 import { supabase } from '../../lib/supabase';
-import { Sale } from '../../types';
+import { Sale, User } from '../../types';
 
-export const SalesList: React.FC = () => {
+interface SalesListProps {
+  user: User;
+}
+
+export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const { t } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
@@ -342,16 +346,19 @@ export const SalesList: React.FC = () => {
                             <CreditCard size={18} />
                           </button>
                         )}
-                        <button
-                          onClick={() => {
-                            setSelectedSale(sale);
-                            setShowForm(true);
-                          }}
-                          className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                          title={t('common.edit')}
-                        >
-                          <Edit size={18} />
-                        </button>
+                        {/* Seuls les admins peuvent modifier les ventes */}
+                        {user.role === 'admin' && (
+                          <button
+                            onClick={() => {
+                              setSelectedSale(sale);
+                              setShowForm(true);
+                            }}
+                            className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                            title={t('common.edit')}
+                          >
+                            <Edit size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
