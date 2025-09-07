@@ -19,10 +19,45 @@ export interface Client {
   created_by: string;
 }
 
+export interface Article {
+  id: string;
+  code: string;
+  name: string;
+  unit_price: number;
+  created_at: string;
+  created_by: string;
+}
+
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  article_id?: string;
+  code: string;
+  name: string;
+  unit_price: number;
+  quantity: number;
+  total_amount: number;
+  created_at: string;
+  article?: Article;
+}
+
+export interface Delivery {
+  id: string;
+  sale_id: string;
+  delivery_address: string;
+  is_province: boolean;
+  delivery_type: 'pickup' | 'delivery';
+  delivery_fees: number;
+  delivery_date: string;
+  delivery_time?: string;
+  created_at: string;
+  created_by: string;
+}
+
 export interface Sale {
   id: string;
   client_id: string;
-  description: string;
+  description?: string; // Temporaire, sera supprimé plus tard
   total_amount: number;
   deposit: number;
   remaining_balance: number;
@@ -30,6 +65,8 @@ export interface Sale {
   created_at: string;
   created_by: string;
   client?: Client;
+  sale_items?: SaleItem[];
+  delivery?: Delivery;
 }
 
 export interface Payment {
@@ -37,6 +74,8 @@ export interface Payment {
   sale_id: string;
   amount: number;
   payment_method: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
+  mobile_operator?: 'orange_money' | 'airtel_money' | 'mvola';
+  transaction_reference?: string;
   notes: string;
   created_at: string;
   created_by: string;
@@ -55,4 +94,32 @@ export interface DashboardStats {
 export interface ClientWithSales extends Client {
   sales?: Sale[];
   total_purchases: number;
+}
+
+// Types pour les formulaires
+export interface SaleItemForm {
+  id?: string;
+  article_id?: string;
+  code: string;
+  name: string;
+  unit_price: number;
+  quantity: number;
+  total_amount: number;
+}
+
+export interface DeliveryForm {
+  delivery_address: string;
+  is_province: boolean;
+  delivery_type: 'pickup' | 'delivery';
+  delivery_fees: number;
+  delivery_date: string;
+  delivery_time?: string;
+}
+
+export interface PaymentForm {
+  amount: number;
+  payment_method: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
+  mobile_operator?: 'orange_money' | 'airtel_money' | 'mvola';
+  transaction_reference?: string;
+  notes: string;
 }
