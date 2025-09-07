@@ -5,9 +5,11 @@ import { Dashboard } from './components/Dashboard/Dashboard';
 import { ClientsList } from './components/Clients/ClientsList';
 import { SalesList } from './components/Sales/SalesList';
 import { PaymentsList } from './components/Payments/PaymentsList';
+import { LogsViewer } from './components/Admin/LogsViewer';
 import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
+import { logger } from './lib/logger';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -156,9 +158,11 @@ function App() {
     if (user && user.role !== 'admin') {
       // Les employés n'ont accès qu'aux clients et ventes
       if (currentPage === 'dashboard' || currentPage === 'payments') {
+        // Logger la redirection
+        logger.logNavigation(currentPage, 'clients');
         // Rediriger vers la page clients par défaut
         setCurrentPage('clients');
-        return <ClientsList user={user} />;
+        return user ? <ClientsList user={user} /> : null;
       }
     }
 
@@ -166,16 +170,19 @@ function App() {
       case 'dashboard':
         return <Dashboard />;
       case 'clients':
-        return <ClientsList user={user} />;
+        return user ? <ClientsList user={user} /> : null;
       case 'sales':
-        return <SalesList user={user} />;
+        return user ? <SalesList user={user} /> : null;
       case 'payments':
         return <PaymentsList />;
+      case 'logs':
+        return <LogsViewer />;
       default:
         // Par défaut, rediriger selon le rôle
         if (user && user.role !== 'admin') {
+          logger.logNavigation(currentPage, 'clients');
           setCurrentPage('clients');
-          return <ClientsList user={user} />;
+          return user ? <ClientsList user={user} /> : null;
         }
         return <Dashboard />;
     }
@@ -201,7 +208,11 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar user={user} currentPage={currentPage} onPageChange={setCurrentPage} />
+      <Navbar user={user} currentPage={currentPage} onPageChange={(page) => {
+        // Logger le changement de page
+        logger.logNavigation(currentPage, page);
+        setCurrentPage(page);
+      }} />
       <main className="md:ml-64">
         <div className="max-w-7xl mx-auto">
           {renderCurrentPage()}

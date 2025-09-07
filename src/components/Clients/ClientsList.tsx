@@ -5,6 +5,7 @@ import { ClientForm } from './ClientForm';
 import { ClientDetails } from './ClientDetails';
 import { supabase } from '../../lib/supabase';
 import { Client, User } from '../../types';
+import { logger } from '../../lib/logger';
 
 interface ClientsListProps {
   user: User;
@@ -65,14 +66,27 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
     }
 
     try {
+      // Logger l'action de suppression
+      await logger.logCRUDAction('DELETE', 'clients', client.id, client);
+
       const { error } = await supabase
         .from('clients')
         .delete()
         .eq('id', client.id);
 
       if (error) throw error;
+
+      // Logger le succès
+      await logger.logUserAction('CLIENT_DELETED', 'ClientsList', {
+        clientId: client.id,
+        clientName: `${client.first_name} ${client.last_name}`,
+        success: true
+      });
+
       fetchClients();
     } catch (error: any) {
+      // Logger l'erreur
+      await logger.logError(error, 'ClientsList.handleDelete');
       alert(t('clients.deleteError') + ': ' + error.message);
     }
   };
@@ -109,7 +123,9 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
         <button
-          onClick={() => {
+          onClick={async () => {
+            // Logger l'action de création
+            await logger.logUserAction('CREATE_NEW_CLIENT', 'ClientsList', {});
             setSelectedClient(null);
             setShowForm(true);
           }}
@@ -199,7 +215,12 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
+                            // Logger l'action de visualisation
+                            await logger.logUserAction('VIEW_CLIENT_DETAILS', 'ClientsList', {
+                              clientId: client.id,
+                              clientName: `${client.first_name} ${client.last_name}`
+                            });
                             setSelectedClient(client);
                             setShowDetails(true);
                           }}
@@ -212,7 +233,12 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                         {user.role === 'admin' && (
                           <>
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                // Logger l'action de modification
+                                await logger.logUserAction('EDIT_CLIENT', 'ClientsList', {
+                                  clientId: client.id,
+                                  clientName: `${client.first_name} ${client.last_name}`
+                                });
                                 setSelectedClient(client);
                                 setShowForm(true);
                               }}

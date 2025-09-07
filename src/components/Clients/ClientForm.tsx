@@ -3,6 +3,7 @@ import { X, Save, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { Client } from '../../types';
+import { logger } from '../../lib/logger';
 
 interface ClientFormProps {
   client?: Client;
@@ -32,6 +33,9 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
       const { data: { user } } = await supabase.auth.getUser();
       
       if (client) {
+        // Logger l'action de mise à jour
+        await logger.logCRUDAction('UPDATE', 'clients', client.id, formData);
+
         // Update existing client
         const { error } = await supabase
           .from('clients')
@@ -42,7 +46,13 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
           .eq('id', client.id);
         
         if (error) throw error;
+
+        // Logger le succès de la mise à jour
+        await logger.logFormSubmit('ClientForm', formData, true);
       } else {
+        // Logger l'action de création
+        await logger.logCRUDAction('CREATE', 'clients', 'new', formData);
+
         // Create new client
         const { error } = await supabase
           .from('clients')
@@ -52,10 +62,16 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
           });
         
         if (error) throw error;
+
+        // Logger le succès de la création
+        await logger.logFormSubmit('ClientForm', formData, true);
       }
       
       onSubmit();
     } catch (error: any) {
+      // Logger l'erreur
+      await logger.logError(error, 'ClientForm.handleSubmit');
+      await logger.logFormSubmit('ClientForm', formData, false);
       setError(t('clients.saveError') + ': ' + error.message);
     } finally {
       setLoading(false);

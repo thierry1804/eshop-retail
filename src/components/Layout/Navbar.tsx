@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -29,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
         { id: 'clients', label: t('navigation.clients'), icon: Users },
         { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
         { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
+        { id: 'logs', label: '📊 Logs', icon: Activity },
       ];
     } else {
       // Employé a accès uniquement aux clients et ventes
