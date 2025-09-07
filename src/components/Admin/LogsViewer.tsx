@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, Eye, Calendar, User, Activity } from 'lucide-react';
+import { Search, Filter, Download, Eye, Calendar, User, Activity, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 
