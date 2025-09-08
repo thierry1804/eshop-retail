@@ -16,12 +16,14 @@ interface ClientActivity {
   description: string;
   amount: number;
   balance: number;
+  deposit?: number;
 }
 
 export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose }) => {
   const [activities, setActivities] = useState<ClientActivity[]>([]);
   const [stats, setStats] = useState({
     totalPurchases: 0,
+    totalDeposits: 0,
     totalPayments: 0,
     outstandingBalance: 0,
   });
@@ -53,11 +55,13 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
       if (sales && payments) {
         // Calculate statistics
         const totalPurchases = sales.reduce((sum, sale) => sum + sale.total_amount, 0);
+        const totalDeposits = sales.reduce((sum, sale) => sum + sale.deposit, 0);
         const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
         const outstandingBalance = sales.reduce((sum, sale) => sum + sale.remaining_balance, 0);
 
         setStats({
           totalPurchases,
+          totalDeposits,
           totalPayments,
           outstandingBalance,
         });
@@ -75,14 +79,17 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
         combinedEvents.forEach(event => {
           if (event.type === 'sale') {
             const sale = event as Sale;
-            runningBalance += sale.total_amount;
+            // Le solde augmente seulement du montant restant après l'acompte
+            const remainingAmount = sale.total_amount - sale.deposit;
+            runningBalance += remainingAmount;
             allActivities.push({
               id: sale.id,
               date: sale.created_at,
               type: 'sale',
               description: sale.description,
-              amount: sale.total_amount,
-              balance: runningBalance,
+              amount: sale.total_amount, // Afficher le montant total
+              balance: runningBalance, // Solde après déduction de l'acompte
+              deposit: sale.deposit,
             });
           } else {
             const payment = event as Payment;
@@ -130,8 +137,9 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
     // Summary
     doc.text('RESUME FINANCIER', 20, 85);
     doc.text(`Total des achats: ${formatCurrency(stats.totalPurchases)}`, 20, 95);
-    doc.text(`Total des paiements: ${formatCurrency(stats.totalPayments)}`, 20, 105);
-    doc.text(`Solde restant: ${formatCurrency(stats.outstandingBalance)}`, 20, 115);
+    doc.text(`Total des acomptes: ${formatCurrency(stats.totalDeposits)}`, 20, 105);
+    doc.text(`Total des paiements: ${formatCurrency(stats.totalPayments)}`, 20, 115);
+    doc.text(`Solde restant: ${formatCurrency(stats.outstandingBalance)}`, 20, 125);
     
     // Activities
     doc.text('HISTORIQUE DES OPERATIONS', 20, 135);
@@ -236,6 +244,10 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
                   <span className="font-semibold text-gray-900">{formatCurrency(stats.totalPurchases)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Total des acomptes:</span>
+                  <span className="font-semibold text-blue-600">{formatCurrency(stats.totalDeposits)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Total des paiements:</span>
                   <span className="font-semibold text-green-600">{formatCurrency(stats.totalPayments)}</span>
                 </div>
@@ -284,6 +296,11 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
                         <p className={`font-semibold ${activity.amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {activity.amount > 0 ? '+' : ''}{formatCurrency(activity.amount)}
                         </p>
+                        {activity.type === 'sale' && activity.deposit && activity.deposit > 0 && (
+                          <p className="text-sm text-blue-600">
+                            Acompte: {formatCurrency(activity.deposit)}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-500">
                           Solde: {formatCurrency(activity.balance)}
                         </p>

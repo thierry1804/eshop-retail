@@ -30,6 +30,8 @@ export interface Sale {
   created_at: string;
   created_by: string;
   client?: Client;
+  payments?: Payment[];
+  total_payments?: number;
 }
 
 export interface Payment {

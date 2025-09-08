@@ -87,14 +87,40 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         return;
       }
 
+      // Récupérer tous les paiements
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*');
+
+      if (paymentsError) {
+        setError(t('sales.paymentsFetchError') + ': ' + paymentsError.message);
+        return;
+      }
+
       // Créer un map des clients par ID
       const clientsMap = new Map(clientsData?.map((client: any) => [client.id, client]) || []);
 
-      // Associer les clients aux ventes
-      const salesWithClients = salesData?.map((sale: any) => ({
-        ...sale,
-        client: clientsMap.get(sale.client_id) || null
-      })) || [];
+      // Créer un map des paiements par sale_id
+      const paymentsMap = new Map();
+      paymentsData?.forEach((payment: any) => {
+        if (!paymentsMap.has(payment.sale_id)) {
+          paymentsMap.set(payment.sale_id, []);
+        }
+        paymentsMap.get(payment.sale_id).push(payment);
+      });
+
+      // Associer les clients et paiements aux ventes
+      const salesWithClients = salesData?.map((sale: any) => {
+        const payments = paymentsMap.get(sale.id) || [];
+        const totalPayments = payments.reduce((sum: number, payment: any) => sum + payment.amount, 0);
+
+        return {
+          ...sale,
+          client: clientsMap.get(sale.client_id) || null,
+          payments: payments,
+          total_payments: totalPayments
+        };
+      }) || [];
 
       setSales(salesWithClients);
     } catch (error: any) {
@@ -319,6 +345,11 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                         <div className="text-gray-500">
                           {t('sales.amounts.deposit')}: {formatCurrency(sale.deposit)}
                         </div>
+                        {sale.total_payments && sale.total_payments > 0 && (
+                          <div className="text-blue-600">
+                            Paiements: {formatCurrency(sale.total_payments)}
+                          </div>
+                        )}
                         <div className={`font-medium ${sale.remaining_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {t('sales.amounts.remaining')}: {formatCurrency(sale.remaining_balance)}
                         </div>
