@@ -23,14 +23,20 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
   // Définir les éléments de navigation selon le rôle
   const getNavItems = () => {
     if (user.role === 'admin') {
-      // Admin a accès à tous les menus
-      return [
+      // Admin a accès à tous les menus, mais logs uniquement pour thierry1804@gmail.com
+      const navItems = [
         { id: 'dashboard', label: t('navigation.dashboard'), icon: BarChart3 },
         { id: 'clients', label: t('navigation.clients'), icon: Users },
         { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
         { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
-        { id: 'logs', label: '📊 Logs', icon: Activity },
       ];
+      
+      // Ajouter le menu logs uniquement pour thierry1804@gmail.com
+      if (user.email === 'thierry1804@gmail.com') {
+        navItems.push({ id: 'logs', label: '📊 Logs', icon: Activity });
+      }
+      
+      return navItems;
     } else {
       // Employé a accès uniquement aux clients et ventes
       return [

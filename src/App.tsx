@@ -166,6 +166,19 @@ function App() {
       }
     }
 
+    // Vérifier l'accès aux logs - uniquement pour thierry1804@gmail.com
+    if (currentPage === 'logs' && user?.email !== 'thierry1804@gmail.com') {
+      // Logger la tentative d'accès non autorisée
+      logger.log('UNAUTHORIZED_ACCESS_ATTEMPT', {
+        component: 'App',
+        attemptedPage: 'logs',
+        userEmail: user?.email || 'unknown'
+      });
+      // Rediriger vers le dashboard
+      setCurrentPage('dashboard');
+      return <Dashboard />;
+    }
+
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard />;

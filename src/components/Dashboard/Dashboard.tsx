@@ -119,6 +119,41 @@ export const Dashboard: React.FC = () => {
     return { fromDate, toDate };
   };
 
+  // Fonction spécifique pour le graphique
+  const getChartDateRange = () => {
+    const now = new Date();
+    let fromDate: Date | null = null;
+    let toDate: Date | null = null;
+
+    switch (dateFilter) {
+      case 'today':
+      case 'week':
+      case 'month':
+        // Pour ces filtres, le graphique affiche toujours le mois en cours
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        break;
+      case 'lastMonth':
+        // Pour le mois dernier, le graphique s'accorde avec le filtre
+        fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        break;
+      case 'custom':
+        // Pour les dates personnalisées, le graphique s'accorde avec le filtre
+        if (customDateRange.from && customDateRange.to) {
+          fromDate = new Date(customDateRange.from);
+          toDate = new Date(customDateRange.to);
+          toDate.setHours(23, 59, 59, 999);
+        }
+        break;
+      default:
+        // 'all' - pas de filtre de date pour le graphique
+        break;
+    }
+
+    return { fromDate, toDate };
+  };
+
   const fetchDashboardData = async () => {
     console.log('📊 Dashboard: Début de la récupération des données');
     const startTime = performance.now();
@@ -230,7 +265,7 @@ export const Dashboard: React.FC = () => {
 
   const fetchChartData = async () => {
     setChartLoading(true);
-    const { fromDate, toDate } = getDateRange();
+    const { fromDate, toDate } = getChartDateRange();
 
     try {
       let salesQuery = supabase
@@ -251,9 +286,54 @@ export const Dashboard: React.FC = () => {
         return;
       }
 
-      if (!sales || sales.length === 0) {
-        setChartData([]);
-        return;
+      // Si le filtre est today, week, month ou custom, générer l'axe des dates même sans données
+      if (dateFilter === 'today' || dateFilter === 'week' || dateFilter === 'month') {
+        if (!sales || sales.length === 0) {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = now.getMonth();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          
+          const emptyChartData = [];
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+            emptyChartData.push({
+              date: dateStr,
+              cashSales: 0,
+              creditSales: 0,
+              totalRevenue: 0
+            });
+          }
+          setChartData(emptyChartData);
+          return;
+        }
+      } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
+        if (!sales || sales.length === 0) {
+          // Pour le filtre personnalisé, générer toutes les dates entre from et to même sans données
+          const startDate = new Date(customDateRange.from);
+          const endDate = new Date(customDateRange.to);
+          
+          const emptyChartData = [];
+          const currentDate = new Date(startDate);
+          while (currentDate <= endDate) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            emptyChartData.push({
+              date: dateStr,
+              cashSales: 0,
+              creditSales: 0,
+              totalRevenue: 0
+            });
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          setChartData(emptyChartData);
+          return;
+        }
+      } else {
+        // Pour les autres filtres (all, lastMonth), ne rien afficher s'il n'y a pas de données
+        if (!sales || sales.length === 0) {
+          setChartData([]);
+          return;
+        }
       }
 
       // Grouper les ventes par jour
@@ -278,9 +358,46 @@ export const Dashboard: React.FC = () => {
         return acc;
       }, {});
 
-      // Convertir en tableau et trier par date
-      const chartDataArray = Object.values(salesByDay)
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      // Si le filtre est today, week, month ou custom, générer toutes les dates de la période
+      let chartDataArray: any[] = [];
+      
+      if (dateFilter === 'today' || dateFilter === 'week' || dateFilter === 'month') {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Générer toutes les dates du mois
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+          chartDataArray.push({
+            date: dateStr,
+            cashSales: salesByDay[dateStr]?.cashSales || 0,
+            creditSales: salesByDay[dateStr]?.creditSales || 0,
+            totalRevenue: salesByDay[dateStr]?.totalRevenue || 0
+          });
+        }
+      } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
+        // Pour le filtre personnalisé, générer toutes les dates entre from et to
+        const startDate = new Date(customDateRange.from);
+        const endDate = new Date(customDateRange.to);
+        
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          chartDataArray.push({
+            date: dateStr,
+            cashSales: salesByDay[dateStr]?.cashSales || 0,
+            creditSales: salesByDay[dateStr]?.creditSales || 0,
+            totalRevenue: salesByDay[dateStr]?.totalRevenue || 0
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        // Pour les autres filtres (all, lastMonth), utiliser seulement les dates avec des données
+        chartDataArray = Object.values(salesByDay)
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }
 
       setChartData(chartDataArray);
     } catch (error) {
