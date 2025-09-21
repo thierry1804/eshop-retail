@@ -14,6 +14,8 @@ export interface Client {
   address: string;
   trust_rating: 'good' | 'average' | 'poor';
   notes: string;
+  tiktok_id?: string;
+  tiktok_nick_name?: string;
   created_at: string;
   updated_at: string;
   created_by: string;

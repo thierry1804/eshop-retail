@@ -102,11 +102,15 @@
       "address": "完整地址",
       "trustRating": "信用评估",
       "notes": "备注",
+      "tiktokId": "TikTok ID",
+      "tiktokNickName": "TikTok 用户名",
       "firstNamePlaceholder": "名字",
       "lastNamePlaceholder": "姓氏",
       "phonePlaceholder": "+261 XX XX XX XX",
       "addressPlaceholder": "街区、街道、城市...",
-      "notesPlaceholder": "关于客户的评论..."
+      "notesPlaceholder": "关于客户的评论...",
+      "tiktokIdPlaceholder": "TikTok ID（可选）",
+      "tiktokNickNamePlaceholder": "@用户名（可选）"
     }
   },
   "sales": {

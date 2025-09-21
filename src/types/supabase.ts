@@ -33,6 +33,8 @@ export type Database = {
           address: string;
           trust_rating: 'good' | 'average' | 'poor';
           notes: string;
+          tiktok_id: string | null;
+          tiktok_nick_name: string | null;
           created_at: string;
           updated_at: string;
           created_by: string;
@@ -45,6 +47,8 @@ export type Database = {
           address: string;
           trust_rating?: 'good' | 'average' | 'poor';
           notes?: string;
+          tiktok_id?: string | null;
+          tiktok_nick_name?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string;
@@ -57,6 +61,8 @@ export type Database = {
           address?: string;
           trust_rating?: 'good' | 'average' | 'poor';
           notes?: string;
+          tiktok_id?: string | null;
+          tiktok_nick_name?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string;

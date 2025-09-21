@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, Calendar, CreditCard, TrendingUp, Phone, MapPin } from 'lucide-react';
+import { X, Download, Calendar, CreditCard, TrendingUp, Phone, MapPin, Video } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Client, Sale, Payment } from '../../types';
 import jsPDF from 'jspdf';
@@ -132,7 +132,13 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
     doc.text(`Client: ${client.first_name} ${client.last_name}`, 20, 35);
     doc.text(`Téléphone: ${client.phone}`, 20, 45);
     doc.text(`Adresse: ${client.address}`, 20, 55);
-    doc.text(`Date d'édition: ${new Date().toLocaleDateString('fr-FR')}`, 20, 65);
+    if (client.tiktok_id || client.tiktok_nick_name) {
+      const tiktokInfo = client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id;
+      doc.text(`TikTok: ${tiktokInfo}`, 20, 65);
+      doc.text(`Date d'édition: ${new Date().toLocaleDateString('fr-FR')}`, 20, 75);
+    } else {
+      doc.text(`Date d'édition: ${new Date().toLocaleDateString('fr-FR')}`, 20, 65);
+    }
     
     // Summary
     doc.text('RESUME FINANCIER', 20, 85);
@@ -228,6 +234,14 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
                 <MapPin size={18} className="text-gray-400 mt-0.5" />
                 <span className="text-gray-900">{client.address}</span>
               </div>
+              {(client.tiktok_id || client.tiktok_nick_name) && (
+                <div className="flex items-center space-x-2">
+                  <Video size={18} className="text-gray-400" />
+                  <span className="text-gray-900">
+                    {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
+                  </span>
+                </div>
+              )}
               {client.notes && (
                 <div className="bg-gray-50 p-3 rounded-md">
                   <p className="text-sm text-gray-700">{client.notes}</p>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Phone, MapPin } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Phone, MapPin, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ClientForm } from './ClientForm';
 import { ClientDetails } from './ClientDetails';
@@ -29,7 +29,9 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   useEffect(() => {
     const filtered = clients.filter(client =>
       `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.phone.includes(searchTerm)
+      client.phone.includes(searchTerm) ||
+      (client.tiktok_id && client.tiktok_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (client.tiktok_nick_name && client.tiktok_nick_name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredClients(filtered);
   }, [clients, searchTerm]);
@@ -202,6 +204,14 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                           <MapPin size={14} className="mr-2 text-gray-400" />
                           <span className="truncate max-w-32">{client.address}</span>
                         </div>
+                        {(client.tiktok_id || client.tiktok_nick_name) && (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Video size={14} className="mr-2 text-gray-400" />
+                            <span className="truncate max-w-32">
+                              {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

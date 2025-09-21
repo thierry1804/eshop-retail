@@ -120,11 +120,15 @@
       "address": "Adresse Complète",
       "trustRating": "Évaluation de Confiance",
       "notes": "Notes",
+      "tiktokId": "ID TikTok",
+      "tiktokNickName": "Nom d'utilisateur TikTok",
       "firstNamePlaceholder": "Prénom",
       "lastNamePlaceholder": "Nom",
       "phonePlaceholder": "+261 XX XX XX XX",
       "addressPlaceholder": "Quartier, rue, ville...",
-      "notesPlaceholder": "Commentaires sur le client..."
+      "notesPlaceholder": "Commentaires sur le client...",
+      "tiktokIdPlaceholder": "ID TikTok (optionnel)",
+      "tiktokNickNamePlaceholder": "@nom_utilisateur (optionnel)"
     }
   },
   "sales": {
