@@ -60,3 +60,31 @@ export interface ClientWithSales extends Client {
   sales?: Sale[];
   total_purchases: number;
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_info?: string;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  user_id: string;
+  amount: number;
+  category_id?: string;
+  supplier_id?: string;
+  date: string;
+  description?: string;
+  locked: boolean;
+  created_at: string;
+  category?: Category;
+  supplier?: Supplier;
+}

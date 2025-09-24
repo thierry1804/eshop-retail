@@ -20,6 +20,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
     address: client?.address || '',
     trust_rating: client?.trust_rating || 'good' as const,
     notes: client?.notes || '',
+    tiktok_id: client?.tiktok_id || '',
+    tiktok_nick_name: client?.tiktok_nick_name || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -189,6 +191,33 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder={t('clients.form.notesPlaceholder')}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('clients.form.tiktokId')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.tiktok_id}
+                  onChange={(e) => setFormData({ ...formData, tiktok_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={t('clients.form.tiktokIdPlaceholder')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('clients.form.tiktokNickName')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.tiktok_nick_name}
+                  onChange={(e) => setFormData({ ...formData, tiktok_nick_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={t('clients.form.tiktokNickNamePlaceholder')}
+                />
+              </div>
             </div>
           </form>
         </div>
