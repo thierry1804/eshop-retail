@@ -41,6 +41,7 @@
     "clients": "客户",
     "sales": "销售",
     "payments": "付款",
+    "expenses": "支出",
     "settings": "设置",
     "profile": "个人资料"
   },
@@ -183,6 +184,71 @@
     "searchPayments": "搜索付款...",
     "methodPlaceholder": "付款方式",
     "amountPlaceholder": "0.00"
+  },
+  "expenses": {
+    "title": "支出管理",
+    "addExpense": "添加支出",
+    "editExpense": "编辑支出",
+    "deleteExpense": "删除支出",
+    "expenseDate": "支出日期",
+    "expenseAmount": "金额",
+    "expenseCategory": "类别",
+    "expenseSupplier": "供应商",
+    "expenseDescription": "描述",
+    "expenseStatus": "状态",
+    "noExpenses": "未找到支出记录",
+    "noExpensesFound": "未找到匹配的支出记录",
+    "deleteError": "删除时出错",
+    "searchExpenses": "搜索支出...",
+    "searchPlaceholder": "按描述、类别或供应商搜索...",
+    "descriptionPlaceholder": "支出描述",
+    "amountPlaceholder": "0.00",
+    "loading": "加载支出记录中...",
+    "fetchError": "获取数据时出错",
+    "generalError": "错误",
+    "locked": "已锁定",
+    "unlocked": "未锁定",
+    "totalExpenses": "支出总计",
+    "displayed": "显示",
+    "filteredExpenses": "筛选支出",
+    "table": {
+      "date": "日期",
+      "description": "描述",
+      "category": "类别",
+      "supplier": "供应商",
+      "amount": "金额",
+      "status": "状态"
+    },
+    "filters": {
+      "allCategories": "所有类别",
+      "allSuppliers": "所有供应商",
+      "allStatuses": "所有状态",
+      "clearFilters": "清除筛选",
+      "dateFilter": "按日期筛选",
+      "allDates": "所有日期",
+      "today": "今天",
+      "thisWeek": "本周",
+      "thisMonth": "本月",
+      "lastMonth": "上月"
+    },
+    "summary": {
+      "totalExpenses": "总支出",
+      "displayed": "显示",
+      "filteredExpenses": "筛选支出"
+    },
+    "error": {
+      "title": "获取数据时出错",
+      "retry": "重试"
+    },
+    "form": {
+      "addNewExpense": "添加新支出",
+      "editExpense": "编辑支出",
+      "saveError": "保存时出错",
+      "saving": "保存中...",
+      "amountRequired": "金额为必填项",
+      "dateRequired": "日期为必填项",
+      "amountPositive": "金额必须为正数"
+    }
   },
   "common": {
     "actions": "操作",

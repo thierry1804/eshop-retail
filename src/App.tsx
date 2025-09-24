@@ -6,6 +6,7 @@ import { ClientsList } from './components/Clients/ClientsList';
 import { SalesList } from './components/Sales/SalesList';
 import { PaymentsList } from './components/Payments/PaymentsList';
 import { LogsViewer } from './components/Admin/LogsViewer';
+import ExpensesList from './components/Expenses/ExpensesList';
 import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
@@ -188,6 +189,8 @@ function App() {
         return user ? <SalesList user={user} /> : null;
       case 'payments':
         return <PaymentsList />;
+      case 'expenses':
+        return <ExpensesList />;
       case 'logs':
         return <LogsViewer />;
       default:

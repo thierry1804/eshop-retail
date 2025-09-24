@@ -132,6 +132,81 @@ export type Database = {
           created_by?: string;
         };
       };
+      expenses: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          amount: number;
+          category_id: string | null;
+          supplier_id: string | null;
+          date: string;
+          description: string | null;
+          locked: boolean | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          amount: number;
+          category_id?: string | null;
+          supplier_id?: string | null;
+          date?: string;
+          description?: string | null;
+          locked?: boolean | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          amount?: number;
+          category_id?: string | null;
+          supplier_id?: string | null;
+          date?: string;
+          description?: string | null;
+          locked?: boolean | null;
+          created_at?: string | null;
+        };
+      };
+      categories: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          created_at?: string | null;
+        };
+      };
+      suppliers: {
+        Row: {
+          id: string;
+          name: string;
+          contact_info: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          contact_info?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          contact_info?: string | null;
+          created_at?: string | null;
+        };
+      };
     };
   };
 };

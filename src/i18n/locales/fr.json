@@ -41,6 +41,7 @@
     "clients": "Clients",
     "sales": "Ventes",
     "payments": "Paiements",
+    "expenses": "Dépenses",
     "settings": "Paramètres",
     "profile": "Profil"
   },
@@ -204,6 +205,71 @@
     "searchPayments": "Rechercher des paiements...",
     "methodPlaceholder": "Méthode de paiement",
     "amountPlaceholder": "0.00"
+  },
+  "expenses": {
+    "title": "Gestion des Dépenses",
+    "addExpense": "Ajouter une dépense",
+    "editExpense": "Modifier la dépense",
+    "deleteExpense": "Supprimer la dépense",
+    "expenseDate": "Date de dépense",
+    "expenseAmount": "Montant",
+    "expenseCategory": "Catégorie",
+    "expenseSupplier": "Fournisseur",
+    "expenseDescription": "Description",
+    "expenseStatus": "Statut",
+    "noExpenses": "Aucune dépense trouvée",
+    "noExpensesFound": "Aucune dépense trouvée pour ces critères",
+    "deleteError": "Erreur lors de la suppression",
+    "searchExpenses": "Rechercher des dépenses...",
+    "searchPlaceholder": "Rechercher par description, catégorie ou fournisseur...",
+    "descriptionPlaceholder": "Description de la dépense",
+    "amountPlaceholder": "0.00",
+    "loading": "Chargement des dépenses...",
+    "fetchError": "Erreur de récupération",
+    "generalError": "Erreur",
+    "locked": "Verrouillée",
+    "unlocked": "Déverrouillée",
+    "totalExpenses": "Total des dépenses",
+    "displayed": "Affichées",
+    "filteredExpenses": "Dépenses filtrées",
+    "table": {
+      "date": "DATE",
+      "description": "DESCRIPTION",
+      "category": "CATÉGORIE",
+      "supplier": "FOURNISSEUR",
+      "amount": "MONTANT",
+      "status": "STATUT"
+    },
+    "filters": {
+      "allCategories": "Toutes les catégories",
+      "allSuppliers": "Tous les fournisseurs",
+      "allStatuses": "Tous les statuts",
+      "clearFilters": "Effacer filtres",
+      "dateFilter": "Filtrer par date",
+      "allDates": "Toutes les dates",
+      "today": "Aujourd'hui",
+      "thisWeek": "Cette semaine",
+      "thisMonth": "Ce mois",
+      "lastMonth": "Mois dernier"
+    },
+    "summary": {
+      "totalExpenses": "Dépenses totales",
+      "displayed": "Affichées",
+      "filteredExpenses": "Dépenses filtrées"
+    },
+    "error": {
+      "title": "Erreur de récupération des données",
+      "retry": "Réessayer"
+    },
+    "form": {
+      "addNewExpense": "Ajouter une nouvelle dépense",
+      "editExpense": "Modifier la dépense",
+      "saveError": "Erreur lors de l'enregistrement",
+      "saving": "Enregistrement...",
+      "amountRequired": "Le montant est requis",
+      "dateRequired": "La date est requise",
+      "amountPositive": "Le montant doit être positif"
+    }
   },
   "common": {
     "actions": "Actions",
