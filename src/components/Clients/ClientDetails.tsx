@@ -40,7 +40,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
         .from('sales')
         .select('*')
         .eq('client_id', client.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true }) as { data: Sale[] | null };
 
       // Fetch payments
       const { data: payments } = await supabase
@@ -50,7 +50,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
           sales!inner(client_id)
         `)
         .eq('sales.client_id', client.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true }) as { data: Payment[] | null };
 
       if (sales && payments) {
         // Calculate statistics
@@ -151,7 +151,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
     doc.text('HISTORIQUE DES OPERATIONS', 20, 135);
     
     let yPosition = 150;
-    activities.forEach((activity, index) => {
+    activities.forEach((activity) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
