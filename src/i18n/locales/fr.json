@@ -269,6 +269,19 @@
       "amountRequired": "Le montant est requis",
       "dateRequired": "La date est requise",
       "amountPositive": "Le montant doit être positif"
+    },
+    "audit": {
+      "createdBy": "Créé par",
+      "updatedBy": "Modifié par",
+      "deletedBy": "Supprimé par",
+      "createdAt": "Créé le",
+      "updatedAt": "Modifié le",
+      "deletedAt": "Supprimé le",
+      "lockedExpense": "Dépense verrouillée",
+      "cannotModify": "Cette dépense est verrouillée et ne peut pas être modifiée",
+      "softDelete": "Suppression (peut être annulée)",
+      "restore": "Restaurer",
+      "permanentlyDelete": "Supprimer définitivement"
     }
   },
   "common": {

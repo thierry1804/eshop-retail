@@ -85,6 +85,14 @@ export interface Expense {
   description?: string;
   locked: boolean;
   created_at: string;
+  created_by?: string;
+  updated_by?: string;
+  updated_at?: string;
+  deleted_by?: string;
+  deleted_at?: string;
   category?: Category;
   supplier?: Supplier;
+  created_by_user?: User;
+  updated_by_user?: User;
+  deleted_by_user?: User;
 }

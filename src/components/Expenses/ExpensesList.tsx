@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
 import ExpenseForm from './ExpenseForm';
+import DeletedExpensesList from './DeletedExpensesList';
 
 type Expense = Database['public']['Tables']['expenses']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -28,6 +29,7 @@ const ExpensesList: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
 
   // Récupération des dépenses avec les détails des catégories et fournisseurs
   const fetchExpenses = async () => {
@@ -40,13 +42,25 @@ const ExpensesList: React.FC = () => {
         .select(`
           *,
           category:categories(*),
-          supplier:suppliers(*)
+          supplier:suppliers(*),
+          created_by_user:user_profiles!expenses_created_by_fkey(*),
+          updated_by_user:user_profiles!expenses_updated_by_fkey(*),
+          deleted_by_user:user_profiles!expenses_deleted_by_fkey(*)
         `)
+        .is('deleted_at', null) // Exclure les dépenses supprimées
         .order('date', { ascending: false });
 
       if (expensesError) {
         console.error('Erreur lors de la récupération des dépenses:', expensesError);
-        setError(t('expenses.fetchError'));
+        
+        // Gestion spécifique des erreurs
+        if (expensesError.code === '42501') {
+          setError('Erreur de permissions : Vous n\'avez pas les droits pour voir les dépenses.');
+        } else if (expensesError.message.includes('relation') && expensesError.message.includes('does not exist')) {
+          setError('Erreur de base de données : Table des dépenses non trouvée. Veuillez contacter l\'administrateur.');
+        } else {
+          setError(`Erreur lors de la récupération des dépenses : ${expensesError.message}`);
+        }
         return;
       }
 
@@ -189,27 +203,70 @@ const ExpensesList: React.FC = () => {
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm(t('app.confirm'))) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette dépense ? Cette action peut être annulée.')) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', expenseId);
+      setLoading(true);
+      setError(null);
+
+      // Essayer d'abord la fonction RPC, sinon utiliser UPDATE direct
+      let data, error;
+      
+      try {
+        const result = await supabase
+          .rpc('soft_delete_expense_rpc', { expense_id: expenseId });
+        data = result.data;
+        error = result.error;
+      } catch (rpcError) {
+        console.log('Fonction RPC non disponible, utilisation de UPDATE direct');
+        
+        // Fallback: utiliser UPDATE direct pour le soft delete
+        const updateResult = await supabase
+          .from('expenses')
+          .update({ 
+            deleted_at: new Date().toISOString(),
+            deleted_by: (await supabase.auth.getUser()).data.user?.id
+          })
+          .eq('id', expenseId)
+          .eq('deleted_at', null); // Seulement si pas déjà supprimée
+        
+        data = updateResult.data;
+        error = updateResult.error;
+      }
 
       if (error) {
         console.error('Erreur lors de la suppression de la dépense:', error);
-        setError(t('expenses.deleteError'));
+        
+        // Gestion spécifique des erreurs
+        if (error.code === '42501') {
+          setError('Erreur de permissions : Vous n\'avez pas les droits pour supprimer cette dépense.');
+        } else if (error.message.includes('locked')) {
+          setError('Impossible de supprimer une dépense verrouillée.');
+        } else if (error.message.includes('deleted_at')) {
+          setError('Cette dépense a déjà été supprimée.');
+        } else {
+          setError(`Erreur lors de la suppression : ${error.message}`);
+        }
+        return;
+      }
+
+      // Vérifier si la suppression a réussi
+      if (data === true) {
+        console.log('Dépense supprimée avec succès');
+      } else {
+        setError('La dépense n\'a pas pu être supprimée (peut-être déjà supprimée ou verrouillée)');
         return;
       }
 
       // Rafraîchir la liste
-      fetchExpenses();
+      await fetchExpenses();
     } catch (err) {
       console.error('Erreur inattendue lors de la suppression:', err);
-      setError(t('expenses.generalError'));
+      setError('Erreur inattendue lors de la suppression de la dépense.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -223,6 +280,7 @@ const ExpensesList: React.FC = () => {
     setShowForm(false);
     setEditingExpense(null);
   };
+
 
   if (loading) {
     return (
@@ -272,15 +330,68 @@ const ExpensesList: React.FC = () => {
     );
   }
 
+  // Si on est sur l'onglet des dépenses supprimées, afficher le composant dédié
+  if (activeTab === 'deleted') {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {t('navigation.expenses')}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                {t('expenses.title')}
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveTab('active')}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Dépenses actives
+              </button>
+              <button
+                onClick={() => setActiveTab('deleted')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md"
+              >
+                Dépenses supprimées
+              </button>
+            </div>
+          </div>
+        </div>
+        <DeletedExpensesList onRestore={fetchExpenses} />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {t('navigation.expenses')}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {t('expenses.title')}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {t('navigation.expenses')}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {t('expenses.title')}
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveTab('active')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md"
+            >
+              Dépenses actives
+            </button>
+            <button
+              onClick={() => setActiveTab('deleted')}
+              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Dépenses supprimées
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Filtres et recherche */}
@@ -493,6 +604,12 @@ const ExpensesList: React.FC = () => {
                     {t('expenses.table.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('expenses.audit.createdBy')}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('expenses.audit.updatedBy')}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('common.actions')}
                   </th>
                 </tr>
@@ -526,17 +643,39 @@ const ExpensesList: React.FC = () => {
                         {expense.locked ? t('expenses.locked') : t('expenses.unlocked')}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>
+                        <div className="font-medium">{expense.created_by_user?.name || '-'}</div>
+                        <div className="text-gray-500 text-xs">
+                          {expense.created_at ? formatDate(expense.created_at) : '-'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>
+                        <div className="font-medium">{expense.updated_by_user?.name || '-'}</div>
+                        <div className="text-gray-500 text-xs">
+                          {expense.updated_at ? formatDate(expense.updated_at) : '-'}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button 
                           onClick={() => handleEditExpense(expense)}
-                          className="text-blue-600 hover:text-blue-900"
+                          disabled={expense.locked}
+                          className={`${expense.locked
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-blue-600 hover:text-blue-900'
+                            }`}
+                          title={expense.locked ? t('expenses.audit.lockedExpense') : t('app.edit')}
                         >
                           {t('app.edit')}
                         </button>
                         <button 
                           onClick={() => handleDeleteExpense(expense.id)}
                           className="text-red-600 hover:text-red-900"
+                          title={t('expenses.audit.softDelete')}
                         >
                           {t('app.delete')}
                         </button>
