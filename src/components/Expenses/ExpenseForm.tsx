@@ -101,6 +101,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
       return;
     }
 
+    // Vérifier si la dépense est verrouillée
+    if (expense && expense.locked) {
+      setError(t('expenses.audit.cannotModify'));
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -127,6 +133,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
           // Gestion spécifique des erreurs RLS
           if (error.code === '42501') {
             setError('Erreur de permissions : Veuillez contacter l\'administrateur pour configurer les droits d\'accès.');
+          } else if (error.message.includes('locked')) {
+            setError(t('expenses.audit.cannotModify'));
           } else {
             setError(t('expenses.saveError'));
           }
@@ -194,7 +202,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
               step="0.01"
               min="0"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={expense?.locked}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -210,7 +219,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
               value={formData.date}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={expense?.locked}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -224,7 +234,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
               name="category_id"
               value={formData.category_id}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={expense?.locked}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">{t('expenses.filters.allCategories')}</option>
               {categories.map((category) => (
@@ -245,7 +256,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
               name="supplier_id"
               value={formData.supplier_id}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={expense?.locked}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">{t('expenses.filters.allSuppliers')}</option>
               {suppliers.map((supplier) => (
@@ -269,7 +281,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
             onChange={handleInputChange}
             placeholder={t('expenses.descriptionPlaceholder')}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={expense?.locked}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -281,10 +294,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
             name="locked"
             checked={formData.locked}
             onChange={handleInputChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            disabled={expense?.locked}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <label htmlFor="locked" className="ml-2 block text-sm text-gray-700">
             {t('expenses.locked')}
+            {expense?.locked && (
+              <span className="ml-2 text-red-600 text-xs">({t('expenses.audit.lockedExpense')} - non modifiable)</span>
+            )}
           </label>
         </div>
 
@@ -299,7 +316,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || expense?.locked}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? t('app.saving') : t('app.save')}

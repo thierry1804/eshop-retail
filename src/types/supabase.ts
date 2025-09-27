@@ -143,6 +143,11 @@ export type Database = {
           description: string | null;
           locked: boolean | null;
           created_at: string | null;
+          created_by: string | null;
+          updated_by: string | null;
+          updated_at: string | null;
+          deleted_by: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -154,6 +159,11 @@ export type Database = {
           description?: string | null;
           locked?: boolean | null;
           created_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+          updated_at?: string | null;
+          deleted_by?: string | null;
+          deleted_at?: string | null;
         };
         Update: {
           id?: string;
@@ -165,6 +175,11 @@ export type Database = {
           description?: string | null;
           locked?: boolean | null;
           created_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+          updated_at?: string | null;
+          deleted_by?: string | null;
+          deleted_at?: string | null;
         };
       };
       categories: {
