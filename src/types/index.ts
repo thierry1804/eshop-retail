@@ -191,8 +191,8 @@ export interface Delivery {
   created_by: string;
   updated_by?: string;
   updated_at?: string;
-  client?: Client;
-  sale?: Sale;
+  clients?: Client;
+  sales?: Sale;
   delivery_items?: DeliveryItem[];
   delivery_events?: DeliveryEvent[];
 }

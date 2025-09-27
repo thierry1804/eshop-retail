@@ -15,9 +15,9 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
     client_id: '',
     delivery_date: new Date().toISOString().split('T')[0],
     delivery_method: 'home_delivery',
+    delivery_type: 'delivery',
     delivery_address: '',
     delivery_notes: '',
-    delivery_cost: 0,
     delivery_fee: 0
   });
   const [clients, setClients] = useState<Client[]>([]);
@@ -32,18 +32,50 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
     setClients(data || []);
   };
 
+  const handleClientChange = (clientId: string) => {
+    const selectedClient = clients.find(client => client.id === clientId);
+    setFormData({
+      ...formData,
+      client_id: clientId,
+      delivery_address: selectedClient?.address || ''
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await supabase.from('deliveries').insert({
-        ...formData,
+      // Ne pas inclure delivery_number - il sera généré automatiquement par le trigger
+      const deliveryData = {
+        client_id: formData.client_id,
+        delivery_date: new Date(formData.delivery_date).toISOString(),
+        delivery_method: formData.delivery_method,
+        delivery_type: formData.delivery_type,
+        delivery_address: formData.delivery_address,
+        delivery_notes: formData.delivery_notes || null,
+        delivery_cost: 0,
+        delivery_fee: formData.delivery_fee,
         status: 'pending',
         created_by: user.id
-      });
+      };
+
+      console.log('Données à insérer:', deliveryData);
+
+      const { data, error } = await supabase
+        .from('deliveries')
+        .insert(deliveryData)
+        .select();
+
+      if (error) {
+        console.error('Erreur détaillée:', error);
+        throw error;
+      }
+
+      console.log('Livraison créée avec succès:', data);
       onSave();
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur lors de la création de la livraison:', error);
+      alert('Erreur lors de la création de la livraison. Vérifiez la console pour plus de détails.');
     } finally {
       setLoading(false);
     }
@@ -59,7 +91,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
             <select
               required
               value={formData.client_id}
-              onChange={(e) => setFormData({...formData, client_id: e.target.value})}
+              onChange={(e) => handleClientChange(e.target.value)}
               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
             >
               <option value="">{t('app.select')} {t('deliveries.table.client').toLowerCase()}</option>
@@ -97,6 +129,17 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryType')}</label>
+            <select
+              value={formData.delivery_type}
+              onChange={(e) => setFormData({ ...formData, delivery_type: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="delivery">{t('deliveries.types.delivery')}</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryAddress')} *</label>
             <textarea
               required
@@ -107,25 +150,27 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryCost')}</label>
-              <input
-                type="number"
-                value={formData.delivery_cost}
-                onChange={(e) => setFormData({...formData, delivery_cost: parseFloat(e.target.value)})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryFee')}</label>
-              <input
-                type="number"
-                value={formData.delivery_fee}
-                onChange={(e) => setFormData({...formData, delivery_fee: parseFloat(e.target.value)})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryFee')}</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.delivery_fee}
+              onChange={(e) => setFormData({ ...formData, delivery_fee: parseFloat(e.target.value) || 0 })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">{t('deliveries.deliveryNotes')}</label>
+            <textarea
+              value={formData.delivery_notes}
+              onChange={(e) => setFormData({ ...formData, delivery_notes: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              rows={3}
+              placeholder={t('deliveries.notesPlaceholder')}
+            />
           </div>
 
           <div className="flex justify-end space-x-3">

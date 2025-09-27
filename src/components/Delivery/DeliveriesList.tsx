@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
-import { Plus, Search, Truck, MapPin, Clock } from 'lucide-react';
+import { Plus, Search, Truck, MapPin, Clock, Eye, Edit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DeliveryForm } from './DeliveryForm';
+import { DeliveryDetails } from './DeliveryDetails';
 
 interface DeliveriesListProps {
   user: User;
@@ -16,6 +17,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDeliveries();
@@ -24,17 +26,44 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const fetchDeliveries = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      // Première approche : requête simple sans relations
+      const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
-        .select(`
-          *,
-          client:clients(first_name, last_name, phone),
-          sale:sales(description, total_amount)
-        `)
+        .select('*')
         .order('delivery_date', { ascending: false });
 
-      if (error) throw error;
-      setDeliveries(data || []);
+      if (deliveriesError) throw deliveriesError;
+
+      if (!deliveriesData || deliveriesData.length === 0) {
+        setDeliveries([]);
+        return;
+      }
+
+      // Récupérer les IDs uniques des clients et ventes
+      const clientIds = [...new Set(deliveriesData.map(d => d.client_id).filter(Boolean))];
+      const saleIds = [...new Set(deliveriesData.map(d => d.sale_id).filter(Boolean))];
+
+      // Récupérer les données des clients
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name, phone')
+        .in('id', clientIds);
+
+      // Récupérer les données des ventes
+      const { data: salesData } = await supabase
+        .from('sales')
+        .select('id, description, total_amount')
+        .in('id', saleIds);
+
+      // Combiner les données
+      const enrichedDeliveries = deliveriesData.map(delivery => ({
+        ...delivery,
+        clients: clientsData?.find(c => c.id === delivery.client_id),
+        sales: salesData?.find(s => s.id === delivery.sale_id)
+      }));
+
+      setDeliveries(enrichedDeliveries);
     } catch (error) {
       console.error('Erreur lors du chargement des livraisons:', error);
     } finally {
@@ -45,8 +74,8 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const filteredDeliveries = deliveries.filter(delivery => {
     const matchesSearch = 
       delivery.delivery_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      delivery.client?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      delivery.client?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      delivery.clients?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      delivery.clients?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || delivery.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -156,9 +185,9 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {delivery.client?.first_name} {delivery.client?.last_name}
+                      {delivery.clients?.first_name} {delivery.clients?.last_name}
                     </div>
-                    <div className="text-sm text-gray-500">{delivery.client?.phone}</div>
+                    <div className="text-sm text-gray-500">{delivery.clients?.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -182,10 +211,18 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900 mr-3">
+                    <button
+                      onClick={() => setSelectedDeliveryId(delivery.id)}
+                      className="text-blue-600 hover:text-blue-900 mr-3 flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" />
                       {t('deliveries.viewDetails')}
                     </button>
-                    <button className="text-indigo-600 hover:text-indigo-900">
+                    <button
+                      onClick={() => setSelectedDeliveryId(delivery.id)}
+                      className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
+                    >
+                      <Edit className="h-4 w-4" />
                       {t('app.edit')}
                     </button>
                   </td>
@@ -196,13 +233,26 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal de création */}
       {showForm && (
         <DeliveryForm
           onClose={() => setShowForm(false)}
           onSave={() => {
             fetchDeliveries();
             setShowForm(false);
+          }}
+          user={user}
+        />
+      )}
+
+      {/* Modal de détails/modification */}
+      {selectedDeliveryId && (
+        <DeliveryDetails
+          deliveryId={selectedDeliveryId}
+          onClose={() => setSelectedDeliveryId(null)}
+          onSave={() => {
+            fetchDeliveries();
+            setSelectedDeliveryId(null);
           }}
           user={user}
         />
