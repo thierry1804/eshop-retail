@@ -27,4 +27,3 @@ GRANT EXECUTE ON FUNCTION permanently_delete_expense(uuid) TO authenticated;
 
 -- S'assurer que la fonction restore_expense a aussi les bonnes permissions
 GRANT EXECUTE ON FUNCTION restore_expense(uuid) TO authenticated;
-
