@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Delivery, Client, Sale, User } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Edit, Save, X, Truck, MapPin, Clock, User as UserIcon, Package, DollarSign } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Truck, MapPin, Clock, User as UserIcon, Package, DollarSign, CheckCircle, XCircle } from 'lucide-react';
 
 interface DeliveryDetailsProps {
   deliveryId: string;
@@ -19,6 +19,7 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [formData, setFormData] = useState({
     delivery_date: '',
     delivery_method: '',
@@ -95,6 +96,13 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
   };
 
   const handleSave = async () => {
+    // Vérification de sécurité : empêcher la modification des livraisons livrées
+    if (delivery && delivery.status === 'delivered') {
+      alert('Impossible de modifier une livraison qui a été livrée.');
+      setEditing(false);
+      return;
+    }
+
     try {
       setSaving(true);
       
@@ -118,6 +126,39 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
       console.error('Erreur lors de la sauvegarde:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateDeliveryStatus = async (newStatus: string) => {
+    try {
+      setUpdatingStatus(true);
+
+      const { error } = await supabase
+        .from('deliveries')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+          ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() })
+        })
+        .eq('id', deliveryId);
+
+      if (error) throw error;
+
+      // Rafraîchir les données
+      await fetchDeliveryDetails();
+      onSave();
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      alert('Erreur lors de la mise à jour du statut de la livraison');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleStatusChange = (newStatus: string, statusText: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir marquer cette livraison comme "${statusText}" ?`)) {
+      updateDeliveryStatus(newStatus);
     }
   };
 
@@ -216,16 +257,64 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setEditing(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                {t('app.edit')}
-              </button>
+                <>
+                  {/* Actions rapides de statut */}
+                  {delivery && delivery.status !== 'delivered' && delivery.status !== 'failed' && delivery.status !== 'cancelled' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleStatusChange('delivered', 'Livrée')}
+                        disabled={updatingStatus}
+                        className="px-3 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Marquer comme livrée
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange('failed', 'Échouée')}
+                        disabled={updatingStatus}
+                        className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Marquer comme échouée
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (delivery && delivery.status === 'delivered') {
+                        alert('Impossible de modifier une livraison qui a été livrée.');
+                        return;
+                      }
+                      setEditing(true);
+                    }}
+                    disabled={delivery.status === 'delivered'}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 ${delivery.status === 'delivered'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                      }`}
+                    title={delivery.status === 'delivered' ? 'Impossible de modifier une livraison livrée' : 'Modifier la livraison'}
+                  >
+                    <Edit className="h-4 w-4" />
+                    {t('app.edit')}
+                  </button>
+                </>
             )}
           </div>
         </div>
+
+        {/* Message d'information pour les livraisons livrées */}
+        {delivery && delivery.status === 'delivered' && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <p className="text-green-800 text-sm">
+                Cette livraison a été marquée comme livrée le {delivery.delivered_at ? new Date(delivery.delivered_at).toLocaleDateString() : 'N/A'}.
+                Elle ne peut plus être modifiée.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Contenu */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

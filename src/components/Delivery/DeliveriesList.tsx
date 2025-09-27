@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
-import { Plus, Search, Truck, MapPin, Clock, Eye, Edit } from 'lucide-react';
+import { Plus, Search, Truck, MapPin, Clock, Eye, Edit, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DeliveryForm } from './DeliveryForm';
 import { DeliveryDetails } from './DeliveryDetails';
@@ -18,6 +18,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDeliveries();
@@ -68,6 +69,38 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
       console.error('Erreur lors du chargement des livraisons:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateDeliveryStatus = async (deliveryId: string, newStatus: string) => {
+    try {
+      setUpdatingStatus(deliveryId);
+
+      const { error } = await supabase
+        .from('deliveries')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+          ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() })
+        })
+        .eq('id', deliveryId);
+
+      if (error) throw error;
+
+      // Rafraîchir la liste
+      await fetchDeliveries();
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut:', error);
+      alert('Erreur lors de la mise à jour du statut de la livraison');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const handleStatusChange = (deliveryId: string, newStatus: string, statusText: string) => {
+    if (window.confirm(`Êtes-vous sûr de vouloir marquer cette livraison comme "${statusText}" ?`)) {
+      updateDeliveryStatus(deliveryId, newStatus);
     }
   };
 
@@ -211,20 +244,62 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setSelectedDeliveryId(delivery.id)}
-                      className="text-blue-600 hover:text-blue-900 mr-3 flex items-center gap-1"
-                    >
-                      <Eye className="h-4 w-4" />
-                      {t('deliveries.viewDetails')}
-                    </button>
-                    <button
-                      onClick={() => setSelectedDeliveryId(delivery.id)}
-                      className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                    >
-                      <Edit className="h-4 w-4" />
-                      {t('app.edit')}
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {/* Actions principales */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedDeliveryId(delivery.id)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center gap-1 text-xs"
+                        >
+                          <Eye className="h-3 w-3" />
+                          {t('deliveries.viewDetails')}
+                        </button>
+                        <button
+                          onClick={() => setSelectedDeliveryId(delivery.id)}
+                          disabled={delivery.status === 'delivered'}
+                          className={`flex items-center gap-1 text-xs ${delivery.status === 'delivered'
+                              ? 'text-gray-400 cursor-not-allowed'
+                              : 'text-indigo-600 hover:text-indigo-900'
+                            }`}
+                          title={delivery.status === 'delivered' ? 'Impossible de modifier une livraison livrée' : 'Modifier la livraison'}
+                        >
+                          <Edit className="h-3 w-3" />
+                          {t('app.edit')}
+                        </button>
+                      </div>
+
+                      {/* Actions rapides de statut */}
+                      {delivery.status !== 'delivered' && delivery.status !== 'failed' && delivery.status !== 'cancelled' && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleStatusChange(delivery.id, 'delivered', 'Livrée')}
+                            disabled={updatingStatus === delivery.id}
+                            className="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
+                            title="Marquer comme livrée"
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                            Livrée
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(delivery.id, 'failed', 'Échouée')}
+                            disabled={updatingStatus === delivery.id}
+                            className="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
+                            title="Marquer comme échouée"
+                          >
+                            <XCircle className="h-3 w-3" />
+                            Échouée
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Indicateur de chargement */}
+                      {updatingStatus === delivery.id && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-500"></div>
+                          Mise à jour...
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
