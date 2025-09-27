@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -30,6 +30,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange 
         { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart },
         { id: 'payments', label: t('navigation.payments'), icon: CreditCard },
         { id: 'expenses', label: t('navigation.expenses'), icon: Receipt },
+        { id: 'stock', label: t('navigation.stock'), icon: Package },
+        { id: 'deliveries', label: t('navigation.deliveries'), icon: Truck },
+        { id: 'supply', label: t('navigation.supply'), icon: ShoppingBag },
       ];
       
       // Ajouter le menu logs uniquement pour thierry1804@gmail.com
