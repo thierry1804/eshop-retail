@@ -19,9 +19,10 @@ interface SaleFormProps {
   sale?: Sale;
   onClose: () => void;
   onSubmit: () => void;
+  tiktokMessage?: any; // Message TikTok pour créer automatiquement un sale_item
 }
 
-export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) => {
+export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit, tiktokMessage }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
@@ -204,6 +205,35 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     }
   };
 
+  const createTikTokSaleItem = async (saleId: string, tiktokMessage: any) => {
+    try {
+      const now = new Date();
+      const jpCode = `JP${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+
+      const saleItemData = {
+        sale_id: saleId,
+        product_name: `${jpCode} - ${tiktokMessage.comment}`,
+        quantity: 1,
+        unit_price: 0,
+        total_price: 0,
+        notes: `Commande TikTok - ${tiktokMessage.nickname}`,
+        created_by: (await supabase.auth.getUser()).data.user?.id
+      };
+
+      const { error } = await (supabase as any)
+        .from('sale_items')
+        .insert([saleItemData]);
+
+      if (error) {
+        console.error('Erreur lors de la création du sale_item TikTok:', error);
+      } else {
+        console.log('Sale item TikTok créé avec succès');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la création du sale_item TikTok:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -231,6 +261,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       const { data: { user } } = await supabase.auth.getUser();
       const remainingBalance = formData.total_amount - formData.deposit;
       const status = remainingBalance === 0 ? 'paid' : 'ongoing';
+      let saleData: any = null;
 
       // Vérifier si l'utilisateur a un profil
       let userProfileId: string | undefined = user?.id;
@@ -284,7 +315,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         if (error) throw error;
       } else {
         // Create new sale
-        const { data: saleData, error } = await supabase
+        const { data: newSaleData, error } = await supabase
           .from('sales')
           .insert({
             ...formData,
@@ -296,6 +327,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
           .single();
 
         if (error) throw error;
+        saleData = newSaleData;
 
         // Créer les articles de vente si c'est une nouvelle vente
         if (saleData && saleItems.length > 0) {
@@ -371,6 +403,11 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         }
       }
       
+      // Si c'est une vente TikTok, créer automatiquement un sale_item
+      if (tiktokMessage && !sale && saleData) {
+        await createTikTokSaleItem((saleData as any).id, tiktokMessage);
+      }
+
       onSubmit();
     } catch (error: any) {
       setError(error.message);

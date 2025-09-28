@@ -11,7 +11,7 @@ import { ProductsList } from './components/Stock/ProductsList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
 import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
 import { ConfigError } from './components/Debug/ConfigError';
-import { TikTokLive } from './components/TikTok/TikTokLive';
+import { TikTokLivePage } from './components/TikTok/TikTokLivePage';
 import { supabase } from './lib/supabase';
 import { User } from './types';
 import { logger } from './lib/logger';
@@ -238,7 +238,7 @@ function App() {
       case 'clients':
         return user ? <ClientsList user={user} /> : null;
       case 'sales':
-        return user ? <SalesList user={user} /> : null;
+        return user ? <SalesList user={user} onNavigateToTikTok={() => setCurrentPage('tiktok')} /> : null;
       case 'payments':
         return <PaymentsList />;
       case 'expenses':
@@ -249,6 +249,8 @@ function App() {
         return user ? <DeliveriesList user={user} /> : null;
       case 'supply':
         return user ? <PurchaseOrdersList user={user} /> : null;
+      case 'tiktok':
+        return user ? <TikTokLivePage user={user} onNavigateToSales={() => setCurrentPage('sales')} /> : null;
       case 'logs':
         return <LogsViewer />;
       default:
@@ -292,8 +294,6 @@ function App() {
           {renderCurrentPage()}
         </div>
       </main>
-      {/* Composant TikTok Live - toujours visible */}
-      <TikTokLive />
     </div>
   );
 }

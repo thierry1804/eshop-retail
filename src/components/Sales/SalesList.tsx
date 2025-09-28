@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
@@ -12,9 +12,10 @@ import { formatDateToLocalString } from '../../lib/dateUtils';
 
 interface SalesListProps {
   user: User;
+  onNavigateToTikTok?: () => void;
 }
 
-export const SalesList: React.FC<SalesListProps> = ({ user }) => {
+export const SalesList: React.FC<SalesListProps> = ({ user, onNavigateToTikTok }) => {
   const { t } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
@@ -246,6 +247,16 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
               <Plus size={20} />
             <span>{t('sales.newSale')}</span>
             </button>
+
+          {onNavigateToTikTok && (
+            <button
+              onClick={onNavigateToTikTok}
+              className="flex items-center space-x-2 px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 transition-colors"
+            >
+              <Video size={20} />
+              <span>Vente Live</span>
+            </button>
+          )}
           </div>
       </div>
 

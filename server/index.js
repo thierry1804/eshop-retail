@@ -115,6 +115,7 @@ function createTikTokConnection() {
       }
     };
 
+    console.log('📤 Envoi message chat aux clients:', message);
     broadcastToClients(message);
   });
 
@@ -160,11 +161,17 @@ function createTikTokConnection() {
 // Fonction pour diffuser un message à tous les clients connectés
 function broadcastToClients(message) {
   const messageStr = JSON.stringify(message);
+  const clientCount = wss.clients.size;
+  let sentCount = 0;
+
   wss.clients.forEach((client) => {
     if (client.readyState === client.OPEN) {
       client.send(messageStr);
+      sentCount++;
     }
   });
+
+  console.log(`📡 Broadcast: ${sentCount}/${clientCount} clients ont reçu le message ${message.type}`);
 }
 
 // Gestion des connexions WebSocket

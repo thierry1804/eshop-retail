@@ -22,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'dashboard': 'sales',
       'clients': 'sales',
       'sales': 'sales',
+      'tiktok': 'sales',  // La page TikTok fait partie de la section Ventes
       'payments': 'sales',
       'stock': 'inventory',
       'supply': 'inventory',
@@ -30,6 +31,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'logs': 'admin'
     };
     return pageToSection[currentPage] || 'sales';
+  };
+
+  // Fonction pour déterminer si un élément de navigation est actif
+  const isNavItemActive = (itemId: string, currentPage: string) => {
+    // Si c'est la page actuelle, elle est active
+    if (currentPage === itemId) return true;
+
+    // Si on est sur TikTok et que l'élément est "sales", il est actif
+    if (currentPage === 'tiktok' && itemId === 'sales') return true;
+
+    return false;
   };
 
   // State pour gérer les sections pliées/dépliées
@@ -187,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
                               onPageChange(item.id);
                               setSidebarOpen(false);
                             }}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${currentPage === item.id
+                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isNavItemActive(item.id, currentPage)
                               ? 'bg-blue-100 text-blue-700'
                               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}

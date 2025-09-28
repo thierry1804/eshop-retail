@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { TikTokChatMessage, WebSocketMessage, TikTokLiveConnection } from '../../types';
 
 interface TikTokLiveChatProps {
-  onCreateSaleFromJP: (message: TikTokChatMessage) => void;
+  onCreateSaleFromMessage: (message: TikTokChatMessage) => void;
 }
 
-export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFromJP }) => {
+export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFromMessage }) => {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<TikTokChatMessage[]>([]);
   const [connection, setConnection] = useState<TikTokLiveConnection>({
@@ -31,9 +31,12 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
   }, [messages]);
 
   useEffect(() => {
+    console.log('🚀 TikTokLiveChat: Composant monté, connexion WebSocket...');
+
     // Connexion WebSocket
     const connectWebSocket = () => {
       try {
+        console.log('🔌 Création nouvelle connexion WebSocket vers:', WS_URL);
         wsRef.current = new WebSocket(WS_URL);
 
         wsRef.current.onopen = () => {
@@ -43,6 +46,7 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
         wsRef.current.onmessage = (event) => {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
+            console.log('📨 Message WebSocket reçu:', message.type, message);
             handleWebSocketMessage(message);
           } catch (error) {
             console.error('Erreur parsing message WebSocket:', error);
@@ -81,6 +85,7 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
   const handleWebSocketMessage = (message: WebSocketMessage) => {
     switch (message.type) {
       case 'chat':
+        console.log('💬 Message chat reçu:', message.data);
         if (message.data) {
           const chatMessage: TikTokChatMessage = {
             uniqueId: message.data.uniqueId,
@@ -92,8 +97,10 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
             profilePictureUrl: message.data.profilePictureUrl
           };
 
+          console.log('💬 Ajout du message chat:', chatMessage);
           setMessages(prev => {
             const newMessages = [...prev, chatMessage];
+            console.log('💬 Total messages après ajout:', newMessages.length);
             // Garder seulement les 100 derniers messages
             return newMessages.slice(-100);
           });
@@ -121,8 +128,8 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
     }
   };
 
-  const handleJPClick = (message: TikTokChatMessage) => {
-    onCreateSaleFromJP(message);
+  const handleMessageClick = (message: TikTokChatMessage) => {
+    onCreateSaleFromMessage(message);
   };
 
   const handleReconnect = async () => {
@@ -156,6 +163,8 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
     ? messages.filter(msg => msg.isJP)
     : messages;
 
+  console.log(`📊 Messages: ${messages.length} total, ${filteredMessages.length} filtrés (JP only: ${filterJPOnly})`);
+
   const getConnectionStatusColor = () => {
     switch (connection.status) {
       case 'connected': return 'text-green-500';
@@ -188,7 +197,7 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-96 h-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 flex flex-col">
+    <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
       {/* Header */}
       <div className="bg-pink-500 text-white p-3 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -235,7 +244,7 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
             onChange={(e) => setFilterJPOnly(e.target.checked)}
             className="rounded"
           />
-          <span>Afficher seulement les "JP"</span>
+          <span>Afficher seulement les messages "JP"</span>
         </label>
       </div>
 
@@ -276,12 +285,12 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
           filteredMessages.map((message, index) => (
             <div
               key={`${message.uniqueId}-${index}`}
-              className={`p-2 rounded-lg text-sm ${
+              className={`p-2 rounded-lg text-sm cursor-pointer hover:bg-gray-100 ${
                 message.isJP 
-                  ? 'bg-yellow-50 border border-yellow-200 cursor-pointer hover:bg-yellow-100' 
+                ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100' 
                   : 'bg-gray-50'
               }`}
-              onClick={() => message.isJP && handleJPClick(message)}
+              onClick={() => handleMessageClick(message)}
             >
               <div className="flex items-start space-x-2">
                 {message.profilePictureUrl && (
@@ -307,18 +316,19 @@ export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFrom
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
-                {message.isJP && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleJPClick(message);
-                    }}
-                    className="text-green-600 hover:text-green-700 p-1"
-                    title="Créer une vente"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMessageClick(message);
+                  }}
+                  className={`p-1 ${message.isJP
+                    ? 'text-green-600 hover:text-green-700'
+                    : 'text-blue-600 hover:text-blue-700'
+                    }`}
+                  title="Créer une vente"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))
