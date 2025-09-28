@@ -196,7 +196,16 @@
       "remaining": "Reste"
     },
     "actions": {
-      "addPayment": "Ajouter un paiement"
+      "addPayment": "Ajouter un paiement",
+      "createDelivery": "Créer une livraison"
+    },
+    "calendar": {
+      "title": "Calendrier des ventes",
+      "showCalendar": "Afficher le calendrier",
+      "hideCalendar": "Masquer le calendrier",
+      "today": "Aujourd'hui",
+      "salesOnDate": "vente(s) le",
+      "noSalesOnDate": "Aucune vente ce jour"
     }
   },
   "payments": {
@@ -435,6 +444,12 @@
     "trackingNumber": "Numéro de suivi",
     "deliveryCost": "Coût de livraison",
     "deliveryFee": "Frais de livraison",
+    "deliveryType": "Type de livraison",
+    "associatedSale": "Vente associée",
+    "selectSale": "Sélectionner une vente",
+    "noSalesForClient": "Aucune vente pour ce client",
+    "availableSales": "Ventes disponibles (non livrées)",
+    "noAvailableSales": "Toutes les ventes de ce client ont déjà été livrées",
     "totalWeight": "Poids total",
     "totalVolume": "Volume total",
     "driverName": "Nom du chauffeur",
@@ -467,6 +482,9 @@
       "express": "Express",
       "standard": "Standard"
     },
+    "types": {
+      "delivery": "Livraison"
+    },
     "filters": {
       "allStatuses": "Tous les statuts",
       "clearFilters": "Effacer filtres"
@@ -474,6 +492,7 @@
     "table": {
       "number": "NUMÉRO",
       "client": "CLIENT",
+      "sale": "VENTE",
       "date": "DATE",
       "address": "ADRESSE",
       "status": "STATUT"

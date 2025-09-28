@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, CreditCard } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
+import { Calendar } from '../Common/Calendar';
+import { DatePickerWithSales } from '../Common/DatePickerWithSales';
+import { DeliveryForm } from '../Delivery/DeliveryForm';
 import { supabase } from '../../lib/supabase';
 import { Sale, User } from '../../types';
+import { formatDateToLocalString } from '../../lib/dateUtils';
 
 interface SalesListProps {
   user: User;
@@ -23,13 +27,26 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   });
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [salesByDate, setSalesByDate] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchSales();
   }, []);
+
+  useEffect(() => {
+    // Calculer les ventes par date pour le calendrier
+    const salesByDateMap: Record<string, number> = {};
+    sales.forEach(sale => {
+      const date = formatDateToLocalString(new Date(sale.created_at));
+      salesByDateMap[date] = (salesByDateMap[date] || 0) + 1;
+    });
+    setSalesByDate(salesByDateMap);
+  }, [sales]);
 
   useEffect(() => {
     let filtered = sales;
@@ -139,6 +156,17 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
     }).format(amount);
   };
 
+  const handleCalendarDateClick = (date: Date) => {
+    const dateStr = formatDateToLocalString(date);
+    setDateFilter(dateStr);
+    setShowCalendar(false);
+  };
+
+  const handleCreateDelivery = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowDeliveryForm(true);
+  };
+
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case 'paid':
@@ -168,6 +196,17 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('sales.title')}</h1>
                   <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowCalendar(!showCalendar)}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${showCalendar
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-600 text-white hover:bg-gray-700'
+              }`}
+          >
+            <CalendarIcon size={20} />
+            <span>{showCalendar ? t('sales.calendar.hideCalendar') : t('sales.calendar.showCalendar')}</span>
+          </button>
+
             <button
               onClick={fetchSales}
               className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
@@ -213,12 +252,12 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             <option value="ongoing">{t('sales.status.ongoing')}</option>
             <option value="paid">{t('sales.status.paid')}</option>
           </select>
-          <input
-            type="date"
+          <DatePickerWithSales
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            title={t('sales.filters.dateFilter')}
+            onChange={setDateFilter}
+            salesByDate={salesByDate}
+            placeholder={t('sales.filters.dateFilter')}
+            className="min-w-[150px]"
           />
           <button
             onClick={() => {
@@ -232,6 +271,17 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
           </button>
         </div>
       </div>
+
+      {/* Calendrier des ventes */}
+      {showCalendar && (
+        <div className="mb-6">
+          <Calendar
+            dataByDate={salesByDate}
+            onDateClick={handleCalendarDateClick}
+            className="max-w-md mx-auto"
+          />
+        </div>
+      )}
 
       {/* Status Display */}
       <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -377,6 +427,13 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                             <CreditCard size={18} />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleCreateDelivery(sale)}
+                          className="text-orange-600 hover:text-orange-800 transition-colors"
+                          title={t('sales.actions.createDelivery')}
+                        >
+                          <Truck size={18} />
+                        </button>
                         {/* Seuls les admins peuvent modifier les ventes */}
                         {user.role === 'admin' && (
                           <button
@@ -438,6 +495,27 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             setShowPaymentForm(false);
             setSelectedSale(null);
             fetchSales();
+          }}
+        />
+      )}
+
+      {showDeliveryForm && selectedSale && (
+        <DeliveryForm
+          user={user}
+          onClose={() => {
+            setShowDeliveryForm(false);
+            setSelectedSale(null);
+          }}
+          onSave={() => {
+            setShowDeliveryForm(false);
+            setSelectedSale(null);
+            fetchSales();
+          }}
+          prefillData={{
+            client_id: selectedSale.client_id,
+            sale_id: selectedSale.id,
+            delivery_date: new Date().toISOString().split('T')[0],
+            client_address: selectedSale.clients?.address || ''
           }}
         />
       )}

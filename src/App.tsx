@@ -64,25 +64,41 @@ function App() {
         return;
       }
 
-      // Timeout court pour la vérification de session
+      // Vérifier d'abord le localStorage pour une session persistante
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('🔄 App: Utilisateur trouvé dans le localStorage, vérification de la session...');
+
+          // Vérifier que la session est toujours valide
+          const { data: { session }, error } = await supabase.auth.getSession();
+
+          if (session && session.user.id === parsedUser.id) {
+            console.log('✅ App: Session valide trouvée, restauration de l\'utilisateur');
+            setUser(parsedUser);
+            setLoading(false);
+            return;
+          } else {
+            console.log('⚠️ App: Session expirée, nettoyage du localStorage');
+            localStorage.removeItem('user');
+          }
+        } catch (error) {
+          console.warn('⚠️ App: Erreur lors de la lecture du localStorage:', error);
+          localStorage.removeItem('user');
+        }
+      }
+
+      // Timeout plus long pour la vérification de session
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout session')), 3000)
+        setTimeout(() => reject(new Error('Timeout session')), 10000) // 10 secondes
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       
       if (error) {
         console.warn('⚠️ App: Erreur lors de la récupération de session:', error);
-        // Utiliser le profil de fallback
-        const fallbackUser = {
-          id: '00000000-0000-0000-0000-000000000000',
-          email: 'user@example.com',
-          name: 'Utilisateur',
-          role: 'employee' as const,
-          created_at: new Date().toISOString(),
-        };
-        setUser(fallbackUser);
         setLoading(false);
         return;
       }
@@ -96,15 +112,6 @@ function App() {
       }
     } catch (error) {
       console.warn('⚠️ App: Erreur lors de la vérification auth:', error);
-      // Utiliser le profil de fallback
-      const fallbackUser = {
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'user@example.com',
-        name: 'Utilisateur',
-        role: 'employee' as const,
-        created_at: new Date().toISOString(),
-      };
-      setUser(fallbackUser);
       setLoading(false);
     } finally {
       const endTime = performance.now();
@@ -117,29 +124,23 @@ function App() {
     const startTime = performance.now();
     
     try {
-      // Récupérer les informations de l'utilisateur connecté avec timeout réduit
-      console.log('ETO');
-
-      // Timeout réduit à 5 secondes pour éviter les blocages
+      // Timeout plus long pour éviter les déconnexions prématurées
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout après 5 secondes')), 5000)
+        setTimeout(() => reject(new Error('Timeout après 10 secondes')), 10000)
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       const authUser = session?.user;
-      console.log('👤 App: Utilisateur connecté:', authUser);
-      console.log('ETO2');
+      console.log('👤 App: Utilisateur connecté:', authUser?.email);
 
       if (error) {
         console.warn('⚠️ App: Erreur lors de la récupération de l\'utilisateur:', error);
-        // Ne pas arrêter, utiliser le fallback
         throw new Error('Erreur de session');
       }
 
       if (!authUser) {
         console.warn('⚠️ App: Aucun utilisateur trouvé dans la session');
-        // Ne pas arrêter, utiliser le fallback
         throw new Error('Aucune session utilisateur');
       }
 
@@ -164,6 +165,10 @@ function App() {
       };
 
       console.log('✅ App: Profil utilisateur créé:', userProfile.name, 'Rôle:', userProfile.role);
+
+      // Sauvegarder dans le localStorage pour la persistance
+      localStorage.setItem('user', JSON.stringify(userProfile));
+
       setUser(userProfile);
 
       // Définir la page par défaut selon le rôle
@@ -174,24 +179,30 @@ function App() {
       setLoading(false);
 
     } catch (error) {
-      console.warn('⚠️ App: Utilisation du profil de fallback:', error.message);
-
-      // En cas d'erreur, créer un profil utilisateur par défaut pour permettre l'utilisation
-      const fallbackUser = {
-        id: '00000000-0000-0000-0000-000000000000', // UUID valide pour fallback
-        email: 'user@example.com',
-        name: 'Utilisateur',
-        role: 'employee' as const,
-        created_at: new Date().toISOString(),
-      };
-
-      console.log('🔄 App: Utilisation du profil de fallback');
-      setUser(fallbackUser);
+      console.warn('⚠️ App: Erreur lors de la récupération du profil:', error.message);
       setLoading(false);
     }
     
     const endTime = performance.now();
     console.log(`⏱️ App: Récupération profil terminée en ${(endTime - startTime).toFixed(2)}ms`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Nettoyer le localStorage
+      localStorage.removeItem('user');
+
+      // Déconnexion Supabase
+      await supabase.auth.signOut();
+
+      // Réinitialiser l'état
+      setUser(null);
+      setCurrentPage('dashboard');
+
+      console.log('✅ App: Déconnexion réussie');
+    } catch (error) {
+      console.error('❌ App: Erreur lors de la déconnexion:', error);
+    }
   };
 
   const renderCurrentPage = () => {
@@ -274,7 +285,7 @@ function App() {
         // Logger le changement de page
         logger.logNavigation(currentPage, page);
         setCurrentPage(page);
-      }} />
+      }} onLogout={handleLogout} />
       <main className="md:ml-64">
         <div className="max-w-7xl mx-auto">
           {renderCurrentPage()}

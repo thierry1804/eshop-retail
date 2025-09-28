@@ -9,15 +9,20 @@ interface NavbarProps {
   user: UserType;
   currentPage: string;
   onPageChange: (page: string) => void;
+  onLogout?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange }) => {
+export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange, onLogout }) => {
   const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.reload();
+    if (onLogout) {
+      await onLogout();
+    } else {
+      await signOut();
+      window.location.reload();
+    }
   };
 
   // Définir les éléments de navigation selon le rôle

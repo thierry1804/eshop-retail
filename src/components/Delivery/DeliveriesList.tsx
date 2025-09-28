@@ -201,6 +201,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.number')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.client')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.sale')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.date')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.address')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.status')}</th>
@@ -221,6 +222,23 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                       {delivery.clients?.first_name} {delivery.clients?.last_name}
                     </div>
                     <div className="text-sm text-gray-500">{delivery.clients?.phone}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {delivery.sales ? (
+                      <div className="text-sm">
+                        <div className="text-gray-900 font-medium truncate max-w-xs" title={delivery.sales.description}>
+                          {delivery.sales.description}
+                        </div>
+                        <div className="text-gray-500">
+                          {new Intl.NumberFormat('fr-FR', {
+                            style: 'currency',
+                            currency: 'MGA',
+                          }).format(delivery.sales.total_amount)}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">Aucune vente</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">

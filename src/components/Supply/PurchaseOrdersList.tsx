@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, User } from '../../types';
-import { Plus, Search, Filter, Eye, Edit, Package, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Search, Eye, Edit, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PurchaseOrderForm } from './PurchaseOrderForm';
 import { PurchaseOrderDetails } from './PurchaseOrderDetails';
