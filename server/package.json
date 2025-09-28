@@ -1,0 +1,21 @@
+{
+  "name": "tiktok-live-server",
+  "version": "1.0.0",
+  "description": "Serveur WebSocket pour le suivi des lives TikTok",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "tiktok-live-connector": "^2.0.7-beta1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

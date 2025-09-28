@@ -34,6 +34,24 @@ export interface Sale {
   client?: Client;
   payments?: Payment[];
   total_payments?: number;
+  sale_items?: SaleItem[];
+}
+
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  product_id?: string;
+  product_name: string;
+  product_sku?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  notes?: string;
+  created_at: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  product?: Product;
 }
 
 export interface Payment {
@@ -54,6 +72,7 @@ export interface DashboardStats {
   total_payments: number;
   outstanding_debt: number;
   total_clients: number;
+  tiktok_sales: number;
 }
 
 export interface ClientWithSales extends Client {
@@ -308,4 +327,70 @@ export interface DeliveryStats {
   failed_deliveries: number;
   total_delivery_cost: number;
   average_delivery_time: number;
+}
+
+// Types pour TikTok Live
+export interface TikTokLiveMessage {
+  id: string;
+  uniqueId: string;
+  nickname: string;
+  comment: string;
+  timestamp: string;
+  isJP: boolean;
+  userId: string;
+  profilePictureUrl?: string;
+  created_at: string;
+}
+
+export interface TikTokLiveGift {
+  id: string;
+  uniqueId: string;
+  nickname: string;
+  giftName: string;
+  repeatCount: number;
+  timestamp: string;
+  created_at: string;
+}
+
+export interface TikTokLiveLike {
+  id: string;
+  uniqueId: string;
+  nickname: string;
+  likeCount: number;
+  timestamp: string;
+  created_at: string;
+}
+
+export interface TikTokLiveViewer {
+  id: string;
+  viewerCount: number;
+  timestamp: string;
+  created_at: string;
+}
+
+export interface TikTokLiveConnection {
+  status: 'connected' | 'disconnected' | 'connecting';
+  roomId?: string;
+  username?: string;
+  reconnectAttempts: number;
+  lastConnected?: string;
+}
+
+// Types pour les messages WebSocket
+export interface WebSocketMessage {
+  type: 'chat' | 'gift' | 'like' | 'viewer' | 'connection_status' | 'error';
+  data?: any;
+  status?: string;
+  message?: string;
+  timestamp: string;
+}
+
+export interface TikTokChatMessage {
+  uniqueId: string;
+  nickname: string;
+  comment: string;
+  timestamp: string;
+  isJP: boolean;
+  userId: string;
+  profilePictureUrl?: string;
 }

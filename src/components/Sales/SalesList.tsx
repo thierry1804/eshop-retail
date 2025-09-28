@@ -114,6 +114,16 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         return;
       }
 
+      // Récupérer tous les items de vente
+      const { data: saleItemsData, error: saleItemsError } = await supabase
+        .from('sale_items')
+        .select('*');
+
+      if (saleItemsError) {
+        setError(t('sales.saleItemsFetchError') + ': ' + saleItemsError.message);
+        return;
+      }
+
       // Créer un map des clients par ID
       const clientsMap = new Map(clientsData?.map((client: any) => [client.id, client]) || []);
 
@@ -126,16 +136,27 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         paymentsMap.get(payment.sale_id).push(payment);
       });
 
-      // Associer les clients et paiements aux ventes
+      // Créer un map des items de vente par sale_id
+      const saleItemsMap = new Map();
+      saleItemsData?.forEach((item: any) => {
+        if (!saleItemsMap.has(item.sale_id)) {
+          saleItemsMap.set(item.sale_id, []);
+        }
+        saleItemsMap.get(item.sale_id).push(item);
+      });
+
+      // Associer les clients, paiements et items aux ventes
       const salesWithClients = salesData?.map((sale: any) => {
         const payments = paymentsMap.get(sale.id) || [];
         const totalPayments = payments.reduce((sum: number, payment: any) => sum + payment.amount, 0);
+        const saleItems = saleItemsMap.get(sale.id) || [];
 
         return {
           ...sale,
           client: clientsMap.get(sale.client_id) || null,
           payments: payments,
-          total_payments: totalPayments
+          total_payments: totalPayments,
+          sale_items: saleItems
         };
       }) || [];
 
@@ -383,8 +404,24 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">
-                        {sale.description}
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        <div className="flex items-center space-x-2">
+                          {sale.description === 'TIKTOK' && (
+                            <span className="bg-pink-100 text-pink-800 text-xs px-2 py-1 rounded-full font-medium">
+                              📱 TikTok
+                            </span>
+                          )}
+                          <span className="truncate">{sale.description}</span>
+                        </div>
+                        {sale.sale_items && sale.sale_items.length > 0 && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            {sale.sale_items.map((item: any, index: number) => (
+                              <div key={index} className="truncate">
+                                {item.product_name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -11,6 +11,7 @@ import { ProductsList } from './components/Stock/ProductsList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
 import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
 import { ConfigError } from './components/Debug/ConfigError';
+import { TikTokLive } from './components/TikTok/TikTokLive';
 import { supabase } from './lib/supabase';
 import { User } from './types';
 import { logger } from './lib/logger';
@@ -291,6 +292,8 @@ function App() {
           {renderCurrentPage()}
         </div>
       </main>
+      {/* Composant TikTok Live - toujours visible */}
+      <TikTokLive />
     </div>
   );
 }

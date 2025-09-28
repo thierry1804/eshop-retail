@@ -15,6 +15,7 @@ export const Dashboard: React.FC = () => {
     total_payments: 0,
     outstanding_debt: 0,
     total_clients: 0,
+    tiktok_sales: 0,
   });
   const [topClients, setTopClients] = useState<ClientWithSales[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,6 +232,9 @@ export const Dashboard: React.FC = () => {
         const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
         const outstandingDebt = sales.reduce((sum, sale) => sum + sale.remaining_balance, 0);
 
+        // Compter les ventes TikTok
+        const tiktokSales = sales.filter(sale => sale.description === 'TIKTOK').length;
+
         setStats({
           total_sales: totalSales,
           cash_sales: cashSales,
@@ -238,6 +242,7 @@ export const Dashboard: React.FC = () => {
           total_payments: totalPayments,
           outstanding_debt: outstandingDebt,
           total_clients: clients.length,
+          tiktok_sales: tiktokSales,
         });
       }
 
@@ -541,6 +546,13 @@ export const Dashboard: React.FC = () => {
           icon={Users}
           color="blue"
           subtitle={t('dashboard.registeredClients')}
+        />
+        <StatCard
+          title="Ventes TikTok"
+          value={stats.tiktok_sales}
+          icon={Target}
+          color="pink"
+          subtitle="Commandes via TikTok Live"
         />
       </div>
 
