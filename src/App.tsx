@@ -7,6 +7,9 @@ import { SalesList } from './components/Sales/SalesList';
 import { PaymentsList } from './components/Payments/PaymentsList';
 import { LogsViewer } from './components/Admin/LogsViewer';
 import ExpensesList from './components/Expenses/ExpensesList';
+import { ProductsList } from './components/Stock/ProductsList';
+import { DeliveriesList } from './components/Delivery/DeliveriesList';
+import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
 import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
@@ -61,10 +64,41 @@ function App() {
         return;
       }
 
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // Vérifier d'abord le localStorage pour une session persistante
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('🔄 App: Utilisateur trouvé dans le localStorage, vérification de la session...');
+
+          // Vérifier que la session est toujours valide
+          const { data: { session }, error } = await supabase.auth.getSession();
+
+          if (session && session.user.id === parsedUser.id) {
+            console.log('✅ App: Session valide trouvée, restauration de l\'utilisateur');
+            setUser(parsedUser);
+            setLoading(false);
+            return;
+          } else {
+            console.log('⚠️ App: Session expirée, nettoyage du localStorage');
+            localStorage.removeItem('user');
+          }
+        } catch (error) {
+          console.warn('⚠️ App: Erreur lors de la lecture du localStorage:', error);
+          localStorage.removeItem('user');
+        }
+      }
+
+      // Timeout plus long pour la vérification de session
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout session')), 10000) // 10 secondes
+      );
+
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       
       if (error) {
-        console.error('❌ App: Erreur lors de la récupération de session:', error);
+        console.warn('⚠️ App: Erreur lors de la récupération de session:', error);
         setLoading(false);
         return;
       }
@@ -74,13 +108,14 @@ function App() {
         await fetchUserProfile(session.user.id);
       } else {
         console.log('❌ App: Aucune session trouvée');
+        setLoading(false);
       }
     } catch (error) {
-      console.error('❌ App: Erreur lors de la vérification auth:', error);
+      console.warn('⚠️ App: Erreur lors de la vérification auth:', error);
+      setLoading(false);
     } finally {
       const endTime = performance.now();
       console.log(`⏱️ App: Vérification auth terminée en ${(endTime - startTime).toFixed(2)}ms`);
-      setLoading(false);
     }
   };
 
@@ -89,30 +124,24 @@ function App() {
     const startTime = performance.now();
     
     try {
-      // Récupérer les informations de l'utilisateur connecté avec timeout
-      console.log('ETO');
-
-      // Ajouter un timeout pour éviter le blocage
+      // Timeout plus long pour éviter les déconnexions prématurées
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout après 5 secondes')), 5000)
+        setTimeout(() => reject(new Error('Timeout après 10 secondes')), 10000)
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       const authUser = session?.user;
-      console.log('👤 App: Utilisateur connecté:', authUser);
-      console.log('ETO2');
+      console.log('👤 App: Utilisateur connecté:', authUser?.email);
 
       if (error) {
-        console.error('❌ App: Erreur lors de la récupération de l\'utilisateur:', error);
-        setLoading(false);
-        return;
+        console.warn('⚠️ App: Erreur lors de la récupération de l\'utilisateur:', error);
+        throw new Error('Erreur de session');
       }
 
       if (!authUser) {
-        console.error('❌ App: Aucun utilisateur trouvé');
-        setLoading(false);
-        return;
+        console.warn('⚠️ App: Aucun utilisateur trouvé dans la session');
+        throw new Error('Aucune session utilisateur');
       }
 
       // Emails des administrateurs
@@ -136,6 +165,10 @@ function App() {
       };
 
       console.log('✅ App: Profil utilisateur créé:', userProfile.name, 'Rôle:', userProfile.role);
+
+      // Sauvegarder dans le localStorage pour la persistance
+      localStorage.setItem('user', JSON.stringify(userProfile));
+
       setUser(userProfile);
 
       // Définir la page par défaut selon le rôle
@@ -146,12 +179,30 @@ function App() {
       setLoading(false);
 
     } catch (error) {
-      console.error('❌ App: Erreur lors de la création du profil:', error);
+      console.warn('⚠️ App: Erreur lors de la récupération du profil:', error.message);
       setLoading(false);
     }
     
     const endTime = performance.now();
     console.log(`⏱️ App: Récupération profil terminée en ${(endTime - startTime).toFixed(2)}ms`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Nettoyer le localStorage
+      localStorage.removeItem('user');
+
+      // Déconnexion Supabase
+      await supabase.auth.signOut();
+
+      // Réinitialiser l'état
+      setUser(null);
+      setCurrentPage('dashboard');
+
+      console.log('✅ App: Déconnexion réussie');
+    } catch (error) {
+      console.error('❌ App: Erreur lors de la déconnexion:', error);
+    }
   };
 
   const renderCurrentPage = () => {
@@ -191,6 +242,12 @@ function App() {
         return <PaymentsList />;
       case 'expenses':
         return <ExpensesList />;
+      case 'stock':
+        return user ? <ProductsList user={user} /> : null;
+      case 'deliveries':
+        return user ? <DeliveriesList user={user} /> : null;
+      case 'supply':
+        return user ? <PurchaseOrdersList user={user} /> : null;
       case 'logs':
         return <LogsViewer />;
       default:
@@ -228,7 +285,7 @@ function App() {
         // Logger le changement de page
         logger.logNavigation(currentPage, page);
         setCurrentPage(page);
-      }} />
+      }} onLogout={handleLogout} />
       <main className="md:ml-64">
         <div className="max-w-7xl mx-auto">
           {renderCurrentPage()}

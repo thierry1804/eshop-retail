@@ -27,7 +27,15 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         throw new Error('Variables d\'environnement Supabase manquantes. Vérifiez votre fichier .env');
       }
       console.log('🔧 Supabase: Création de l\'instance unique');
-      supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
+      supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          storageKey: 'supabase.auth.token'
+        }
+      });
       console.log('✅ Supabase: Instance créée avec succès');
     }
     return supabaseInstance!;

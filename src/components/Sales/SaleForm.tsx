@@ -3,6 +3,18 @@ import { X, Save, ShoppingCart, Plus, User, Search, ChevronDown } from 'lucide-r
 import { supabase } from '../../lib/supabase';
 import { Client, Sale } from '../../types';
 
+interface SaleItem {
+  id: string;
+  article_id?: string;
+  product_name: string;
+  sku?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  isNewProduct?: boolean;
+}
+import { SaleItemsManager } from './SaleItemsManager';
+
 interface SaleFormProps {
   sale?: Sale;
   onClose: () => void;
@@ -21,6 +33,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     total_amount: sale?.total_amount || 0,
     deposit: sale?.deposit || 0,
   });
+  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showNewClientForm, setShowNewClientForm] = useState(false);
@@ -32,9 +45,13 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     notes: ''
   });
   const [creatingClient, setCreatingClient] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     fetchClients();
+    // Animation d'entrée
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
   }, []);
 
   // Effet pour filtrer les clients selon le terme de recherche
@@ -192,6 +209,18 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     setLoading(true);
     setError('');
 
+    if (!formData.client_id || formData.client_id.trim() === '') {
+      setError('Veuillez sélectionner un client');
+      setLoading(false);
+      return;
+    }
+
+    if (saleItems.length === 0) {
+      setError('Veuillez ajouter au moins un article à la vente');
+      setLoading(false);
+      return;
+    }
+
     if (formData.deposit > formData.total_amount) {
       setError('L\'acompte ne peut pas être supérieur au montant total');
       setLoading(false);
@@ -255,16 +284,91 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         if (error) throw error;
       } else {
         // Create new sale
-        const { error } = await supabase
+        const { data: saleData, error } = await supabase
           .from('sales')
           .insert({
             ...formData,
             remaining_balance: remainingBalance,
             status,
             created_by: userProfileId,
-          } as any);
-        
+          } as any)
+          .select()
+          .single();
+
         if (error) throw error;
+
+        // Créer les articles de vente si c'est une nouvelle vente
+        if (saleData && saleItems.length > 0) {
+          const saleItemsData = saleItems.map(item => ({
+            sale_id: (saleData as any).id,
+            article_id: item.article_id,
+            name: item.product_name,
+            code: item.sku || `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // SKU de l'article ou temporaire
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_amount: item.total_price
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('sale_items')
+            .insert(saleItemsData as any);
+
+          if (itemsError) {
+            console.error('Erreur lors de la création des articles:', itemsError);
+            throw itemsError; // Faire échouer la vente si les articles ne peuvent pas être créés
+          }
+
+          // Mettre à jour le stock et créer les mouvements pour chaque article
+          for (const item of saleItems) {
+            if (item.article_id) {
+              // 1. Créer un mouvement de stock (le trigger mettra à jour automatiquement le stock)
+              const { error: movementError } = await supabase
+                .from('stock_movements')
+                .insert({
+                  product_id: item.article_id,
+                  movement_type: 'out', // Type 'out' pour une sortie de stock
+                  quantity: item.quantity, // Quantité positive, le trigger gère le signe
+                  reference_id: (saleData as any).id,
+                  reference_type: 'sale',
+                  notes: `Vente - ${item.product_name}`,
+                  created_by: userProfileId
+                } as any);
+
+              if (movementError) {
+                console.error('Erreur lors de la création du mouvement de stock:', movementError);
+                // Continuer même si le mouvement de stock échoue
+              }
+
+              // 2. Vérifier et créer le prix si nécessaire
+              const { data: existingPrices, error: priceCheckError } = await supabase
+                .from('product_prices')
+                .select('id')
+                .eq('product_id', item.article_id)
+                .eq('is_active', true)
+                .limit(1);
+
+              if (!priceCheckError && (!existingPrices || existingPrices.length === 0)) {
+                // Aucun prix actif trouvé, créer un prix de vente
+                const { error: priceError } = await supabase
+                  .from('product_prices')
+                  .insert({
+                    product_id: item.article_id,
+                    price_type: 'retail',
+                    price: item.unit_price,
+                    currency: 'MGA',
+                    valid_from: new Date().toISOString(),
+                    is_active: true,
+                    created_by: userProfileId
+                  } as any);
+
+                if (priceError) {
+                  console.error('Erreur lors de la création du prix:', priceError);
+                  // Continuer même si la création du prix échoue
+                }
+              }
+            }
+          }
+        }
       }
       
       onSubmit();
@@ -275,18 +379,31 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     }
   };
 
-  const remainingBalance = formData.total_amount - formData.deposit;
+  // Mettre à jour le montant total automatiquement basé sur les articles
+  useEffect(() => {
+    const totalFromItems = saleItems.reduce((sum, item) => sum + item.total_price, 0);
+    if (totalFromItems > 0) {
+      setFormData(prev => ({ ...prev, total_amount: totalFromItems }));
+    }
+  }, [saleItems]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'MGA',
-    }).format(amount);
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Attendre la fin de l'animation
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50"
+      onClick={handleClose}
+    >
+      <div
+        className={`absolute right-0 top-0 h-full w-full max-w-6xl bg-white shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out ${isVisible ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* En-tête fixe */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-2">
@@ -296,7 +413,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X size={24} />
@@ -338,7 +455,8 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
                       onChange={(e) => handleClientSearchChange(e.target.value)}
                       onFocus={() => setShowClientDropdown(true)}
                       placeholder="Rechercher un client par nom ou téléphone..."
-                      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${!formData.client_id ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                     />
                     <button
                       type="button"
@@ -373,6 +491,11 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
                         </div>
                       )}
                     </div>
+                  )}
+                  {!formData.client_id && (
+                    <p className="mt-1 text-xs text-red-600">
+                      * Veuillez sélectionner un client
+                    </p>
                   )}
                 </div>
               ) : (
@@ -473,62 +596,13 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description des Articles *
-              </label>
-              <textarea
-                required
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Décrivez les articles vendus..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Montant Total *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                step="100"
-                value={formData.total_amount}
-                onChange={(e) => setFormData({ ...formData, total_amount: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Acompte Versé
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={formData.total_amount}
-                step="100"
-                value={formData.deposit}
-                onChange={(e) => setFormData({ ...formData, deposit: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Balance Display */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Solde Restant:</span>
-                <span className={`text-lg font-bold ${remainingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatCurrency(remainingBalance)}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {remainingBalance === 0 ? 'Vente réglée' : 'Vente en cours'}
-              </div>
-            </div>
+            {/* Gestionnaire d'articles */}
+            <SaleItemsManager
+              items={saleItems}
+              onItemsChange={setSaleItems}
+              deposit={formData.deposit}
+              onDepositChange={(deposit) => setFormData({ ...formData, deposit })}
+            />
           </form>
         </div>
 
@@ -536,7 +610,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         <div className="flex space-x-3 p-6 border-t border-gray-200 flex-shrink-0">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Annuler
