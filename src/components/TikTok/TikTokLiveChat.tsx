@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Wifi, WifiOff, Plus, Heart, Gift } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { MessageCircle, Wifi, WifiOff, Plus } from 'lucide-react';
 import { TikTokChatMessage, WebSocketMessage, TikTokLiveConnection } from '../../types';
 
 interface TikTokLiveChatProps {
@@ -8,7 +7,6 @@ interface TikTokLiveChatProps {
 }
 
 export const TikTokLiveChat: React.FC<TikTokLiveChatProps> = ({ onCreateSaleFromMessage }) => {
-  const { t } = useTranslation();
   const [messages, setMessages] = useState<TikTokChatMessage[]>([]);
   const [connection, setConnection] = useState<TikTokLiveConnection>({
     status: 'disconnected',

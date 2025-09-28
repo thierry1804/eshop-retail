@@ -4,13 +4,22 @@ import { SaleForm } from '../Sales/SaleForm';
 import { TikTokChatMessage, Sale, Client } from '../../types';
 import { supabase } from '../../lib/supabase';
 
-export const TikTokLive: React.FC = () => {
+interface TikTokLiveProps {
+  onCreateSaleFromMessage?: (message: TikTokChatMessage) => void;
+}
+
+export const TikTokLive: React.FC<TikTokLiveProps> = ({ onCreateSaleFromMessage }) => {
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [selectedTikTokMessage, setSelectedTikTokMessage] = useState<TikTokChatMessage | null>(null);
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
 
   const handleCreateSaleFromMessage = async (message: TikTokChatMessage) => {
+    // Appeler la fonction parent si fournie
+    if (onCreateSaleFromMessage) {
+      onCreateSaleFromMessage(message);
+    }
+
     setSelectedTikTokMessage(message);
     setIsCreatingClient(true);
 

@@ -12,9 +12,9 @@ interface TikTokLivePageProps {
 export const TikTokLivePage: React.FC<TikTokLivePageProps> = ({ user, onBack, onNavigateToSales }) => {
   const [showChat, setShowChat] = useState(true);
 
-  const handleCreateSaleFromJP = (message: any) => {
+    const handleCreateSaleFromMessage = (message: any) => {
     // Cette fonction sera passée au composant TikTokLive
-    console.log('Création de vente depuis JP:', message);
+        console.log('Création de vente depuis message:', message);
   };
 
   return (
@@ -74,7 +74,7 @@ export const TikTokLivePage: React.FC<TikTokLivePageProps> = ({ user, onBack, on
         {showChat && (
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[600px] overflow-hidden">
-              <TikTokLive onCreateSaleFromJP={handleCreateSaleFromJP} />
+                          <TikTokLive onCreateSaleFromMessage={handleCreateSaleFromMessage} />
             </div>
           </div>
         )}
