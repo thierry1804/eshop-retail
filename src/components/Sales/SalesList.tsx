@@ -515,7 +515,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             client_id: selectedSale.client_id,
             sale_id: selectedSale.id,
             delivery_date: new Date().toISOString().split('T')[0],
-            client_address: selectedSale.clients?.address || ''
+            client_address: selectedSale.client?.address || ''
           }}
         />
       )}

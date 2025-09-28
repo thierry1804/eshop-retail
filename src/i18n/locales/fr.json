@@ -432,6 +432,8 @@
     "title": "Gestion des Livraisons",
     "subtitle": "Suivez et gérez vos expéditions",
     "newDelivery": "Nouvelle Livraison",
+    "deliverySchedule": "Planning des livraisons",
+    "deliveryReport": "Rapport des livraisons",
     "addDelivery": "Ajouter une livraison",
     "editDelivery": "Modifier la livraison",
     "deleteDelivery": "Supprimer la livraison",

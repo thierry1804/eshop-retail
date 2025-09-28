@@ -5,6 +5,8 @@ import { Plus, Search, Truck, MapPin, Clock, Eye, Edit, CheckCircle, XCircle, Al
 import { useTranslation } from 'react-i18next';
 import { DeliveryForm } from './DeliveryForm';
 import { DeliveryDetails } from './DeliveryDetails';
+import { DeliverySchedule } from './DeliverySchedule';
+import { DeliveryReport } from './DeliveryReport';
 
 interface DeliveriesListProps {
   user: User;
@@ -19,6 +21,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const [showForm, setShowForm] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'list' | 'schedule' | 'report'>('list');
 
   useEffect(() => {
     fetchDeliveries();
@@ -162,6 +165,42 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
         </button>
       </div>
 
+      {/* Navigation des vues */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <div className="flex space-x-4">
+          <button
+            onClick={() => setActiveView('list')}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${activeView === 'list'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+          >
+            <Truck className="h-4 w-4 inline mr-2" />
+            Liste des livraisons
+          </button>
+          <button
+            onClick={() => setActiveView('schedule')}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${activeView === 'schedule'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+          >
+            <Clock className="h-4 w-4 inline mr-2" />
+            {t('deliveries.deliverySchedule')}
+          </button>
+          <button
+            onClick={() => setActiveView('report')}
+            className={`px-4 py-2 rounded-md font-medium transition-colors ${activeView === 'report'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+          >
+            <AlertTriangle className="h-4 w-4 inline mr-2" />
+            {t('deliveries.deliveryReport')}
+          </button>
+        </div>
+      </div>
+
       {/* Filtres */}
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="flex flex-col md:flex-row gap-4">
@@ -193,8 +232,11 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Liste des livraisons */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Contenu conditionnel selon la vue active */}
+      {activeView === 'list' && (
+        <>
+          {/* Liste des livraisons */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -325,6 +367,16 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {activeView === 'schedule' && (
+        <DeliverySchedule user={user} />
+      )}
+
+      {activeView === 'report' && (
+        <DeliveryReport user={user} />
+      )}
 
       {/* Modal de création */}
       {showForm && (

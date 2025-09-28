@@ -267,7 +267,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
               </select>
             </div>
 
-            <div>
+            <div className="hidden">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('deliveries.deliveryType')}
               </label>
