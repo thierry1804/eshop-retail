@@ -552,7 +552,7 @@
     "supplier": "供应商",
     "noSupplier": "无供应商",
     "selectSupplier": "选择供应商",
-    "status": "状态",
+    "statut": "状态",
     "allStatuses": "所有状态",
     "orderDate": "订单日期",
     "expectedDeliveryDate": "预计交货日期",

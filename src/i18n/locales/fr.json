@@ -586,7 +586,7 @@
     "supplier": "Fournisseur",
     "noSupplier": "Aucun fournisseur",
     "selectSupplier": "Sélectionner un fournisseur",
-    "status": "Statut",
+    "statut": "Statut",
     "allStatuses": "Tous les statuts",
     "orderDate": "Date de commande",
     "expectedDeliveryDate": "Date de livraison prévue",
