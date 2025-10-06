@@ -28,14 +28,21 @@ const maxReconnectAttempts = 5;
 function createTikTokConnection() {
   if (!TIKTOK_USERNAME) {
     console.error('❌ TIKTOK_USERNAME non défini dans les variables d\'environnement');
+    console.log('💡 Créez un fichier .env dans le dossier server/ avec: TIKTOK_USERNAME=votre_username');
     return null;
   }
 
   const tiktok = new WebcastPushConnection(TIKTOK_USERNAME, {
     requestOptions: { 
-      timeout: 10000,
+      timeout: 15000, // Augmenté le timeout
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
       }
     },
     clientParams: { 
@@ -47,7 +54,10 @@ function createTikTokConnection() {
     },
     enableExtendedGiftInfo: true,
     enableWebsocketUpgrade: true,
-    processInitialData: true
+    processInitialData: true,
+    // Ajout d'options pour améliorer la stabilité
+    fetchRoomIdOnConnect: true,
+    enableRequestLogging: false
   });
 
   // Événements de connexion
@@ -77,19 +87,54 @@ function createTikTokConnection() {
       timestamp: new Date().toISOString()
     });
 
-    // Tentative de reconnexion
+    // Tentative de reconnexion seulement si ce n'était pas une déconnexion volontaire
     if (reconnectAttempts < maxReconnectAttempts) {
       reconnectAttempts++;
       console.log(`🔄 Tentative de reconnexion ${reconnectAttempts}/${maxReconnectAttempts}...`);
       setTimeout(() => {
-        createTikTokConnection();
+        // Vérifier que la connexion n'a pas été fermée manuellement
+        if (tiktokConnection) {
+          createTikTokConnection();
+        }
       }, 5000 * reconnectAttempts); // Délai progressif
+    } else {
+      console.log('⏹️  Nombre maximum de tentatives de reconnexion atteint');
+      console.log('💡 Utilisez l\'endpoint /reconnect pour réinitialiser les tentatives');
     }
   });
 
   tiktok.on('error', (err) => {
-    const errorMessage = err?.message || err || 'Erreur inconnue';
-    console.error('❌ Erreur TikTok Live:', errorMessage);
+    // Convertir l'erreur en chaîne de caractères de manière sécurisée
+    let errorMessage = 'Erreur inconnue';
+    
+    if (typeof err === 'string') {
+      errorMessage = err;
+    } else if (err && typeof err.message === 'string') {
+      errorMessage = err.message;
+    } else if (err && typeof err.toString === 'function') {
+      errorMessage = err.toString();
+    } else if (err) {
+      errorMessage = JSON.stringify(err);
+    }
+    
+    console.error('❌ Erreur TikTok Live:', {
+      info: err?.info || 'Erreur de connexion',
+      exception: err
+    });
+    
+    // Gestion spécifique des erreurs courantes
+    if (typeof errorMessage === 'string') {
+      if (errorMessage.includes('Failed to extract Room ID')) {
+        console.log('💡 Solution: Vérifiez que le live TikTok est actif et que le nom d\'utilisateur est correct');
+        console.log('💡 Le live doit être en cours pour que la connexion fonctionne');
+      } else if (errorMessage.includes('isn\'t online') || errorMessage.includes('offline')) {
+        console.log('💡 Solution: L\'utilisateur n\'est pas en live actuellement');
+        console.log('💡 Attendez qu\'un live soit lancé sur le compte:', TIKTOK_USERNAME);
+      } else if (errorMessage.includes('not found')) {
+        console.log('💡 Solution: Vérifiez que le nom d\'utilisateur TikTok est correct');
+        console.log('💡 Le nom d\'utilisateur doit être exact (sans @)');
+      }
+    }
     
     broadcastToClients({
       type: 'error',
@@ -200,7 +245,20 @@ app.get('/status', (req, res) => {
     status: isConnected ? 'connected' : 'disconnected',
     tiktokUsername: TIKTOK_USERNAME,
     reconnectAttempts,
+    maxReconnectAttempts,
+    hasUsername: !!TIKTOK_USERNAME,
     timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/config', (req, res) => {
+  res.json({
+    tiktokUsername: TIKTOK_USERNAME,
+    hasUsername: !!TIKTOK_USERNAME,
+    instructions: {
+      setup: "Créez un fichier .env dans le dossier server/ avec: TIKTOK_USERNAME=votre_username",
+      note: "Le nom d'utilisateur doit être exact (sans @) et le live doit être actif"
+    }
   });
 });
 
@@ -212,7 +270,19 @@ app.post('/connect', (req, res) => {
   tiktokConnection = createTikTokConnection();
   if (tiktokConnection) {
     tiktokConnection.connect().catch(err => {
-      const errorMessage = err?.message || err || 'Erreur de connexion inconnue';
+      // Convertir l'erreur en chaîne de caractères de manière sécurisée
+      let errorMessage = 'Erreur de connexion inconnue';
+      
+      if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err && typeof err.message === 'string') {
+        errorMessage = err.message;
+      } else if (err && typeof err.toString === 'function') {
+        errorMessage = err.toString();
+      } else if (err) {
+        errorMessage = JSON.stringify(err);
+      }
+      
       console.error('Erreur de connexion:', errorMessage);
     });
   }
@@ -245,7 +315,19 @@ app.post('/reconnect', (req, res) => {
     tiktokConnection = createTikTokConnection();
     if (tiktokConnection) {
       tiktokConnection.connect().catch(err => {
-        const errorMessage = err?.message || err || 'Erreur de connexion inconnue';
+        // Convertir l'erreur en chaîne de caractères de manière sécurisée
+        let errorMessage = 'Erreur de connexion inconnue';
+        
+        if (typeof err === 'string') {
+          errorMessage = err;
+        } else if (err && typeof err.message === 'string') {
+          errorMessage = err.message;
+        } else if (err && typeof err.toString === 'function') {
+          errorMessage = err.toString();
+        } else if (err) {
+          errorMessage = JSON.stringify(err);
+        }
+        
         console.error('❌ Reconnexion échouée:', errorMessage);
       });
     }
@@ -260,28 +342,50 @@ app.listen(PORT, () => {
   console.log(`🔌 WebSocket serveur sur le port ${WS_PORT}`);
   console.log(`📱 Username TikTok: ${TIKTOK_USERNAME || 'NON DÉFINI'}`);
   
-  // Connexion automatique si le username est défini
-  if (TIKTOK_USERNAME) {
-    console.log('🔄 Tentative de connexion automatique...');
-    console.log('ℹ️  Note: Si le live n\'est pas actif, c\'est normal que la connexion échoue.');
-    
-    // Délai avant la première tentative pour éviter les erreurs de démarrage
-    setTimeout(() => {
-      tiktokConnection = createTikTokConnection();
-      if (tiktokConnection) {
-        tiktokConnection.connect().catch(err => {
-          const errorMessage = err?.message || err || 'Erreur de connexion inconnue';
-          console.error('❌ Connexion automatique échouée:', errorMessage);
-          
-          // Si c'est une erreur de live non actif, c'est normal
-          if (errorMessage.includes('live') || errorMessage.includes('offline') || errorMessage.includes('not found') || errorMessage.includes('Error while connecting')) {
-            console.log('ℹ️  Le live n\'est pas actif actuellement. Le serveur attendra qu\'un live soit lancé.');
-            console.log('💡 Pour tester, lance un live TikTok sur le compte:', TIKTOK_USERNAME);
-          }
-        });
-      }
-    }, 2000); // Attendre 2 secondes avant de tenter la connexion
+  if (!TIKTOK_USERNAME) {
+    console.log('⚠️  ATTENTION: TIKTOK_USERNAME non configuré');
+    console.log('💡 Créez un fichier .env dans le dossier server/ avec:');
+    console.log('   TIKTOK_USERNAME=votre_username_sans_@');
+    console.log('📋 Endpoints disponibles:');
+    console.log('   GET  http://localhost:' + PORT + '/status - Statut de la connexion');
+    console.log('   GET  http://localhost:' + PORT + '/config - Configuration actuelle');
+    console.log('   POST http://localhost:' + PORT + '/connect - Forcer la connexion');
+    console.log('   POST http://localhost:' + PORT + '/reconnect - Réinitialiser et reconnecter');
+    return;
   }
+  
+  // Connexion automatique si le username est défini
+  console.log('🔄 Tentative de connexion automatique...');
+  console.log('ℹ️  Note: Si le live n\'est pas actif, c\'est normal que la connexion échoue.');
+  
+  // Délai avant la première tentative pour éviter les erreurs de démarrage
+  setTimeout(() => {
+    tiktokConnection = createTikTokConnection();
+    if (tiktokConnection) {
+      tiktokConnection.connect().catch(err => {
+        // Convertir l'erreur en chaîne de caractères de manière sécurisée
+        let errorMessage = 'Erreur de connexion inconnue';
+        
+        if (typeof err === 'string') {
+          errorMessage = err;
+        } else if (err && typeof err.message === 'string') {
+          errorMessage = err.message;
+        } else if (err && typeof err.toString === 'function') {
+          errorMessage = err.toString();
+        } else if (err) {
+          errorMessage = JSON.stringify(err);
+        }
+        
+        console.error('❌ Connexion automatique échouée:', errorMessage);
+        
+        // Si c'est une erreur de live non actif, c'est normal
+        if (typeof errorMessage === 'string' && (errorMessage.includes('live') || errorMessage.includes('offline') || errorMessage.includes('not found') || errorMessage.includes('Error while connecting'))) {
+          console.log('ℹ️  Le live n\'est pas actif actuellement. Le serveur attendra qu\'un live soit lancé.');
+          console.log('💡 Pour tester, lance un live TikTok sur le compte:', TIKTOK_USERNAME);
+        }
+      });
+    }
+  }, 2000); // Attendre 2 secondes avant de tenter la connexion
 });
 
 // Gestion propre de l'arrêt
