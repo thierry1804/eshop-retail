@@ -10,6 +10,7 @@ import ExpensesList from './components/Expenses/ExpensesList';
 import { ProductsList } from './components/Stock/ProductsList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
 import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
+import { CreatePurchaseOrderPage } from './components/Supply/CreatePurchaseOrderPage';
 import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
@@ -18,6 +19,7 @@ import { logger } from './lib/logger';
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [pageParams, setPageParams] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
 
@@ -247,7 +249,31 @@ function App() {
       case 'deliveries':
         return user ? <DeliveriesList user={user} /> : null;
       case 'supply':
-        return user ? <PurchaseOrdersList user={user} /> : null;
+        if (pageParams?.action === 'create-order') {
+          return user ? (
+            <CreatePurchaseOrderPage
+              user={user}
+              onBack={() => {
+                setPageParams(null);
+                setCurrentPage('supply');
+              }}
+              onSave={() => {
+                setPageParams(null);
+                setCurrentPage('supply');
+              }}
+            />
+          ) : null;
+        }
+        return user ? (
+          <PurchaseOrdersList
+            user={user}
+            onNavigateToCreate={() => {
+              setPageParams({ action: 'create-order' });
+              setCurrentPage('supply');
+            }}
+            key={pageParams ? 'refresh' : 'default'}
+          />
+        ) : null;
       case 'logs':
         return <LogsViewer />;
       default:

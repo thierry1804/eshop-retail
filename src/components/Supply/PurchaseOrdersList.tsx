@@ -6,7 +6,12 @@ import { useTranslation } from 'react-i18next';
 import { PurchaseOrderForm } from './PurchaseOrderForm';
 import { PurchaseOrderDetails } from './PurchaseOrderDetails';
 
-export const PurchaseOrdersList: React.FC<{ user: User }> = ({ user }) => {
+interface PurchaseOrdersListProps {
+  user: User;
+  onNavigateToCreate?: () => void;
+}
+
+export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, onNavigateToCreate }) => {
   const { t } = useTranslation();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +92,13 @@ export const PurchaseOrdersList: React.FC<{ user: User }> = ({ user }) => {
           <p className="text-gray-600">{t('supply.subtitle')}</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            if (onNavigateToCreate) {
+              onNavigateToCreate();
+            } else {
+              setShowForm(true);
+            }
+          }}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -140,7 +151,13 @@ export const PurchaseOrdersList: React.FC<{ user: User }> = ({ user }) => {
               {t('supply.noOrdersDescription')}
             </p>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                if (onNavigateToCreate) {
+                  onNavigateToCreate();
+                } else {
+                  setShowForm(true);
+                }
+              }}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
             >
               {t('supply.createFirstOrder')}

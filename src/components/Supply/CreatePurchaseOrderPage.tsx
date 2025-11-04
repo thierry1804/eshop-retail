@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { PurchaseOrder, PurchaseOrderItem, Product, User } from '../../types';
-import { X, Plus, Trash2, Package, Search } from 'lucide-react';
+import { PurchaseOrderItem, Product, User } from '../../types';
+import { ArrowLeft, Plus, Trash2, Package, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductQuickCreate } from './ProductQuickCreate';
 import { SupplierQuickCreate } from './SupplierQuickCreate';
 
-interface PurchaseOrderFormProps {
-  order?: PurchaseOrder | null;
-  onClose: () => void;
-  onSave: () => void;
+interface CreatePurchaseOrderPageProps {
   user: User;
+  onBack: () => void;
+  onSave: () => void;
 }
 
-export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onClose, onSave, user }) => {
+export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = ({ user, onBack, onSave }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     supplier_id: '',
@@ -33,23 +32,9 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
   const [showSupplierCreate, setShowSupplierCreate] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
 
-  const isEditing = !!order;
-
   useEffect(() => {
     fetchData();
-    if (order) {
-      setFormData({
-        supplier_id: order.supplier_id || '',
-        supplier_name: order.supplier_name || '',
-        order_date: order.order_date,
-        expected_delivery_date: order.expected_delivery_date || '',
-        currency: order.currency,
-        tracking_number: order.tracking_number || '',
-        notes: order.notes || ''
-      });
-      fetchOrderItems();
-    }
-  }, [order]);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -68,28 +53,6 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
     }
   };
 
-  const fetchOrderItems = async () => {
-    if (!order) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('purchase_order_items')
-        .select(`
-          *,
-          products (
-            name,
-            sku
-          )
-        `)
-        .eq('purchase_order_id', order.id);
-
-      if (error) throw error;
-      setItems(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des articles:', error);
-    }
-  };
-
   const addItem = (product: Product) => {
     const existingItem = items.find(item => item.product_id === product.id);
     if (existingItem) {
@@ -99,7 +62,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
 
     const newItem: PurchaseOrderItem = {
       id: `temp-${Date.now()}`,
-      purchase_order_id: order?.id || '',
+      purchase_order_id: '',
       product_id: product.id,
       product_name: product.name,
       product_sku: product.sku,
@@ -107,7 +70,9 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
       quantity_received: 0,
       unit_price: 0,
       total_price: 0,
-      notes: ''
+      notes: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     setItems([...items, newItem]);
@@ -116,17 +81,13 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
   };
 
   const handleProductCreated = (product: Product) => {
-    // Ajouter le nouveau produit à la liste
     setProducts([...products, product]);
-    // Ajouter automatiquement le produit à la commande
     addItem(product);
     setShowProductCreate(false);
   };
 
   const handleSupplierCreated = (supplier: any) => {
-    // Ajouter le nouveau fournisseur à la liste
     setSuppliers([...suppliers, supplier]);
-    // Sélectionner automatiquement le nouveau fournisseur
     setFormData({
       ...formData,
       supplier_id: supplier.id,
@@ -159,8 +120,8 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
 
     setLoading(true);
     try {
-      const orderData = {
-        order_number: null, // Laisser le trigger générer automatiquement
+      const orderData: any = {
+        order_number: null,
         supplier_id: formData.supplier_id || null,
         supplier_name: formData.supplier_name,
         order_date: formData.order_date,
@@ -172,34 +133,16 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
         updated_by: user.id !== '00000000-0000-0000-0000-000000000000' ? user.id : null
       };
 
-      let orderId: string;
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .insert(orderData as any)
+        .select()
+        .single();
 
-      if (isEditing) {
-        const { error } = await supabase
-          .from('purchase_orders')
-          .update(orderData)
-          .eq('id', order!.id);
-        if (error) throw error;
-        orderId = order!.id;
-      } else {
-        const { data, error } = await supabase
-          .from('purchase_orders')
-          .insert(orderData)
-          .select()
-          .single();
-        if (error) throw error;
-        orderId = data.id;
-      }
+      if (error) throw error;
 
-      // Supprimer les anciens articles si on édite
-      if (isEditing) {
-        await supabase
-          .from('purchase_order_items')
-          .delete()
-          .eq('purchase_order_id', orderId);
-      }
+      const orderId = (data as any).id;
 
-      // Ajouter les nouveaux articles
       const itemsToInsert = items.map(item => ({
         purchase_order_id: orderId,
         product_id: item.product_id,
@@ -212,7 +155,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
 
       const { error: itemsError } = await supabase
         .from('purchase_order_items')
-        .insert(itemsToInsert);
+        .insert(itemsToInsert as any);
       
       if (itemsError) throw itemsError;
 
@@ -244,23 +187,26 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold">
-            {isEditing ? t('supply.editOrder') : t('supply.createOrder')}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+    <div className="space-y-6">
+      {/* En-tête avec bouton retour */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onBack}
+          className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          {t('app.back') || 'Retour'}
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {t('supply.createOrder')}
+        </h1>
+      </div>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+      {/* Formulaire */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations générales */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('supply.supplier')}
@@ -311,7 +257,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           </div>
 
           {/* Date de livraison prévue, Devise et Numéro de suivi sur la même ligne */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('supply.expectedDeliveryDate')}
@@ -354,7 +300,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             </div>
           </div>
 
-          <div className="mb-6">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('supply.notes')}
             </label>
@@ -367,7 +313,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           </div>
 
           {/* Articles */}
-          <div className="mb-6">
+          <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{t('supply.items')}</h3>
               <div className="flex gap-2">
@@ -465,7 +411,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           </div>
 
           {/* Total */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold">{t('supply.totalAmount')}:</span>
               <span className="text-xl font-bold text-blue-600">
@@ -478,7 +424,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onBack}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               {t('app.cancel')}
@@ -492,89 +438,90 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             </button>
           </div>
         </form>
+      </div>
 
-        {/* Modal de recherche de produits */}
-        {showProductSearch && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
-              <div className="p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
+      {/* Modal de recherche de produits */}
+      {showProductSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
+                <button
+                  onClick={() => {
+                    setShowProductSearch(false);
+                    setProductSearchTerm('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="mt-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder={t('supply.searchProducts')}
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="mt-3">
                   <button
                     onClick={() => {
                       setShowProductSearch(false);
-                      setProductSearchTerm('');
+                      setShowProductCreate(true);
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
                   >
-                    <X className="h-6 w-6" />
+                    <Package className="h-4 w-4" />
+                    {t('supply.createNewProduct')}
                   </button>
-                </div>
-                <div className="mt-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder={t('supply.searchProducts')}
-                      value={productSearchTerm}
-                      onChange={(e) => setProductSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <button
-                      onClick={() => {
-                        setShowProductSearch(false);
-                        setShowProductCreate(true);
-                      }}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
-                    >
-                      <Package className="h-4 w-4" />
-                      {t('supply.createNewProduct')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 overflow-y-auto max-h-[60vh]">
-                <div className="space-y-2">
-                  {filteredProducts.map(product => (
-                    <div
-                      key={product.id}
-                      onClick={() => addItem(product)}
-                      className="p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
-                    >
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-gray-500">SKU: {product.sku}</div>
-                      <div className="text-sm text-gray-500">
-                        Stock: {product.current_stock} {product.unit}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-2">
+                {filteredProducts.map(product => (
+                  <div
+                    key={product.id}
+                    onClick={() => addItem(product)}
+                    className="p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm text-gray-500">SKU: {product.sku}</div>
+                    <div className="text-sm text-gray-500">
+                      Stock: {product.current_stock} {product.unit}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Modal de création rapide de produit */}
-        {showProductCreate && (
-          <ProductQuickCreate
-            onClose={() => setShowProductCreate(false)}
-            onProductCreated={handleProductCreated}
-            user={user}
-            initialSupplierId={formData.supplier_id}
-          />
-        )}
+      {/* Modal de création rapide de produit */}
+      {showProductCreate && (
+        <ProductQuickCreate
+          onClose={() => setShowProductCreate(false)}
+          onProductCreated={handleProductCreated}
+          user={user}
+          initialSupplierId={formData.supplier_id}
+        />
+      )}
 
-        {/* Modal de création rapide de fournisseur */}
-        {showSupplierCreate && (
-          <SupplierQuickCreate
-            onClose={() => setShowSupplierCreate(false)}
-            onSupplierCreated={handleSupplierCreated}
-            user={user}
-          />
-        )}
-      </div>
+      {/* Modal de création rapide de fournisseur */}
+      {showSupplierCreate && (
+        <SupplierQuickCreate
+          onClose={() => setShowSupplierCreate(false)}
+          onSupplierCreated={handleSupplierCreated}
+          user={user}
+        />
+      )}
     </div>
   );
 };
+

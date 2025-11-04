@@ -244,6 +244,7 @@ export interface PurchaseOrder {
   expected_delivery_date?: string;
   total_amount: number;
   currency: string;
+  tracking_number?: string;
   notes?: string;
   created_by: string;
   updated_by?: string;
