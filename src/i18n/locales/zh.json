@@ -45,6 +45,7 @@
     "dashboard": "仪表板",
     "clients": "客户",
     "sales": "销售",
+    "tiktokLive": "TikTok直播销售",
     "payments": "付款",
     "expenses": "支出",
     "stock": "库存",
@@ -176,6 +177,19 @@
     },
     "actions": {
       "addPayment": "添加付款"
+    },
+    "tiktokLive": {
+      "title": "TikTok直播销售",
+      "subtitle": "实时接收TikTok消息并快速创建销售",
+      "uniqueId": "TikTok唯一ID",
+      "start": "开始监听",
+      "stop": "停止监听",
+      "connected": "已连接",
+      "connecting": "连接中...",
+      "disconnected": "已断开",
+      "messages": "实时消息",
+      "noMessages": "暂无消息",
+      "waiting": "等待连接..."
     }
   },
   "payments": {

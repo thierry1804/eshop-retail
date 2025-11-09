@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -22,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'dashboard': 'sales',
       'clients': 'sales',
       'sales': 'sales',
+      'tiktok-live': 'sales',
       'payments': 'sales',
       'stock': 'inventory',
       'supply': 'inventory',
@@ -83,6 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
         { id: 'dashboard', label: t('navigation.dashboard'), icon: BarChart3, group: 'sales' },
         { id: 'clients', label: t('navigation.clients'), icon: Users, group: 'sales' },
         { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart, group: 'sales' },
+        { id: 'tiktok-live', label: t('navigation.tiktokLive', 'Ventes Live TikTok'), icon: Video, group: 'sales' },
         { id: 'payments', label: t('navigation.payments'), icon: CreditCard, group: 'sales' },
 
         // 📦 GESTION DES STOCKS (logistique)
@@ -105,6 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       return [
         { id: 'clients', label: t('navigation.clients'), icon: Users, group: 'sales' },
         { id: 'sales', label: t('navigation.sales'), icon: ShoppingCart, group: 'sales' },
+        { id: 'tiktok-live', label: t('navigation.tiktokLive', 'Ventes Live TikTok'), icon: Video, group: 'sales' },
       ];
     }
   };

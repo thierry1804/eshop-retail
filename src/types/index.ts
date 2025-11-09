@@ -310,3 +310,19 @@ export interface DeliveryStats {
   total_delivery_cost: number;
   average_delivery_time: number;
 }
+
+// Types pour les messages TikTok Live
+export interface TikTokMessage {
+  type: 'chat' | 'stats' | 'streamEnd' | 'error';
+  data?: {
+    uniqueId?: string;
+    nickname?: string;
+    comment?: string;
+    timestamp?: number;
+    viewers?: number;
+    likes?: number;
+    avatarUrl?: string;
+    profilePicture?: string;
+    avatar?: string;
+  };
+}

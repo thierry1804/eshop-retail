@@ -48,10 +48,10 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Animation d'entrée immédiate pour un affichage plus rapide
+    setIsVisible(true);
+    // Charger les clients en arrière-plan
     fetchClients();
-    // Animation d'entrée
-    const timer = setTimeout(() => setIsVisible(true), 10);
-    return () => clearTimeout(timer);
   }, []);
 
   // Effet pour filtrer les clients selon le terme de recherche
@@ -96,10 +96,12 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
 
   const fetchClients = async () => {
     try {
+      // Limiter les champs récupérés pour améliorer les performances
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
-        .order('first_name');
+        .select('id, first_name, last_name, phone, tiktok_id, tiktok_nick_name')
+        .order('first_name')
+        .limit(1000); // Limiter à 1000 clients pour éviter les problèmes de performance
 
       if (error) throw error;
       setClients((data as Client[]) || []);

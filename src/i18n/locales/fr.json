@@ -45,6 +45,7 @@
     "dashboard": "Tableau de bord",
     "clients": "Clients",
     "sales": "Ventes",
+    "tiktokLive": "Ventes Live TikTok",
     "payments": "Paiements",
     "expenses": "Dépenses",
     "stock": "Stocks",
@@ -206,6 +207,19 @@
       "today": "Aujourd'hui",
       "salesOnDate": "vente(s) le",
       "noSalesOnDate": "Aucune vente ce jour"
+    },
+    "tiktokLive": {
+      "title": "Ventes Live TikTok",
+      "subtitle": "Écoutez les messages TikTok en direct et créez des ventes rapidement",
+      "uniqueId": "UniqueId TikTok",
+      "start": "Démarrer l'écoute",
+      "stop": "Arrêter l'écoute",
+      "connected": "Connecté",
+      "connecting": "Connexion en cours...",
+      "disconnected": "Déconnecté",
+      "messages": "Messages en direct",
+      "noMessages": "Aucun message pour le moment",
+      "waiting": "En attente de connexion..."
     }
   },
   "payments": {

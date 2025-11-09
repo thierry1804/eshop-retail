@@ -4,6 +4,7 @@ import { LoginForm } from './components/Auth/LoginForm';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { ClientsList } from './components/Clients/ClientsList';
 import { SalesList } from './components/Sales/SalesList';
+import { TikTokLiveSales } from './components/Sales/TikTokLiveSales';
 import { PaymentsList } from './components/Payments/PaymentsList';
 import { LogsViewer } from './components/Admin/LogsViewer';
 import ExpensesList from './components/Expenses/ExpensesList';
@@ -240,6 +241,8 @@ function App() {
         return user ? <ClientsList user={user} /> : null;
       case 'sales':
         return user ? <SalesList user={user} /> : null;
+      case 'tiktok-live':
+        return user ? <TikTokLiveSales /> : null;
       case 'payments':
         return <PaymentsList />;
       case 'expenses':
