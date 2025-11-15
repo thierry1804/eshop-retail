@@ -43,7 +43,17 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
 
       if (error) throw error;
       
-      const items = data || [];
+      // Mapper les données de la jointure vers product_name et product_sku
+      // Supabase peut retourner products comme un objet ou un tableau selon la relation
+      const items = (data || []).map((item: any) => {
+        const product = Array.isArray(item.products) ? item.products[0] : item.products;
+        return {
+          ...item,
+          product_name: product?.name || '',
+          product_sku: product?.sku || ''
+        };
+      });
+      
       setOrderItems(items);
       
       // Initialiser les articles de réception avec les quantités restantes à recevoir
