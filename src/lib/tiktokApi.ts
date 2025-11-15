@@ -1,5 +1,58 @@
-const API_BASE_URL = 'http://vps-7841b0bb.vps.ovh.ca:3001';
-const WS_URL = 'ws://vps-7841b0bb.vps.ovh.ca:3002';
+// Détecter automatiquement le protocole basé sur la page actuelle
+const getProtocol = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.protocol === 'https:' ? 'https:' : 'https:';
+  }
+  return 'https:'; // Par défaut, utiliser HTTPS
+};
+
+const getWebSocketProtocol = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.protocol === 'https:' ? 'wss:' : 'wss:';
+  }
+  return 'wss:'; // Par défaut, utiliser WSS
+};
+
+// Utiliser les variables d'environnement si disponibles, sinon utiliser les valeurs par défaut
+const TIKTOK_API_HOST = import.meta.env.VITE_TIKTOK_API_HOST || 'vps-7841b0bb.vps.ovh.ca:4431';
+const TIKTOK_WS_HOST = import.meta.env.VITE_TIKTOK_WS_HOST || 'vps-7841b0bb.vps.ovh.ca:4432';
+
+// Construire les URLs avec le bon protocole
+// Permettre de forcer HTTP/WS en développement via variable d'environnement
+// Par défaut, utiliser HTTPS/WSS pour la sécurité
+const forceHttp = import.meta.env.VITE_TIKTOK_FORCE_HTTP === 'true';
+const forceHttps = import.meta.env.VITE_TIKTOK_FORCE_HTTPS === 'true';
+
+let protocol: string;
+let wsProtocol: string;
+
+if (forceHttp) {
+  // Forcer HTTP/WS (développement local)
+  protocol = 'http:';
+  wsProtocol = 'wss:';
+} else if (forceHttps) {
+  // Forcer HTTPS/WSS (production)
+  protocol = 'https:';
+  wsProtocol = 'wss:';
+} else {
+  // Détection automatique basée sur le protocole de la page
+  protocol = getProtocol();
+  wsProtocol = getWebSocketProtocol();
+}
+
+const API_BASE_URL = `${protocol}//${TIKTOK_API_HOST}`;
+const WS_URL = `${wsProtocol}//${TIKTOK_WS_HOST}`;
+
+// Logger les URLs utilisées pour le débogage
+console.log('🔧 TikTokApi: Configuration des URLs:', {
+  API_BASE_URL,
+  WS_URL,
+  protocol,
+  wsProtocol,
+  forceHttp,
+  forceHttps,
+  currentPageProtocol: typeof window !== 'undefined' ? window.location.protocol : 'N/A'
+});
 
 export interface TikTokMessage {
   type: 'chat' | 'stats' | 'streamEnd' | 'error';
@@ -455,12 +508,14 @@ class TikTokApiService {
     if (this.messageHandlers.size === 0) {
       console.warn('⚠️ TikTokApi: Aucun handler enregistré pour recevoir le message!');
     }
-    this.messageHandlers.forEach((handler, index) => {
+    let index = 0;
+    this.messageHandlers.forEach((handler) => {
       try {
-        console.log(`📢 TikTokApi: Appel du handler ${index + 1}/${this.messageHandlers.size}`);
+        index++;
+        console.log(`📢 TikTokApi: Appel du handler ${index}/${this.messageHandlers.size}`);
         handler(message);
       } catch (error) {
-        console.error(`❌ TikTokApi: Erreur dans le handler ${index + 1}:`, error);
+        console.error(`❌ TikTokApi: Erreur dans le handler ${index}:`, error);
       }
     });
   }
