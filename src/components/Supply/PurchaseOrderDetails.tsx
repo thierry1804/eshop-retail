@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { PurchaseOrder, PurchaseOrderItem, User } from '../../types';
-import { X, Edit, Package, Calendar, DollarSign, Truck, CheckCircle } from 'lucide-react';
+import { PurchaseOrder, PurchaseOrderItem, Product, User } from '../../types';
+import { X, Edit, Package, Calendar, DollarSign, Truck, CheckCircle, Plus, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ReceiptForm } from './ReceiptForm';
+import { ProductQuickCreate } from './ProductQuickCreate';
 
 interface PurchaseOrderDetailsProps {
   order: PurchaseOrder;
@@ -17,9 +18,14 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
   const [items, setItems] = useState<PurchaseOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReceiptForm, setShowReceiptForm] = useState(false);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showProductCreate, setShowProductCreate] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
 
   useEffect(() => {
     fetchOrderItems();
+    fetchData();
   }, [order.id]);
 
   const fetchOrderItems = async () => {
@@ -74,8 +80,83 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
     return t(`supply.status.${status}`);
   };
 
+  const fetchData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits:', error);
+    }
+  };
+
+  const addItem = async (product: Product) => {
+    const existingItem = items.find(item => item.product_id === product.id);
+    if (existingItem) {
+      alert('Ce produit est déjà dans la commande');
+      return;
+    }
+
+    try {
+      // Créer le nouvel article dans la base de données
+      const { data: newItem, error } = await supabase
+        .from('purchase_order_items')
+        .insert({
+          purchase_order_id: order.id,
+          product_id: product.id,
+          quantity_ordered: 1,
+          quantity_received: 0,
+          unit_price: 0,
+          total_price: 0
+        })
+        .select(`
+          *,
+          products (
+            name,
+            sku,
+            unit
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      // Mapper les données de la jointure
+      const productData = Array.isArray(newItem.products) ? newItem.products[0] : newItem.products;
+      const mappedItem = {
+        ...newItem,
+        product_name: productData?.name || '',
+        product_sku: productData?.sku || ''
+      };
+
+      // Ajouter le nouvel article à la liste
+      setItems([...items, mappedItem]);
+      setShowProductSearch(false);
+      setProductSearchTerm('');
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du produit:', error);
+      alert('Erreur lors de l\'ajout du produit à la commande');
+    }
+  };
+
+  const handleProductCreated = (product: Product) => {
+    setProducts([...products, product]);
+    addItem(product);
+    setShowProductCreate(false);
+  };
+
   const canCreateReceipt = order.status === 'ordered' || order.status === 'partial';
   const hasUnreceivedItems = items.some(item => item.quantity_received < item.quantity_ordered);
+  const canAddProducts = order.status !== 'received' && order.status !== 'cancelled';
+
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.sku.toLowerCase().includes(productSearchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -170,15 +251,37 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{t('supply.items')}</h3>
-              {canCreateReceipt && hasUnreceivedItems && (
-                <button
-                  onClick={() => setShowReceiptForm(true)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  {t('supply.createReceipt')}
-                </button>
-              )}
+              <div className="flex gap-2">
+                {canAddProducts && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowProductSearch(true)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t('supply.addExistingItem')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowProductCreate(true)}
+                      className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                    >
+                      <Package className="h-4 w-4" />
+                      {t('supply.createNewProduct')}
+                    </button>
+                  </>
+                )}
+                {canCreateReceipt && hasUnreceivedItems && (
+                  <button
+                    onClick={() => setShowReceiptForm(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    {t('supply.createReceipt')}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
@@ -287,6 +390,79 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
               setShowReceiptForm(false);
             }}
             user={user}
+          />
+        )}
+
+        {/* Modal de recherche de produits */}
+        {showProductSearch && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+              <div className="p-4 border-b">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
+                  <button
+                    onClick={() => {
+                      setShowProductSearch(false);
+                      setProductSearchTerm('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="mt-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder={t('supply.searchProducts')}
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      onClick={() => {
+                        setShowProductSearch(false);
+                        setShowProductCreate(true);
+                      }}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
+                    >
+                      <Package className="h-4 w-4" />
+                      {t('supply.createNewProduct')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[60vh]">
+                <div className="space-y-2">
+                  {filteredProducts.map(product => (
+                    <div
+                      key={product.id}
+                      onClick={() => addItem(product)}
+                      className="p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="font-medium">{product.name}</div>
+                      <div className="text-sm text-gray-500">SKU: {product.sku}</div>
+                      <div className="text-sm text-gray-500">
+                        Stock: {product.current_stock} {product.unit}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de création rapide de produit */}
+        {showProductCreate && (
+          <ProductQuickCreate
+            onClose={() => setShowProductCreate(false)}
+            onProductCreated={handleProductCreated}
+            user={user}
+            initialSupplierId={order.supplier_id}
           />
         )}
       </div>
