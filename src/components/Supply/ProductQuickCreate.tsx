@@ -75,8 +75,19 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
       if (categoriesRes.error) throw categoriesRes.error;
       if (suppliersRes.error) throw suppliersRes.error;
 
-      setCategories(categoriesRes.data || []);
-      setSuppliers(suppliersRes.data || []);
+      // Filtrer côté client pour les catégories/fournisseurs qui contiennent 'stock' dans leur tableau modules
+      const filteredCategories = (categoriesRes.data || []).filter(cat => {
+        const modules = cat.modules || [];
+        return Array.isArray(modules) && modules.includes('stock');
+      });
+      
+      const filteredSuppliers = (suppliersRes.data || []).filter(supplier => {
+        const modules = supplier.modules || [];
+        return Array.isArray(modules) && modules.includes('stock');
+      });
+
+      setCategories(filteredCategories);
+      setSuppliers(filteredSuppliers);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
     }

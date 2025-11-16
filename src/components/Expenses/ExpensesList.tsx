@@ -72,39 +72,51 @@ const ExpensesList: React.FC = () => {
     }
   };
 
-  // Récupération des catégories
+  // Récupération des catégories pour les dépenses
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name');
 
       if (error) {
         console.error('Erreur lors de la récupération des catégories:', error);
         return;
       }
 
-      setCategories(data || []);
+      // Filtrer côté client pour les catégories qui contiennent 'expenses' dans leur tableau modules
+      const filtered = (data || []).filter(cat => {
+        const modules = cat.modules || [];
+        return Array.isArray(modules) && modules.includes('expenses');
+      });
+
+      setCategories(filtered);
     } catch (err) {
       console.error('Erreur inattendue lors de la récupération des catégories:', err);
     }
   };
 
-  // Récupération des fournisseurs
+  // Récupération des fournisseurs pour les dépenses
   const fetchSuppliers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('name');
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .order('name');
 
       if (error) {
         console.error('Erreur lors de la récupération des fournisseurs:', error);
         return;
       }
 
-      setSuppliers(data || []);
+      // Filtrer côté client pour les fournisseurs qui contiennent 'expenses' dans leur tableau modules
+      const filtered = (data || []).filter(supplier => {
+        const modules = supplier.modules || [];
+        return Array.isArray(modules) && modules.includes('expenses');
+      });
+
+      setSuppliers(filtered);
     } catch (err) {
       console.error('Erreur inattendue lors de la récupération des fournisseurs:', err);
     }

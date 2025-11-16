@@ -61,8 +61,14 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
       if (productsRes.error) throw productsRes.error;
       if (suppliersRes.error) throw suppliersRes.error;
 
+      // Filtrer côté client pour les fournisseurs qui contiennent 'stock' dans leur tableau modules
+      const filteredSuppliers = (suppliersRes.data || []).filter(supplier => {
+        const modules = supplier.modules || [];
+        return Array.isArray(modules) && modules.includes('stock');
+      });
+
       setProducts(productsRes.data || []);
-      setSuppliers(suppliersRes.data || []);
+      setSuppliers(filteredSuppliers);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
     }

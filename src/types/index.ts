@@ -65,6 +65,7 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
+  modules: string[];
   created_at: string;
 }
 
@@ -72,6 +73,7 @@ export interface Supplier {
   id: string;
   name: string;
   contact_info?: string;
+  modules: string[];
   created_at: string;
 }
 

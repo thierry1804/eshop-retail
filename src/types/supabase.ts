@@ -187,18 +187,21 @@ export type Database = {
           id: string;
           name: string;
           description: string | null;
+          modules: string[];
           created_at: string | null;
         };
         Insert: {
           id?: string;
           name: string;
           description?: string | null;
+          modules?: string[];
           created_at?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           description?: string | null;
+          modules?: string[];
           created_at?: string | null;
         };
       };
@@ -207,18 +210,21 @@ export type Database = {
           id: string;
           name: string;
           contact_info: string | null;
+          modules: string[];
           created_at: string | null;
         };
         Insert: {
           id?: string;
           name: string;
           contact_info?: string | null;
+          modules?: string[];
           created_at?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           contact_info?: string | null;
+          modules?: string[];
           created_at?: string | null;
         };
       };

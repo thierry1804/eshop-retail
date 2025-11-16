@@ -29,7 +29,8 @@ export const CategoryQuickCreate: React.FC<CategoryQuickCreateProps> = ({ onClos
     try {
       // Préparer les données, n'inclure description que si une valeur existe
       const categoryData: any = {
-        name: formData.name.trim()
+        name: formData.name.trim(),
+        modules: ['stock'] // Ce composant est utilisé pour le stock
       };
       
       // Ajouter description seulement si on a une valeur

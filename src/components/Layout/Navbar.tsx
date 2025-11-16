@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -94,6 +94,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
 
         // 💰 FINANCE (comptabilité)
         { id: 'expenses', label: t('navigation.expenses'), icon: Receipt, group: 'finance' },
+
+        // ⚙️ ADMINISTRATION
+        { id: 'referentials', label: 'Référentiels', icon: Settings, group: 'admin' },
       ];
       
       // Ajouter le menu logs uniquement pour thierry1804@gmail.com

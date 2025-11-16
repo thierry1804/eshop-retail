@@ -75,8 +75,20 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
       supabase.from('categories').select('*').order('name'),
       supabase.from('suppliers').select('*').order('name')
     ]);
-    setCategories(categoriesRes.data || []);
-    setSuppliers(suppliersRes.data || []);
+    
+    // Filtrer côté client pour les catégories/fournisseurs qui contiennent 'stock' dans leur tableau modules
+    const filteredCategories = (categoriesRes.data || []).filter(cat => {
+      const modules = cat.modules || [];
+      return Array.isArray(modules) && modules.includes('stock');
+    });
+    
+    const filteredSuppliers = (suppliersRes.data || []).filter(supplier => {
+      const modules = supplier.modules || [];
+      return Array.isArray(modules) && modules.includes('stock');
+    });
+    
+    setCategories(filteredCategories);
+    setSuppliers(filteredSuppliers);
   };
 
   const generateSKU = async () => {

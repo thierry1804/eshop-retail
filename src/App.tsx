@@ -7,6 +7,7 @@ import { SalesList } from './components/Sales/SalesList';
 import { TikTokLiveSales } from './components/Sales/TikTokLiveSales';
 import { PaymentsList } from './components/Payments/PaymentsList';
 import { LogsViewer } from './components/Admin/LogsViewer';
+import { ReferentialsManager } from './components/Admin/ReferentialsManager';
 import ExpensesList from './components/Expenses/ExpensesList';
 import { ProductsList } from './components/Stock/ProductsList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
@@ -279,6 +280,8 @@ function App() {
         ) : null;
       case 'logs':
         return <LogsViewer />;
+      case 'referentials':
+        return <ReferentialsManager />;
       default:
         // Par défaut, rediriger selon le rôle
         if (user && user.role !== 'admin') {

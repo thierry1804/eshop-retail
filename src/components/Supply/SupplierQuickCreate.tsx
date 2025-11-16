@@ -41,7 +41,8 @@ export const SupplierQuickCreate: React.FC<SupplierQuickCreateProps> = ({ onClos
 
       // Préparer les données, n'inclure contact_info que si une valeur existe
       const supplierData: any = {
-        name: formData.name.trim()
+        name: formData.name.trim(),
+        modules: ['stock'] // Ce composant est utilisé pour le stock
       };
       
       // Ajouter contact_info seulement si on a une valeur
