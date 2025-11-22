@@ -171,13 +171,16 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity"
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60] transition-opacity"
         style={{ top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: 0 }}
         onClick={onClose}
       />
 
       {/* Offcanvas */}
-      <div className="fixed top-0 right-0 bottom-0 w-full max-w-4xl bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col">
+      <div 
+        className="fixed top-0 right-0 bottom-0 w-full max-w-4xl bg-white shadow-xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col"
+        style={{ top: 0, right: 0, margin: 0, padding: 0 }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b bg-gray-50 flex-shrink-0">
           <h3 className="text-xl font-bold flex items-center">

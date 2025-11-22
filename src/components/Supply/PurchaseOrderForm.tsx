@@ -167,7 +167,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
     try {
       const orderData = {
         order_number: null, // Laisser le trigger générer automatiquement
-        supplier_id: formData.supplier_id || null,
+        supplier_id: formData.supplier_id && formData.supplier_id.trim() !== '' ? formData.supplier_id : null,
         supplier_name: formData.supplier_name,
         order_date: formData.order_date,
         expected_delivery_date: formData.expected_delivery_date || null,

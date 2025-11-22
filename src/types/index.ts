@@ -252,6 +252,7 @@ export interface PurchaseOrder {
   updated_by?: string;
   created_at: string;
   updated_at: string;
+  purchase_order_items?: PurchaseOrderItem[];
 }
 
 export interface PurchaseOrderItem {

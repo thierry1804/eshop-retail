@@ -5,6 +5,7 @@ import { X, Edit, Package, Calendar, DollarSign, Truck, CheckCircle, Plus, Searc
 import { useTranslation } from 'react-i18next';
 import { ReceiptForm } from './ReceiptForm';
 import { ProductQuickCreate } from './ProductQuickCreate';
+import { DeliveryProgressBar } from './DeliveryProgressBar';
 
 interface PurchaseOrderDetailsProps {
   order: PurchaseOrder;
@@ -22,11 +23,14 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
   const [showProductCreate, setShowProductCreate] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [totalAmount, setTotalAmount] = useState(order.total_amount);
+  const [editingPrices, setEditingPrices] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchOrderItems();
     fetchData();
-  }, [order.id]);
+    setTotalAmount(order.total_amount);
+  }, [order.id, order.total_amount]);
 
   const fetchOrderItems = async () => {
     try {
@@ -137,6 +141,17 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
       setItems([...items, mappedItem]);
       setShowProductSearch(false);
       setProductSearchTerm('');
+
+      // Rafraîchir le montant total de la commande
+      const { data: orderData } = await supabase
+        .from('purchase_orders')
+        .select('total_amount')
+        .eq('id', order.id)
+        .single();
+
+      if (orderData) {
+        setTotalAmount(orderData.total_amount);
+      }
     } catch (error) {
       console.error('Erreur lors de l\'ajout du produit:', error);
       alert('Erreur lors de l\'ajout du produit à la commande');
@@ -149,9 +164,75 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
     setShowProductCreate(false);
   };
 
+  const updateItem = async (itemId: string, field: string, value: any) => {
+    if (!canEditItems) return;
+
+    try {
+      const item = items.find(i => i.id === itemId);
+      if (!item) return;
+
+      // Convertir la virgule en point pour le prix unitaire
+      let numericValue = value;
+      if (field === 'unit_price' && typeof value === 'string') {
+        numericValue = parseFloat(value.replace(',', '.')) || 0;
+      }
+
+      const updatedData: any = {
+        [field]: numericValue
+      };
+
+      // Si on modifie la quantité ou le prix unitaire, recalculer le total_price
+      if (field === 'quantity_ordered' || field === 'unit_price') {
+        const newQuantity = field === 'quantity_ordered' ? numericValue : item.quantity_ordered;
+        const newUnitPrice = field === 'unit_price' ? numericValue : item.unit_price;
+        updatedData.total_price = newQuantity * newUnitPrice;
+      }
+
+      const { error } = await supabase
+        .from('purchase_order_items')
+        .update(updatedData)
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Mettre à jour l'état local
+      const updatedItems = items.map(i => {
+        if (i.id === itemId) {
+          const updated = { ...i, ...updatedData };
+          return updated;
+        }
+        return i;
+      });
+      setItems(updatedItems);
+
+      // Supprimer la valeur en cours d'édition
+      if (field === 'unit_price') {
+        const newEditingPrices = { ...editingPrices };
+        delete newEditingPrices[itemId];
+        setEditingPrices(newEditingPrices);
+      }
+
+      // Rafraîchir les données de la commande pour obtenir le nouveau total_amount
+      // Le trigger en base de données met à jour automatiquement le total_amount
+      const { data: orderData, error: orderError } = await supabase
+        .from('purchase_orders')
+        .select('total_amount')
+        .eq('id', order.id)
+        .single();
+
+      if (!orderError && orderData) {
+        setTotalAmount(orderData.total_amount);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'article:', error);
+      alert('Erreur lors de la mise à jour de l\'article');
+    }
+  };
+
   const canCreateReceipt = order.status === 'ordered' || order.status === 'partial';
   const hasUnreceivedItems = items.some(item => item.quantity_received < item.quantity_ordered);
   const canAddProducts = order.status !== 'received' && order.status !== 'cancelled';
+  const canEditItems = order.status !== 'received' && order.status !== 'cancelled';
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
@@ -160,8 +241,14 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div className="fixed right-0 top-0 h-full w-full md:w-[900px] lg:w-[1200px] bg-white shadow-xl animate-slide-in-right">
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60]"
+        style={{ top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: 0 }}
+      >
+        <div 
+          className="fixed right-0 top-0 h-full w-full md:w-[900px] lg:w-[1200px] bg-white shadow-xl z-[70] animate-slide-in-right"
+          style={{ top: 0, right: 0, margin: 0, padding: 0 }}
+        >
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
@@ -174,12 +261,16 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-50 animate-fade-in"
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60] animate-fade-in"
+        style={{ top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: 0 }}
         onClick={onClose}
       />
       
       {/* Offcanvas */}
-      <div className="fixed right-0 top-0 h-full w-full md:w-[900px] lg:w-[1200px] bg-white shadow-xl z-50 animate-slide-in-right flex flex-col">
+      <div 
+        className="fixed right-0 top-0 h-full w-full md:w-[900px] lg:w-[1200px] bg-white shadow-xl z-[70] animate-slide-in-right flex flex-col"
+        style={{ top: 0, right: 0, margin: 0, padding: 0 }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b flex-shrink-0">
           <div>
@@ -202,7 +293,7 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Informations générales */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center mb-2">
                 <Calendar className="h-5 w-5 text-gray-400 mr-2" />
@@ -218,11 +309,24 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                 <Truck className="h-5 w-5 text-gray-400 mr-2" />
                 <span className="text-sm font-medium text-gray-700">{t('supply.expectedDeliveryDate')}</span>
               </div>
+              {order.expected_delivery_date ? (
+                <p className="text-lg font-semibold mb-2">
+                  {new Date(order.expected_delivery_date).toLocaleDateString()}
+                </p>
+              ) : (
+                <p className="text-lg font-semibold">
+                  {t('supply.notSpecified')}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Package className="h-5 w-5 text-gray-400 mr-2" />
+                <span className="text-sm font-medium text-gray-700">{t('deliveries.trackingNumber')}</span>
+              </div>
               <p className="text-lg font-semibold">
-                {order.expected_delivery_date 
-                  ? new Date(order.expected_delivery_date).toLocaleDateString()
-                  : t('supply.notSpecified')
-                }
+                {order.tracking_number || t('supply.notSpecified')}
               </p>
             </div>
 
@@ -232,10 +336,19 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                 <span className="text-sm font-medium text-gray-700">{t('supply.totalAmount')}</span>
               </div>
               <p className="text-lg font-semibold">
-                {order.total_amount.toLocaleString()} {order.currency}
+                {totalAmount.toLocaleString()} {order.currency}
               </p>
             </div>
           </div>
+
+          {/* Barre de progression de livraison */}
+          {order.expected_delivery_date && (
+            <div className="mb-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <DeliveryProgressBar order={order} />
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           {order.notes && (
@@ -326,13 +439,59 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.quantity_ordered}
+                          {canEditItems ? (
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity_ordered}
+                              onChange={(e) => updateItem(item.id, 'quantity_ordered', parseInt(e.target.value) || 1)}
+                              onBlur={(e) => {
+                                const value = parseInt(e.target.value);
+                                if (!value || value < 1) {
+                                  updateItem(item.id, 'quantity_ordered', 1);
+                                }
+                              }}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center"
+                            />
+                          ) : (
+                            item.quantity_ordered
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {item.quantity_received}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.unit_price.toLocaleString()} {order.currency}
+                          {canEditItems ? (
+                            <input
+                              type="text"
+                              value={editingPrices[item.id] !== undefined ? editingPrices[item.id] : item.unit_price.toString().replace('.', ',')}
+                              onChange={(e) => {
+                                const inputValue = e.target.value;
+                                // Accepter uniquement les chiffres, la virgule et le point
+                                if (/^[\d,.]*$/.test(inputValue) || inputValue === '') {
+                                  setEditingPrices({ ...editingPrices, [item.id]: inputValue });
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const inputValue = e.target.value.replace(',', '.');
+                                const numericValue = parseFloat(inputValue);
+                                if (isNaN(numericValue) || numericValue < 0) {
+                                  updateItem(item.id, 'unit_price', 0);
+                                } else {
+                                  updateItem(item.id, 'unit_price', inputValue);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              placeholder="0,00"
+                              className="w-24 px-2 py-1 border border-gray-300 rounded-md text-right"
+                            />
+                          ) : (
+                            item.unit_price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          )} {order.currency}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {item.total_price.toLocaleString()} {order.currency}
