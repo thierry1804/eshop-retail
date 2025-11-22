@@ -166,7 +166,7 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
         {/* En-tête fixe */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-2 min-w-0 flex-1">
-            <Truck className="text-blue-600 flex-shrink-0" size={20} className="sm:w-6 sm:h-6" />
+            <Truck className="text-blue-600 flex-shrink-0 sm:w-6 sm:h-6" size={20} />
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
               {t('deliveries.newDelivery')}
             </h2>
