@@ -6,8 +6,12 @@ import { SimpleTest } from './components/Debug/SimpleTest.tsx';
 import { SupabaseTest } from './components/Debug/SupabaseTest.tsx';
 import { RLSTest } from './components/Debug/RLSTest.tsx';
 import { DatabaseTest } from './components/Debug/DatabaseTest.tsx';
+import { registerServiceWorker } from './lib/offline/register-sw';
 import './index.css';
 import './i18n';
+
+// Enregistrer le service worker pour le PWA
+registerServiceWorker();
 
 // Temporairement utiliser DatabaseTest pour diagnostiquer
 const useDatabaseTest = import.meta.env.VITE_DATABASE_TEST === 'true';

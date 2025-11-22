@@ -18,6 +18,8 @@ import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
 import { logger } from './lib/logger';
+import { OfflineIndicator } from './components/Offline/OfflineIndicator';
+import { syncManager } from './lib/offline/sync-manager';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -33,22 +35,35 @@ function App() {
     try {
       checkAuth();
       
+      // Démarrer le gestionnaire de synchronisation
+      if (navigator.onLine) {
+        syncManager.startAutoSync();
+      }
+      
       // Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log(`🔄 App: Événement auth détecté: ${event}`);
         if (event === 'SIGNED_IN' && session) {
           console.log('👤 App: Utilisateur connecté, récupération du profil...');
           await fetchUserProfile(session.user.id);
+          // Démarrer la synchronisation après connexion
+          if (navigator.onLine) {
+            syncManager.startAutoSync();
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('👋 App: Utilisateur déconnecté');
           setUser(null);
+          syncManager.stopAutoSync();
         }
       });
 
       const endTime = performance.now();
       console.log(`⏱️ App: Initialisation terminée en ${(endTime - startTime).toFixed(2)}ms`);
 
-      return () => subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+        syncManager.stopAutoSync();
+      };
     } catch (error) {
       console.error('❌ App: Erreur fatale lors de l\'initialisation:', error);
       setConfigError('Erreur lors de l\'initialisation de l\'application');
@@ -326,6 +341,7 @@ function App() {
           {renderCurrentPage()}
         </div>
       </main>
+      <OfflineIndicator />
     </div>
   );
 }
