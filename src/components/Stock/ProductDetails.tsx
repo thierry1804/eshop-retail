@@ -48,44 +48,45 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
   const stockStatus = getStockStatus();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-start gap-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-lg p-3 sm:p-4 md:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
             {/* Image du produit */}
             {product.image_url && !imageError ? (
               <div className="flex-shrink-0">
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
+                  className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
                   onError={() => setImageError(true)}
                 />
               </div>
             ) : (
-              <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
-                <ImageIcon className="h-12 w-12 text-gray-400" />
+              <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-gray-400" />
               </div>
             )}
-            <div className="flex items-center">
-              <Package className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <h2 className="text-2xl font-bold">{product.name}</h2>
-                <p className="text-gray-600">SKU: {product.sku}</p>
+            <div className="flex items-center min-w-0 flex-1">
+              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{product.name}</h2>
+                <p className="text-sm sm:text-base text-gray-600">SKU: {product.sku}</p>
               </div>
             </div>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-shrink-0">
             <button
               onClick={onEdit}
-              className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="flex items-center px-2 sm:px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm"
             >
-              <Edit className="h-4 w-4 mr-1" />
-              Modifier
+              <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              <span className="hidden sm:inline">Modifier</span>
+              <span className="sm:hidden">Modif.</span>
             </button>
             <button
               onClick={onClose}
-              className="px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-2 sm:px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-xs sm:text-sm"
             >
               Fermer
             </button>

@@ -506,20 +506,20 @@ export const TikTokLiveSales: React.FC = () => {
   };
 
   return (
-    <div className="p-6 flex flex-col h-screen min-h-0 overflow-hidden">
-      <div className="mb-6 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Video className="h-6 w-6 text-blue-600" />
+    <div className="p-3 sm:p-4 md:p-6 flex flex-col h-screen min-h-0 overflow-hidden">
+      <div className="mb-4 sm:mb-6 flex-shrink-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <Video className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
           {t('sales.tiktokLive.title', 'Ventes Live TikTok')}
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           {t('sales.tiktokLive.subtitle', 'Écoutez les messages TikTok en direct et créez des ventes rapidement')}
         </p>
       </div>
 
       {/* Contrôles */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6 flex-shrink-0">
-        <div className="flex flex-col md:flex-row gap-4 items-end">
+      <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mb-4 sm:mb-6 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('sales.tiktokLive.uniqueId', 'UniqueId TikTok')}

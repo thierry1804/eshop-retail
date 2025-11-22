@@ -164,23 +164,23 @@ export const DeliveryForm: React.FC<DeliveryFormProps> = ({ onClose, onSave, use
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête fixe */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            <Truck className="text-blue-600" size={24} />
-            <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
+            <Truck className="text-blue-600 flex-shrink-0" size={20} className="sm:w-6 sm:h-6" />
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
               {t('deliveries.newDelivery')}
             </h2>
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           >
-            <X size={24} />
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* Zone de contenu scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

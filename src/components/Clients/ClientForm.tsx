@@ -81,36 +81,36 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
         {/* En-tête fixe */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center space-x-2">
-            <User className="text-blue-600" size={24} />
-            <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-2 min-w-0">
+            <User className="text-blue-600 flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
+            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
               {client ? t('clients.editClient') : t('clients.newClient')}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
           >
-            <X size={24} />
+            <X size={20} className="sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* Zone de contenu scrollable */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md text-xs sm:text-sm">
                 {error}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('clients.form.firstName')} *
                 </label>
                 <input
@@ -118,12 +118,12 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
                   required
                   value={formData.first_name}
                   onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                   placeholder={t('clients.form.firstNamePlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('clients.form.lastName')} *
                 </label>
                 <input
@@ -131,14 +131,14 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
                   required
                   value={formData.last_name}
                   onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                   placeholder={t('clients.form.lastNamePlaceholder')}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 {t('clients.form.phone')} *
               </label>
               <input
@@ -146,13 +146,13 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
                 required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                 placeholder={t('clients.form.phonePlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 {t('clients.form.address')} *
               </label>
               <textarea
@@ -160,19 +160,19 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                 placeholder={t('clients.form.addressPlaceholder')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 {t('clients.form.trustRating')}
               </label>
               <select
                 value={formData.trust_rating}
                 onChange={(e) => setFormData({ ...formData, trust_rating: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               >
                 <option value="good">✅ {t('common.goodPayer')}</option>
                 <option value="average">⚠️ {t('common.averagePayer')}</option>
@@ -181,40 +181,40 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 {t('clients.form.notes')}
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                 placeholder={t('clients.form.notesPlaceholder')}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('clients.form.tiktokId')}
                 </label>
                 <input
                   type="text"
                   value={formData.tiktok_id}
                   onChange={(e) => setFormData({ ...formData, tiktok_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                   placeholder={t('clients.form.tiktokIdPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('clients.form.tiktokNickName')}
                 </label>
                 <input
                   type="text"
                   value={formData.tiktok_nick_name}
                   onChange={(e) => setFormData({ ...formData, tiktok_nick_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                   placeholder={t('clients.form.tiktokNickNamePlaceholder')}
                 />
               </div>
@@ -223,11 +223,11 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
         </div>
 
         {/* Pied de page fixe avec boutons */}
-        <div className="flex space-x-3 p-6 border-t border-gray-200 flex-shrink-0">
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 p-3 sm:p-4 md:p-6 border-t border-gray-200 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
           >
             {t('app.cancel')}
           </button>
@@ -235,9 +235,9 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
             type="submit"
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full sm:flex-1 flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm sm:text-base"
           >
-            <Save size={18} />
+            <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
             <span>{loading ? t('clients.saving') : t('app.save')}</span>
           </button>
         </div>

@@ -251,14 +251,17 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
         />
       )}
 
-      {/* Mobile menu button only */}
-      <div className="md:hidden fixed top-4 left-4 z-60">
+      {/* Mobile menu button with app name */}
+      <div className="md:hidden fixed top-4 left-4 z-60 flex items-center gap-2">
         <button
           onClick={() => setSidebarOpen(true)}
           className="bg-white shadow-lg rounded-lg p-2 text-gray-600 hover:text-gray-900"
         >
           <Menu size={24} />
         </button>
+        <h1 className="text-lg font-bold text-blue-600 bg-white shadow-lg rounded-lg px-3 py-2">
+          {t('app.title')}
+        </h1>
       </div>
     </>
   );

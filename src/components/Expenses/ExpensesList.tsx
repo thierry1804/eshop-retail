@@ -377,37 +377,39 @@ const ExpensesList: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               {t('navigation.expenses')}
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
               {t('expenses.title')}
             </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-shrink-0">
             <button
               onClick={() => setActiveTab('active')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md"
+              className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md text-sm sm:text-base whitespace-nowrap"
             >
-              Dépenses actives
+              <span className="hidden sm:inline">Dépenses actives</span>
+              <span className="sm:hidden">Actives</span>
             </button>
             <button
               onClick={() => setActiveTab('deleted')}
-              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-3 sm:px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 text-sm sm:text-base whitespace-nowrap"
             >
-              Dépenses supprimées
+              <span className="hidden sm:inline">Dépenses supprimées</span>
+              <span className="sm:hidden">Supprimées</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Filtres et recherche */}
-      <div className="bg-white rounded-lg shadow mb-6 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="bg-white rounded-lg shadow mb-4 sm:mb-6 p-3 sm:p-4 md:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
           {/* Recherche */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -497,7 +499,7 @@ const ExpensesList: React.FC = () => {
         </div>
 
         {/* Filtre par plage de dates personnalisée */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pt-4 border-t border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4 pt-3 sm:pt-4 border-t border-gray-200">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('expenses.filters.fromDate')}
@@ -549,11 +551,11 @@ const ExpensesList: React.FC = () => {
         </div>
 
         {/* Résumé et actions */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-4 text-sm text-gray-600">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+            <div className="flex flex-col sm:flex-row sm:space-x-4 gap-1 sm:gap-0 text-xs sm:text-sm text-gray-600">
               <span>
-                {t('expenses.summary.totalExpenses')}: <span className="font-semibold text-lg text-red-600">{formatAmount(totalExpenses)}</span>
+                {t('expenses.summary.totalExpenses')}: <span className="font-semibold text-base sm:text-lg text-red-600">{formatAmount(totalExpenses)}</span>
               </span>
               <span>
                 {filteredExpenses.length} {t('expenses.summary.displayed')}
@@ -571,7 +573,7 @@ const ExpensesList: React.FC = () => {
                   setStartDate('');
                   setEndDate('');
                 }}
-                className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="px-3 py-1 text-xs sm:text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
               >
                 {t('expenses.filters.clearFilters')}
               </button>
@@ -580,8 +582,87 @@ const ExpensesList: React.FC = () => {
         </div>
       </div>
 
-      {/* Liste des dépenses */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Liste des dépenses - Mobile Card View */}
+      <div className="lg:hidden space-y-3">
+        {filteredExpenses.length === 0 ? (
+          <div className="p-6 sm:p-8 text-center bg-white rounded-lg shadow">
+            <div className="text-gray-400 text-sm sm:text-lg">
+              {searchTerm || selectedCategory || selectedSupplier || dateFilter || startDate || endDate
+                ? t('expenses.noExpensesFound')
+                : t('expenses.noExpenses')
+              }
+            </div>
+          </div>
+        ) : (
+          filteredExpenses.map((expense) => (
+            <div key={expense.id} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                    {expense.description || '-'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatDate(expense.date)}
+                  </div>
+                </div>
+                <div className="ml-2 flex flex-col items-end gap-1 flex-shrink-0">
+                  <div className="text-sm font-medium text-red-600">
+                    {formatAmount(Number(expense.amount))}
+                  </div>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    expense.locked 
+                      ? 'bg-red-100 text-red-800' 
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {expense.locked ? t('expenses.locked') : t('expenses.unlocked')}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs pt-2 border-t border-gray-100">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Catégorie:</span>
+                  <span className="text-gray-900">{expense.category?.name || '-'}</span>
+                </div>
+                {expense.supplier?.name && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Fournisseur:</span>
+                    <span className="text-gray-900 truncate ml-2">{expense.supplier.name}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleEditExpense(expense)}
+                      disabled={expense.locked || false}
+                      className={`text-xs font-medium ${expense.locked
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-blue-600 hover:text-blue-900'
+                        }`}
+                      title={expense.locked ? t('expenses.audit.lockedExpense') : t('app.edit')}
+                    >
+                      {t('app.edit')}
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button 
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      className="text-xs font-medium text-red-600 hover:text-red-900"
+                      title={t('expenses.audit.softDelete')}
+                    >
+                      {t('app.delete')}
+                    </button>
+                  </div>
+                  <div className="text-gray-400 text-xs">
+                    {(expense as any).created_by_user?.name || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Liste des dépenses - Desktop Table View */}
+      <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
         {filteredExpenses.length === 0 ? (
           <div className="p-8 text-center">
             <div className="text-gray-400 text-lg">
@@ -617,10 +698,10 @@ const ExpensesList: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('expenses.audit.createdBy')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('expenses.audit.updatedBy')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('common.actions')}
                   </th>
                 </tr>

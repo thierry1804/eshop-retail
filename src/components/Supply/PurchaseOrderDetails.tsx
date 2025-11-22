@@ -284,26 +284,26 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
         style={{ top: 0, right: 0, margin: 0, padding: 0 }}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b flex-shrink-0">
-          <div>
-            <h2 className="text-xl font-bold">{order.order_number}</h2>
-            <p className="text-gray-600">{order.supplier_name || t('supply.noSupplier')}</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 border-b flex-shrink-0">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl font-bold truncate">{order.order_number}</h2>
+            <p className="text-sm sm:text-base text-gray-600 truncate">{order.supplier_name || t('supply.noSupplier')}</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.status)}`}>
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            <span className={`inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold rounded-full whitespace-nowrap ${getStatusColor(order.status)}`}>
               {getStatusLabel(order.status)}
             </span>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
           {/* Informations générales */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -373,43 +373,177 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
           )}
 
           {/* Articles */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">{t('supply.items')}</h3>
-              <div className="flex gap-2">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-0 mb-3 sm:mb-4">
+              <h3 className="text-base sm:text-lg font-semibold">{t('supply.items')}</h3>
+              <div className="flex flex-wrap gap-2">
                 {canAddProducts && (
                   <>
                     <button
                       type="button"
                       onClick={() => setShowProductSearch(true)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                      className="bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap"
                     >
-                      <Plus className="h-4 w-4" />
-                      {t('supply.addExistingItem')}
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">{t('supply.addExistingItem')}</span>
+                      <span className="sm:hidden">Ajouter</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowProductCreate(true)}
-                      className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                      className="bg-green-600 text-white px-2 sm:px-3 py-1 rounded-md hover:bg-green-700 flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap"
                     >
-                      <Package className="h-4 w-4" />
-                      {t('supply.createNewProduct')}
+                      <Package className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">{t('supply.createNewProduct')}</span>
+                      <span className="sm:hidden">Nouveau</span>
                     </button>
                   </>
                 )}
                 {canCreateReceipt && hasUnreceivedItems && (
                   <button
                     onClick={() => setShowReceiptForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
+                    className="bg-green-600 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-md hover:bg-green-700 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                   >
-                    <CheckCircle className="h-4 w-4" />
-                    {t('supply.createReceipt')}
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">{t('supply.createReceipt')}</span>
+                    <span className="sm:hidden">Réception</span>
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="lg:hidden space-y-3">
+              {items.map((item) => {
+                const isComplete = item.quantity_received >= item.quantity_ordered;
+                const isPartial = item.quantity_received > 0 && item.quantity_received < item.quantity_ordered;
+                
+                return (
+                  <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-start gap-3 mb-3">
+                      {productImages[item.product_id] && !imageErrors[item.product_id] ? (
+                        <img
+                          src={productImages[item.product_id]}
+                          alt={item.product_name}
+                          className="h-16 w-16 object-cover rounded-md border border-gray-300 flex-shrink-0"
+                          onError={() => {
+                            setImageErrors(prev => ({ ...prev, [item.product_id]: true }));
+                          }}
+                        />
+                      ) : (
+                        <div className="h-16 w-16 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center flex-shrink-0">
+                          <ImageIcon className="h-6 w-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                          {item.product_name}
+                        </div>
+                        <div className="text-xs text-gray-500">SKU: {item.product_sku}</div>
+                        <div className="mt-2">
+                          {isComplete ? (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                              {t('supply.complete')}
+                            </span>
+                          ) : isPartial ? (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                              {t('supply.partial')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                              {t('supply.pending')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-gray-600">Qté commandée:</span>
+                          <div className="mt-1">
+                            {canEditItems ? (
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity_ordered}
+                                onChange={(e) => updateItem(item.id, 'quantity_ordered', parseInt(e.target.value) || 1)}
+                                onBlur={(e) => {
+                                  const value = parseInt(e.target.value);
+                                  if (!value || value < 1) {
+                                    updateItem(item.id, 'quantity_ordered', 1);
+                                  }
+                                }}
+                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-center text-sm"
+                              />
+                            ) : (
+                              <span className="text-gray-900 font-medium">{item.quantity_ordered}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Qté reçue:</span>
+                          <div className="mt-1 text-gray-900 font-medium">{item.quantity_received}</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-gray-600">Prix unitaire:</span>
+                          <div className="mt-1">
+                            {canEditItems ? (
+                              <input
+                                type="text"
+                                value={editingPrices[item.id] !== undefined ? editingPrices[item.id] : item.unit_price.toString().replace('.', ',')}
+                                onChange={(e) => {
+                                  const inputValue = e.target.value;
+                                  if (/^[\d,.]*$/.test(inputValue) || inputValue === '') {
+                                    setEditingPrices({ ...editingPrices, [item.id]: inputValue });
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputValue = e.target.value.replace(',', '.');
+                                  const numericValue = parseFloat(inputValue);
+                                  if (isNaN(numericValue) || numericValue < 0) {
+                                    updateItem(item.id, 'unit_price', 0);
+                                  } else {
+                                    updateItem(item.id, 'unit_price', inputValue);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                                placeholder="0,00"
+                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-right text-sm"
+                              />
+                            ) : (
+                              <span className="text-gray-900 font-medium">
+                                {item.unit_price.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {order.currency}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Total:</span>
+                          <div className="mt-1 text-gray-900 font-medium">
+                            {item.total_price.toLocaleString()} {order.currency}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {items.length === 0 && (
+                <div className="text-center py-8 bg-white border border-gray-200 rounded-lg">
+                  <p className="text-gray-500 text-sm">Aucun article</p>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden lg:block bg-white border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -549,17 +683,17 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t mt-6">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4 border-t mt-4 sm:mt-6">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               {t('app.close')}
             </button>
             {order.status === 'draft' && (
               <button
                 onClick={onEdit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors"
+                className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center gap-2 transition-colors text-sm sm:text-base"
               >
                 <Edit className="h-4 w-4" />
                 {t('app.edit')}

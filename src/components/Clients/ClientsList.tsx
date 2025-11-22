@@ -121,9 +121,9 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
         <button
           onClick={async () => {
             // Logger l'action de création
@@ -131,9 +131,9 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
             setSelectedClient(null);
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
         >
-          <Plus size={20} />
+          <Plus size={18} className="sm:w-5 sm:h-5" />
           <span>{t('clients.newClient')}</span>
         </button>
       </div>
@@ -152,8 +152,109 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Clients List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Clients List - Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredClients.map((client) => {
+          const trustDisplay = getTrustRatingDisplay(client.trust_rating);
+          return (
+            <div key={client.id} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-medium text-sm">
+                      {client.first_name[0]}{client.last_name[0]}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {client.first_name} {client.last_name}
+                    </div>
+                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <Phone size={12} className="mr-1 text-gray-400" />
+                      <span className="truncate">{client.phone}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 ml-2">
+                  <button
+                    onClick={async () => {
+                      await logger.logUserAction('VIEW_CLIENT_DETAILS', 'ClientsList', {
+                        clientId: client.id,
+                        clientName: `${client.first_name} ${client.last_name}`
+                      });
+                      setSelectedClient(client);
+                      setShowDetails(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                    title={t('clients.viewDetails')}
+                  >
+                    <Eye size={18} />
+                  </button>
+                  {user.role === 'admin' && (
+                    <>
+                      <button
+                        onClick={async () => {
+                          await logger.logUserAction('EDIT_CLIENT', 'ClientsList', {
+                            clientId: client.id,
+                            clientName: `${client.first_name} ${client.last_name}`
+                          });
+                          setSelectedClient(client);
+                          setShowForm(true);
+                        }}
+                        className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
+                        title={t('common.edit')}
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(client)}
+                        className="text-red-600 hover:text-red-800 transition-colors p-1"
+                        title={t('common.delete')}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2 text-xs">
+                {client.address && (
+                  <div className="flex items-center text-gray-600">
+                    <MapPin size={12} className="mr-2 text-gray-400" />
+                    <span className="truncate">{client.address}</span>
+                  </div>
+                )}
+                {(client.tiktok_id || client.tiktok_nick_name) && (
+                  <div className="flex items-center text-gray-600">
+                    <Video size={12} className="mr-2 text-gray-400" />
+                    <span className="truncate">
+                      {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${trustDisplay.className}`}>
+                    {trustDisplay.label}
+                  </span>
+                  <span className="text-gray-500">
+                    {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filteredClients.length === 0 && (
+          <div className="text-center py-8 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500">
+              {searchTerm ? t('clients.noClientsFound') : t('clients.noClients')}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Clients List - Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -226,7 +327,6 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={async () => {
-                            // Logger l'action de visualisation
                             await logger.logUserAction('VIEW_CLIENT_DETAILS', 'ClientsList', {
                               clientId: client.id,
                               clientName: `${client.first_name} ${client.last_name}`
@@ -239,12 +339,10 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                         >
                           <Eye size={18} />
                         </button>
-                        {/* Seuls les admins peuvent modifier et supprimer */}
                         {user.role === 'admin' && (
                           <>
                             <button
                               onClick={async () => {
-                                // Logger l'action de modification
                                 await logger.logUserAction('EDIT_CLIENT', 'ClientsList', {
                                   clientId: client.id,
                                   clientName: `${client.first_name} ${client.last_name}`

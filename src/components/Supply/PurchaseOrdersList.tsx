@@ -132,21 +132,22 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* En-tête */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('supply.title')}</h1>
-          <p className="text-gray-600">{t('supply.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{t('supply.title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600">{t('supply.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => fetchOrders(false)}
             disabled={refreshing}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center gap-2 disabled:opacity-50"
+            className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-md hover:bg-gray-200 flex items-center gap-1 sm:gap-2 disabled:opacity-50"
             title={t('app.refresh') || 'Rafraîchir'}
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{t('app.refresh')}</span>
           </button>
           <button
             onClick={() => {
@@ -156,62 +157,63 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                 setShowForm(true);
               }
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-2"
+            className="bg-blue-600 text-white px-2 sm:px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
           >
-            <Plus className="h-4 w-4" />
-            {t('supply.createOrder')}
+            <Plus className="h-4 w-4 flex-shrink-0" />
+            <span className="hidden sm:inline">{t('supply.createOrder')}</span>
+            <span className="sm:hidden">Créer</span>
           </button>
         </div>
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">{t('supply.totalOrders') || 'Total commandes'}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalOrders') || 'Total commandes'}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <Package className="h-6 w-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
+              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">{t('supply.totalAmount')}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalAmount')}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 truncate">
                 {stats.totalAmount.toLocaleString()} {mainCurrency}
               </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <DollarSign className="h-6 w-6 text-green-600" />
+            <div className="bg-green-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
+              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">{t('supply.ordered') || 'Commandées'}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.ordered}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.ordered') || 'Commandées'}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.ordered}</p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <TrendingUp className="h-6 w-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
+              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">{t('supply.overdue') || 'En retard'}</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">{stats.overdue}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.overdue') || 'En retard'}</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">{stats.overdue}</p>
             </div>
-            <div className="bg-red-100 p-3 rounded-full">
-              <AlertCircle className="h-6 w-6 text-red-600" />
+            <div className="bg-red-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
+              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -250,8 +252,106 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
         </div>
       </div>
 
-      {/* Liste des commandes */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+      {/* Liste des commandes - Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+              {t('supply.noOrders')}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4 px-4">
+              {t('supply.noOrdersDescription')}
+            </p>
+            <button
+              onClick={() => {
+                if (onNavigateToCreate) {
+                  onNavigateToCreate();
+                } else {
+                  setShowForm(true);
+                }
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+            >
+              {t('supply.createFirstOrder')}
+            </button>
+          </div>
+        ) : (
+          filteredOrders.map((order) => (
+            <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 truncate">{order.order_number}</div>
+                  <div className="text-xs text-gray-500 mt-1 truncate">{order.supplier_name || t('supply.noSupplier')}</div>
+                </div>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 flex-shrink-0 ${getStatusColor(order.status)}`}>
+                  {getStatusLabel(order.status)}
+                </span>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Date:</span>
+                  <span className="text-gray-900">{new Date(order.order_date).toLocaleDateString()}</span>
+                </div>
+                {order.expected_delivery_date && (
+                  <div className="pt-1">
+                    <DeliveryProgressBar order={order} compact={true} />
+                  </div>
+                )}
+                {order.tracking_number && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Suivi:</span>
+                    <span className="font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded border text-xs">
+                      {order.tracking_number}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <Package className="h-3 w-3" />
+                    <span>{order.purchase_order_items?.length || 0} {t('supply.items')}</span>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {order.total_amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {order.currency}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => setViewingOrder(order)}
+                    className="text-blue-600 hover:text-blue-900 text-xs font-medium flex items-center gap-1"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {t('app.view')}
+                  </button>
+                  {order.status === 'draft' && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        onClick={() => {
+                          setEditingOrder(order);
+                          setShowForm(true);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-900 text-xs font-medium flex items-center gap-1"
+                      >
+                        <Edit className="h-4 w-4" />
+                        {t('app.edit')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        {refreshing && (
+          <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        )}
+      </div>
+
+      {/* Liste des commandes - Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
         {refreshing && (
           <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

@@ -269,25 +269,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
 
       {/* Offcanvas */}
       <div
-        className="fixed top-0 right-0 bottom-0 w-full max-w-4xl bg-white shadow-xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col"
+        className="fixed top-0 right-0 bottom-0 w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl bg-white shadow-xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col"
         style={{ top: 0, right: 0, margin: 0, padding: 0 }}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b bg-gray-50 flex-shrink-0">
-          <h3 className="text-xl font-bold flex items-center">
-            <Package className="h-6 w-6 mr-2 text-blue-600" />
-            {product ? t('stock.editProduct') : t('stock.newProduct')}
+        <div className="flex justify-between items-center p-3 sm:p-4 md:p-6 border-b bg-gray-50 flex-shrink-0">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold flex items-center">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-600" />
+            <span className="truncate">{product ? t('stock.editProduct') : t('stock.newProduct')}</span>
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
           <form onSubmit={handleSubmit} id="product-form" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -503,12 +503,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
         </div>
 
         {/* Footer avec boutons */}
-        <div className="border-t bg-white p-6 flex-shrink-0">
-          <div className="flex justify-end space-x-3">
+        <div className="border-t bg-white p-3 sm:p-4 md:p-6 flex-shrink-0">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               {t('app.cancel')}
             </button>
@@ -516,7 +516,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
               type="submit"
               form="product-form"
               disabled={loading || uploadingImage}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors text-sm sm:text-base"
             >
               {loading || uploadingImage ? (uploadingImage ? 'Upload de l\'image...' : t('stock.saving')) : t('app.save')}
             </button>

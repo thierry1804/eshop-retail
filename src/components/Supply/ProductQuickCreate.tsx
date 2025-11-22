@@ -305,21 +305,21 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
         style={{ top: 0, right: 0, margin: 0, padding: 0 }}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b bg-gray-50 flex-shrink-0">
-          <h3 className="text-xl font-bold flex items-center">
-            <Package className="h-6 w-6 mr-2 text-blue-600" />
-            {t('supply.createProduct')}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 border-b bg-gray-50 flex-shrink-0">
+          <h3 className="text-lg sm:text-xl font-bold flex items-center min-w-0 flex-1">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-600 flex-shrink-0" />
+            <span className="truncate">{t('supply.createProduct')}</span>
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
           <form onSubmit={handleSubmit} id="product-form" className="space-y-6">
             {/* Section: Informations de base */}
             <div className="space-y-4">

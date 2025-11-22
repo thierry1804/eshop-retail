@@ -187,17 +187,17 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
   const trustDisplay = getTrustRatingDisplay(client.trust_rating);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-bold text-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-blue-600 font-bold text-base sm:text-lg">
                 {client.first_name[0]}{client.last_name[0]}
               </span>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
                 {client.first_name} {client.last_name}
               </h2>
               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${trustDisplay.className}`}>
@@ -205,24 +205,25 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
               </span>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <button
               onClick={exportToPDF}
-              className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
             >
-              <Download size={18} />
-              <span>Export PDF</span>
+              <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             >
-              <X size={24} />
+              <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6">
           {/* Client Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-3">

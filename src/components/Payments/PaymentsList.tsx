@@ -126,19 +126,19 @@ export const PaymentsList: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Suivi des Paiements</h1>
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-gray-500">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Suivi des Paiements</h1>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="text-xs sm:text-sm text-gray-500">
             Total: {formatCurrency(payments.reduce((sum, payment) => sum + payment.amount, 0))}
           </div>
           <button
             onClick={fetchPayments}
-            className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm sm:text-base"
           >
             <span>🔄</span>
-            <span>Actualiser</span>
+            <span className="hidden sm:inline">Actualiser</span>
           </button>
         </div>
       </div>
@@ -172,8 +172,68 @@ export const PaymentsList: React.FC = () => {
         </div>
       </div>
 
-      {/* Payments List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Payments List - Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredPayments.map((payment) => {
+          const methodDisplay = getPaymentMethodDisplay(payment.payment_method);
+          const client = payment.sale?.clients;
+          
+          return (
+            <div key={payment.id} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CreditCard size={16} className="text-green-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {client ? `${client.first_name || ''} ${client.last_name || ''}` : 'Client non trouvé'}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{client?.phone || 'Téléphone non disponible'}</div>
+                  </div>
+                </div>
+                <div className="text-lg font-bold text-green-600 ml-2 flex-shrink-0">
+                  {formatCurrency(payment.amount)}
+                </div>
+              </div>
+              <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Moyen:</span>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${methodDisplay.className}`}>
+                    {methodDisplay.label}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Date:</span>
+                  <div className="flex items-center space-x-1 text-gray-900">
+                    <Calendar size={12} className="text-gray-400" />
+                    <span>{new Date(payment.created_at).toLocaleDateString('fr-FR')}</span>
+                    <span className="text-gray-400">
+                      {new Date(payment.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                {payment.notes && (
+                  <div className="pt-1">
+                    <span className="text-gray-600">Notes: </span>
+                    <span className="text-gray-900">{payment.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {filteredPayments.length === 0 && (
+          <div className="text-center py-8 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500 text-sm">
+              {searchTerm || paymentMethodFilter !== 'all' ? 'Aucun paiement trouvé pour ces critères' : 'Aucun paiement enregistré'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Payments List - Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

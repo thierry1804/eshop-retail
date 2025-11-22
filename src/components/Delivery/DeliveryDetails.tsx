@@ -217,27 +217,27 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-lg p-3 sm:p-4 md:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* En-tête */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">
                 {t('deliveries.details.title')} - {delivery.delivery_number}
               </h2>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(delivery.status)}`}>
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${getStatusColor(delivery.status)}`}>
                 {getStatusText(delivery.status)}
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {editing ? (
               <>
                 <button

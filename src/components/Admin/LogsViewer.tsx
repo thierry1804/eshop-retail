@@ -165,20 +165,20 @@ export const LogsViewer: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">📊 Logs des Utilisateurs</h1>
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📊 Logs des Utilisateurs</h1>
         <button
           onClick={exportLogs}
-          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm sm:text-base whitespace-nowrap"
         >
-          <Download size={20} />
+          <Download size={18} className="sm:w-5 sm:h-5" />
           <span>Exporter CSV</span>
         </button>
       </div>
 
       {/* Filtres */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <input
@@ -221,7 +221,7 @@ export const LogsViewer: React.FC = () => {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="bg-white p-4 rounded-lg shadow-md">
           <div className="flex items-center">
             <Activity className="text-blue-600" size={24} />
@@ -260,8 +260,56 @@ export const LogsViewer: React.FC = () => {
         </div>
       </div>
 
-      {/* Liste des logs */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Liste des logs - Mobile Card View */}
+      <div className="lg:hidden space-y-3">
+        {filteredLogs.map((log) => (
+          <div key={log.id} className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">{log.user_email}</div>
+                <div className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString()}</div>
+              </div>
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${getActionColor(log.action)}`}>
+                {getActionIcon(log.action)}
+                <span className="ml-1 hidden sm:inline">{log.action}</span>
+              </span>
+            </div>
+            <div className="space-y-1 text-xs pt-2 border-t border-gray-100">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Page:</span>
+                <span className="text-gray-900">{log.page}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Composant:</span>
+                <span className="text-gray-900 truncate ml-2">{log.component}</span>
+              </div>
+              <div className="pt-1">
+                <span className="text-gray-600">Détails: </span>
+                <span className="text-gray-900 text-xs">{JSON.stringify(log.details).substring(0, 50)}...</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setSelectedLog(log);
+                    setShowDetails(true);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                >
+                  Voir les détails
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {filteredLogs.length === 0 && (
+          <div className="text-center py-8 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500 text-sm">Aucun log trouvé</p>
+          </div>
+        )}
+      </div>
+
+      {/* Liste des logs - Desktop Table View */}
+      <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

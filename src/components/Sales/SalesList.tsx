@@ -192,44 +192,44 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{t('sales.title')}</h1>
-                  <div className="flex items-center space-x-3">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('sales.title')}</h1>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowCalendar(!showCalendar)}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${showCalendar
+            className={`flex items-center space-x-2 px-2 sm:px-3 py-2 rounded-md transition-colors text-sm sm:text-base ${showCalendar
               ? 'bg-green-600 text-white hover:bg-green-700'
               : 'bg-gray-600 text-white hover:bg-gray-700'
               }`}
           >
-            <CalendarIcon size={20} />
-            <span>{showCalendar ? t('sales.calendar.hideCalendar') : t('sales.calendar.showCalendar')}</span>
+            <CalendarIcon size={18} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">{showCalendar ? t('sales.calendar.hideCalendar') : t('sales.calendar.showCalendar')}</span>
           </button>
 
-            <button
-              onClick={fetchSales}
-              className="flex items-center space-x-2 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-            >
-              <span>🔄</span>
-            <span>{t('app.refresh')}</span>
-            </button>
+          <button
+            onClick={fetchSales}
+            className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm sm:text-base"
+          >
+            <span>🔄</span>
+            <span className="hidden sm:inline">{t('app.refresh')}</span>
+          </button>
 
-            <button
-              onClick={() => {
-                setSelectedSale(null);
-                setShowForm(true);
-              }}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={20} />
+          <button
+            onClick={() => {
+              setSelectedSale(null);
+              setShowForm(true);
+            }}
+            className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
+          >
+            <Plus size={18} className="sm:w-5 sm:h-5" />
             <span>{t('sales.newSale')}</span>
-            </button>
-          </div>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -238,15 +238,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
               placeholder={t('sales.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
             />
           </div>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
           >
             <option value="all">{t('sales.filters.allStatuses')}</option>
             <option value="ongoing">{t('sales.status.ongoing')}</option>
@@ -257,15 +257,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             onChange={setDateFilter}
             salesByDate={salesByDate}
             placeholder={t('sales.filters.dateFilter')}
-            className="min-w-[150px]"
+            className="flex-1 sm:flex-none min-w-[150px]"
           />
           <button
             onClick={() => {
               setSearchTerm('');
               setStatusFilter('all');
-              setDateFilter(new Date().toISOString().split('T')[0]); // Reset à la date du jour
+              setDateFilter(new Date().toISOString().split('T')[0]);
             }}
-            className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+            className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm sm:text-base whitespace-nowrap"
           >
             {t('sales.filters.clearFilters')}
           </button>
@@ -336,8 +336,110 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
 
 
 
-      {/* Sales List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Sales List - Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredSales.map((sale) => {
+          const statusDisplay = getStatusDisplay(sale.status);
+          return (
+            <div key={sale.id} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-medium text-sm">
+                      {sale.client ? `${sale.client.first_name?.[0] || ''}${sale.client.last_name?.[0] || ''}` : 'NC'}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}` : t('sales.client.notFound')}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 ml-2">
+                  {sale.status === 'ongoing' && (
+                    <button
+                      onClick={() => {
+                        setSelectedSale(sale);
+                        setShowPaymentForm(true);
+                      }}
+                      className="text-green-600 hover:text-green-800 transition-colors p-1"
+                      title={t('sales.actions.addPayment')}
+                    >
+                      <CreditCard size={18} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleCreateDelivery(sale)}
+                    className="text-orange-600 hover:text-orange-800 transition-colors p-1"
+                    title={t('sales.actions.createDelivery')}
+                  >
+                    <Truck size={18} />
+                  </button>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => {
+                        setSelectedSale(sale);
+                        setShowForm(true);
+                      }}
+                      className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
+                      title={t('common.edit')}
+                    >
+                      <Edit size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="text-gray-900 line-clamp-2">{sale.description}</div>
+                <div className="space-y-1 pt-2 border-t border-gray-100">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{t('sales.amounts.total')}:</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(sale.total_amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{t('sales.amounts.deposit')}:</span>
+                    <span className="text-gray-500">{formatCurrency(sale.deposit)}</span>
+                  </div>
+                  {sale.total_payments && sale.total_payments > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-blue-600">Paiements:</span>
+                      <span className="text-blue-600">{formatCurrency(sale.total_payments)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{t('sales.amounts.remaining')}:</span>
+                    <span className={`font-medium ${sale.remaining_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatCurrency(sale.remaining_balance)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusDisplay.className}`}>
+                    {statusDisplay.label}
+                  </span>
+                  <span className="text-gray-500">
+                    {new Date(sale.created_at).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filteredSales.length === 0 && (
+          <div className="text-center py-8 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500">
+              {searchTerm || statusFilter !== 'all' ? t('sales.noSalesFound') : t('sales.noSales')}
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              {t('sales.summary.totalSales')}: {sales.length} | {t('sales.summary.filteredSales')}: {filteredSales.length}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Sales List - Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -434,7 +536,6 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                         >
                           <Truck size={18} />
                         </button>
-                        {/* Seuls les admins peuvent modifier les ventes */}
                         {user.role === 'admin' && (
                           <button
                             onClick={() => {

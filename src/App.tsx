@@ -319,7 +319,7 @@ function App() {
         setCurrentPage(page);
       }} onLogout={handleLogout} />
       <main className="md:ml-64">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 pt-16 md:pt-6 pb-3 sm:pb-4 md:pb-6">
           {renderCurrentPage()}
         </div>
       </main>

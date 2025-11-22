@@ -447,17 +447,17 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-        <div className="text-sm text-gray-500">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
+        <div className="text-xs sm:text-sm text-gray-500">
           {t('common.lastUpdate')}: {new Date().toLocaleString()}
         </div>
       </div>
 
       {/* Filtre de date */}
-      <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">
-        <div className="flex items-center space-x-4">
+      <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md border border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center space-x-2">
             <Filter size={20} className="text-gray-600" />
             <span className="text-sm font-medium text-gray-700">{t('dashboard.filters.dateRange')}:</span>
@@ -466,7 +466,7 @@ export const Dashboard: React.FC = () => {
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">{t('dashboard.filters.allTime')}</option>
             <option value="today">{t('dashboard.filters.today')}</option>
@@ -477,20 +477,20 @@ export const Dashboard: React.FC = () => {
           </select>
 
           {dateFilter === 'custom' && (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
               <input
                 type="date"
                 value={customDateRange.from}
                 onChange={(e) => setCustomDateRange(prev => ({ ...prev, from: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder={t('dashboard.filters.fromDate')}
               />
-              <span className="text-gray-500">-</span>
+              <span className="hidden sm:inline text-gray-500">-</span>
               <input
                 type="date"
                 value={customDateRange.to}
                 onChange={(e) => setCustomDateRange(prev => ({ ...prev, to: e.target.value }))}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder={t('dashboard.filters.toDate')}
               />
             </div>
@@ -545,11 +545,11 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Graphique d'évolution des ventes */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">{t('dashboard.chart.title')}</h2>
+      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('dashboard.chart.title')}</h2>
           {chartLoading && (
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
               <span>Chargement...</span>
             </div>
@@ -557,7 +557,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {chartData.length > 0 ? (
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -600,34 +600,34 @@ export const Dashboard: React.FC = () => {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-80 flex items-center justify-center text-gray-500">
+          <div className="h-64 sm:h-80 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium">{t('dashboard.chart.noData')}</p>
+              <p className="text-base sm:text-lg font-medium">{t('dashboard.chart.noData')}</p>
             </div>
           </div>
         )}
       </div>
 
       {/* Top Clients */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.topClients')}</h2>
-        <div className="space-y-3">
+      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-md">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.topClients')}</h2>
+        <div className="space-y-2 sm:space-y-3">
           {topClients.map((client) => (
-            <div key={client.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={client.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <Users size={20} className="text-blue-600" />
                 </div>
-                <div>
-                  <p className="font-medium text-gray-900">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">
                     {client.first_name} {client.last_name}
                   </p>
-                  <p className="text-sm text-gray-500">{client.phone}</p>
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">{client.phone}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-gray-900">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 sm:text-right">
+                <p className="font-semibold text-gray-900 text-sm sm:text-base">
                   {formatCurrency(client.total_purchases)}
                 </p>
                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTrustRatingColor(client.trust_rating)}`}>
