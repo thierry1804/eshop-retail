@@ -4,3 +4,4 @@
 ALTER TABLE tracking_numbers 
 ALTER COLUMN volume_m3 TYPE DECIMAL(10,6);
 
+

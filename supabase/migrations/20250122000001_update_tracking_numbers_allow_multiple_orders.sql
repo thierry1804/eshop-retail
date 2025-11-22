@@ -22,3 +22,4 @@ ON tracking_numbers(tracking_number, purchase_order_id);
 -- Ajouter un commentaire pour clarifier la relation
 COMMENT ON TABLE tracking_numbers IS 'Un tracking number peut être associé à une ou plusieurs commandes d''achat';
 
+

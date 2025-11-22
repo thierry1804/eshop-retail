@@ -281,6 +281,7 @@ export interface Receipt {
   status: 'draft' | 'partial' | 'complete';
   total_amount: number;
   currency: string;
+  exchange_rate_mga?: number;
   notes?: string;
   created_by: string;
   updated_by?: string;
@@ -298,6 +299,7 @@ export interface ReceiptItem {
   quantity_received: number;
   unit_price: number;
   total_price: number;
+  transit_cost?: number; // Frais de transit calculé automatiquement
   batch_number?: string;
   expiry_date?: string;
   notes?: string;

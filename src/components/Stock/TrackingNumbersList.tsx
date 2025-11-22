@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { TrackingNumber, User } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingRows, setEditingRows] = useState<Map<string, Partial<TrackingNumber>>>(new Map());
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     syncAndFetchTrackingNumbers();
@@ -188,6 +189,82 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     });
   };
 
+  // Fonction pour scroller automatiquement vers un élément lorsqu'il reçoit le focus
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const target = e.currentTarget;
+    const scrollContainer = tableContainerRef.current;
+    
+    if (!scrollContainer) return;
+    
+    // Utiliser requestAnimationFrame pour s'assurer que le DOM est à jour
+    requestAnimationFrame(() => {
+      // Double requestAnimationFrame pour s'assurer que le layout est complètement calculé
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const inputRect = target.getBoundingClientRect();
+          const cell = target.closest('td');
+          
+          if (!cell) return;
+          
+          // Marge importante pour s'assurer que le champ entier est visible avec de l'espace
+          const margin = 50;
+          const containerWidth = scrollContainer.clientWidth;
+          const cellOffsetLeft = cell.offsetLeft;
+          const cellRect = cell.getBoundingClientRect();
+          
+          // Calculer la position de l'input par rapport à la cellule
+          const inputOffsetInCell = inputRect.left - cellRect.left;
+          const inputWidth = inputRect.width;
+          const inputRightInCell = inputOffsetInCell + inputWidth;
+          
+          // Vérifier si l'input est ENTIÈREMENT visible dans le conteneur (avec marge)
+          const isFullyVisible = 
+            inputRect.left >= containerRect.left + margin &&
+            inputRect.right <= containerRect.right - margin &&
+            inputRect.top >= containerRect.top &&
+            inputRect.bottom <= containerRect.bottom;
+          
+          if (!isFullyVisible) {
+            let newScrollLeft = scrollContainer.scrollLeft;
+            
+            // Si l'input est partiellement ou complètement caché à gauche
+            if (inputRect.left < containerRect.left + margin) {
+              // Positionner pour que l'input soit entièrement visible à gauche avec marge
+              // Calculer la position absolue de l'input dans le conteneur scrollable
+              newScrollLeft = cellOffsetLeft + inputOffsetInCell - margin;
+            }
+            // Si l'input est partiellement ou complètement caché à droite
+            else if (inputRect.right > containerRect.right - margin) {
+              // Positionner pour que l'input soit entièrement visible à droite avec marge
+              newScrollLeft = cellOffsetLeft + inputRightInCell - containerWidth + margin;
+            }
+            // Si l'input est visible mais trop proche des bords
+            else {
+              // Centrer l'input dans le viewport pour une meilleure visibilité
+              const inputCenterInCell = inputOffsetInCell + (inputWidth / 2);
+              newScrollLeft = cellOffsetLeft + inputCenterInCell - (containerWidth / 2);
+            }
+            
+            // S'assurer que le scroll ne dépasse pas les limites
+            const maxScroll = Math.max(0, scrollContainer.scrollWidth - containerWidth);
+            newScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
+            
+            // Toujours scroller si nécessaire
+            const currentScroll = scrollContainer.scrollLeft;
+            if (Math.abs(newScrollLeft - currentScroll) > 1) {
+              // Scroller de manière fluide
+              scrollContainer.scrollTo({
+                left: newScrollLeft,
+                behavior: 'smooth'
+              });
+            }
+          }
+        }, 150); // Délai pour laisser le navigateur traiter le focus
+      });
+    });
+  };
+
   const handleSave = async (tn: TrackingNumber) => {
     const editedData = editingRows.get(tn.id);
     if (!editedData) return;
@@ -331,7 +408,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
       {/* Tableau */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        <div ref={tableContainerRef} className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -404,6 +481,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             min="0"
                             value={displayData.length || ''}
                             onChange={(e) => handleFieldChange(tn.id, 'length', e.target.value)}
+                            onFocus={handleInputFocus}
                             placeholder="L"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                           />
@@ -414,6 +492,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             min="0"
                             value={displayData.width || ''}
                             onChange={(e) => handleFieldChange(tn.id, 'width', e.target.value)}
+                            onFocus={handleInputFocus}
                             placeholder="l"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                           />
@@ -424,6 +503,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             min="0"
                             value={displayData.height || ''}
                             onChange={(e) => handleFieldChange(tn.id, 'height', e.target.value)}
+                            onFocus={handleInputFocus}
                             placeholder="H"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                           />
@@ -440,6 +520,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                           min="0"
                           value={displayData.weight_kg || ''}
                           onChange={(e) => handleFieldChange(tn.id, 'weight_kg', e.target.value)}
+                          onFocus={handleInputFocus}
                           placeholder="0.00"
                           className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                         />
@@ -453,6 +534,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             min="0"
                             value={displayData.rate_per_m3 || ''}
                             onChange={(e) => handleFieldChange(tn.id, 'rate_per_m3', e.target.value)}
+                            onFocus={handleInputFocus}
                             placeholder="USD/m³"
                             className="w-24 px-2 py-1 border border-gray-300 rounded text-xs"
                           />
@@ -462,6 +544,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             min="0"
                             value={displayData.rate_per_kg || ''}
                             onChange={(e) => handleFieldChange(tn.id, 'rate_per_kg', e.target.value)}
+                            onFocus={handleInputFocus}
                             placeholder="USD/kg"
                             className="w-24 px-2 py-1 border border-gray-300 rounded text-xs"
                           />
@@ -474,6 +557,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                           min="0"
                           value={displayData.exchange_rate_mga || ''}
                           onChange={(e) => handleFieldChange(tn.id, 'exchange_rate_mga', e.target.value)}
+                          onFocus={handleInputFocus}
                           placeholder="Taux"
                           className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
                         />
@@ -488,6 +572,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                         <select
                           value={displayData.status}
                           onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
+                          onFocus={handleInputFocus}
                           className="text-sm border border-gray-300 rounded px-2 py-1"
                         >
                           <option value="pending">{t('tracking.status.pending')}</option>

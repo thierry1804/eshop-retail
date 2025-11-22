@@ -177,6 +177,8 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
     is_active: true
   });
   const [loading, setLoading] = useState(false);
+  const [minCost, setMinCost] = useState<number | null>(null);
+  const [loadingMinCost, setLoadingMinCost] = useState(false);
 
   useEffect(() => {
     if (price) {
@@ -189,16 +191,49 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
         is_active: price.is_active
       });
     }
-  }, [price]);
+    fetchMinimumCost();
+  }, [product.id, price]);
+
+  const fetchMinimumCost = async () => {
+    try {
+      setLoadingMinCost(true);
+      // Appeler la fonction SQL pour obtenir le coût minimum
+      const { data, error } = await supabase.rpc('get_product_minimum_cost', {
+        product_uuid: product.id
+      });
+      
+      if (!error && data !== null) {
+        setMinCost(data);
+      } else {
+        setMinCost(null);
+      }
+    } catch (error) {
+      console.error('Erreur lors du calcul du coût minimum:', error);
+      setMinCost(null);
+    } finally {
+      setLoadingMinCost(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const priceValue = parseFloat(formData.price);
+    
+    // Vérifier si le prix est inférieur au coût minimum
+    if (minCost !== null && minCost > 0 && priceValue < minCost) {
+      const confirmMessage = `Le prix de vente (${priceValue.toLocaleString()} MGA) est inférieur au coût minimum (${minCost.toFixed(2)} MGA = prix d'achat + frais de transit).\n\nVoulez-vous continuer quand même ?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    }
+    
     setLoading(true);
     try {
       const data = {
         product_id: product.id,
         price_type: formData.price_type,
-        price: parseFloat(formData.price),
+        price: priceValue,
         currency: formData.currency,
         valid_from: formData.valid_from,
         valid_to: formData.valid_to || null,
@@ -219,9 +254,14 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
         if (error) throw error;
       }
       onSave();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la sauvegarde du prix:', error);
-      alert('Erreur lors de la sauvegarde du prix');
+      // Afficher le message d'erreur SQL si disponible
+      if (error.message && error.message.includes('ne peut pas être inférieur')) {
+        alert(error.message);
+      } else {
+        alert('Erreur lors de la sauvegarde du prix');
+      }
     } finally {
       setLoading(false);
     }
@@ -254,11 +294,32 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 required
                 value={formData.price}
                 onChange={(e) => setFormData({...formData, price: e.target.value})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                className={`mt-1 block w-full border rounded-md px-3 py-2 ${
+                  minCost !== null && minCost > 0 && parseFloat(formData.price || '0') < minCost
+                    ? 'border-red-500 bg-red-50'
+                    : 'border-gray-300'
+                }`}
               />
+              {loadingMinCost ? (
+                <p className="text-xs text-gray-500 mt-1">Calcul du coût minimum...</p>
+              ) : minCost !== null && minCost > 0 ? (
+                <div className="mt-1">
+                  <p className={`text-xs ${
+                    parseFloat(formData.price || '0') < minCost ? 'text-red-600 font-semibold' : 'text-gray-600'
+                  }`}>
+                    Coût minimum: {minCost.toFixed(2)} MGA (prix d'achat + frais de transit)
+                  </p>
+                  {parseFloat(formData.price || '0') < minCost && (
+                    <p className="text-xs text-red-600 mt-1">
+                      ⚠️ Le prix est inférieur au coût minimum. La sauvegarde sera bloquée.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">{t('stock.prices.currency')}</label>
