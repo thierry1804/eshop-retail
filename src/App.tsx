@@ -10,6 +10,7 @@ import { LogsViewer } from './components/Admin/LogsViewer';
 import { ReferentialsManager } from './components/Admin/ReferentialsManager';
 import ExpensesList from './components/Expenses/ExpensesList';
 import { ProductsList } from './components/Stock/ProductsList';
+import { TrackingNumbersList } from './components/Stock/TrackingNumbersList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
 import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
 import { CreatePurchaseOrderPage } from './components/Supply/CreatePurchaseOrderPage';
@@ -250,6 +251,8 @@ function App() {
         return <ExpensesList />;
       case 'stock':
         return user ? <ProductsList user={user} /> : null;
+      case 'tracking':
+        return user ? <TrackingNumbersList user={user} /> : null;
       case 'deliveries':
         return user ? <DeliveriesList user={user} /> : null;
       case 'supply':

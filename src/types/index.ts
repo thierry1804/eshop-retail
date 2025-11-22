@@ -305,6 +305,33 @@ export interface ReceiptItem {
   updated_at: string;
 }
 
+export interface TrackingNumber {
+  id: string;
+  purchase_order_id: string;  // Première commande comme référence
+  purchase_order_number?: string;  // Pour l'affichage (jointure) - déprécié
+  supplier_name?: string;  // Pour l'affichage (jointure) - déprécié
+  tracking_number: string;
+  orderCount?: number;  // Nombre de commandes associées à ce tracking number
+  length?: number;
+  width?: number;
+  height?: number;
+  volume_m3?: number;
+  weight_kg?: number;
+  rate_per_m3?: number;
+  rate_per_kg?: number;
+  exchange_rate_mga?: number;
+  cost_by_volume_usd?: number;
+  cost_by_weight_usd?: number;
+  total_cost_usd?: number;
+  total_cost_mga?: number;
+  status: 'pending' | 'in_transit' | 'arrived' | 'received';
+  notes?: string;
+  created_by: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DeliveryStats {
   total_deliveries: number;
   pending_deliveries: number;

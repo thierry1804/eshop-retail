@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video, Settings } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video, Settings, PackageSearch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -27,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'stock': 'inventory',
       'supply': 'inventory',
       'deliveries': 'inventory',
+      'tracking': 'inventory',
       'expenses': 'finance',
       'logs': 'admin'
     };
@@ -91,6 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
         { id: 'stock', label: t('navigation.stock'), icon: Package, group: 'inventory' },
         { id: 'supply', label: t('navigation.supply'), icon: ShoppingBag, group: 'inventory' },
         { id: 'deliveries', label: t('navigation.deliveries'), icon: Truck, group: 'inventory' },
+        { id: 'tracking', label: t('navigation.tracking'), icon: PackageSearch, group: 'inventory' },
 
         // 💰 FINANCE (comptabilité)
         { id: 'expenses', label: t('navigation.expenses'), icon: Receipt, group: 'finance' },
