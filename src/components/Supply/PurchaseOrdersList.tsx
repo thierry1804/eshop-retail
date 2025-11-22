@@ -115,7 +115,10 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
       expectedDate.setHours(0, 0, 0, 0);
       return expectedDate < today && order.status !== 'received' && order.status !== 'cancelled';
     }).length,
-    ordered: filteredOrders.filter(order => order.status === 'ordered').length,
+    totalItemsOrdered: filteredOrders.reduce((sum, order) => {
+      const items = order.purchase_order_items || [];
+      return sum + items.reduce((itemSum: number, item: any) => itemSum + (item.quantity_ordered || 0), 0);
+    }, 0),
   };
 
   // Devise la plus utilisée (ou MGA par défaut)
@@ -197,8 +200,8 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
         <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.ordered') || 'Commandées'}</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.ordered}</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalItemsOrdered') || 'Articles commandés'}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.totalItemsOrdered}</p>
             </div>
             <div className="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
               <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />

@@ -663,6 +663,7 @@
     "createFirstOrder": "Créer la première commande",
     "totalOrders": "Total commandes",
     "ordered": "Commandées",
+    "totalItemsOrdered": "Articles commandés",
     "overdue": "En retard",
     "itemsToReceive": "Articles à recevoir",
     "noItemsToReceive": "Aucun article à recevoir",
