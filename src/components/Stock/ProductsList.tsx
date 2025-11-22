@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, Image as ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
@@ -19,6 +19,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchProducts();
@@ -181,7 +182,20 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <Package className="h-8 w-8 text-gray-400 mr-3" />
+                        {product.image_url && !imageErrors[product.id] ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-10 w-10 object-cover rounded-md border border-gray-300 mr-3 flex-shrink-0"
+                            onError={() => {
+                              setImageErrors(prev => ({ ...prev, [product.id]: true }));
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center mr-3 flex-shrink-0">
+                            <Package className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
                         <div>
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
                           <div className="text-sm text-gray-500">{product.category?.name || 'Sans catégorie'}</div>

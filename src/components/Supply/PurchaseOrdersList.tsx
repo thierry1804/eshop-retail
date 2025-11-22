@@ -47,7 +47,11 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
             quantity_ordered,
             quantity_received,
             unit_price,
-            total_price
+            total_price,
+            products (
+              name,
+              sku
+            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -63,9 +67,22 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Recherche dans les champs de base de la commande
+    const matchesOrderFields = order.order_number.toLowerCase().includes(searchLower) ||
+                               order.supplier_name?.toLowerCase().includes(searchLower) ||
+                               order.tracking_number?.toLowerCase().includes(searchLower);
+    
+    // Recherche dans les produits de la commande
+    const matchesProduct = order.purchase_order_items?.some((item: any) => {
+      const product = Array.isArray(item.products) ? item.products[0] : item.products;
+      if (!product) return false;
+      return product.name?.toLowerCase().includes(searchLower) ||
+             product.sku?.toLowerCase().includes(searchLower);
+    }) || false;
+    
+    const matchesSearch = matchesOrderFields || matchesProduct;
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -208,7 +225,7 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder={t('supply.searchOrders')}
+                placeholder={t('supply.searchOrders') + ' (numéro, fournisseur, produit, SKU...)'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

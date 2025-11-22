@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, PurchaseOrderItem, Product, User } from '../../types';
-import { X, Edit, Package, Calendar, DollarSign, Truck, CheckCircle, Plus, Search } from 'lucide-react';
+import { X, Edit, Package, Calendar, DollarSign, Truck, CheckCircle, Plus, Search, Image as ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ReceiptForm } from './ReceiptForm';
 import { ProductQuickCreate } from './ProductQuickCreate';
@@ -25,6 +25,8 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [totalAmount, setTotalAmount] = useState(order.total_amount);
   const [editingPrices, setEditingPrices] = useState<Record<string, string>>({});
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [productImages, setProductImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchOrderItems();
@@ -42,7 +44,8 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
           products (
             name,
             sku,
-            unit
+            unit,
+            image_url
           )
         `)
         .eq('purchase_order_id', order.id);
@@ -51,8 +54,16 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
       
       // Mapper les données de la jointure vers product_name et product_sku
       // Supabase peut retourner products comme un objet ou un tableau selon la relation
+      const imagesMap: Record<string, string> = {};
       const mappedItems = (data || []).map((item: any) => {
         const product = Array.isArray(item.products) ? item.products[0] : item.products;
+        const productImageUrl = product?.image_url;
+        
+        // Stocker l'image du produit si elle existe
+        if (productImageUrl && item.product_id) {
+          imagesMap[item.product_id] = productImageUrl;
+        }
+        
         return {
           ...item,
           product_name: product?.name || '',
@@ -60,6 +71,7 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
         };
       });
       
+      setProductImages(imagesMap);
       setItems(mappedItems);
     } catch (error) {
       console.error('Erreur lors du chargement des articles:', error);
@@ -429,12 +441,29 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                     return (
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {item.product_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              SKU: {item.product_sku}
+                          <div className="flex items-center gap-3">
+                            {/* Image du produit */}
+                            {productImages[item.product_id] && !imageErrors[item.product_id] ? (
+                              <img
+                                src={productImages[item.product_id]}
+                                alt={item.product_name}
+                                className="h-12 w-12 object-cover rounded-md border border-gray-300 flex-shrink-0"
+                                onError={() => {
+                                  setImageErrors(prev => ({ ...prev, [item.product_id]: true }));
+                                }}
+                              />
+                            ) : (
+                              <div className="h-12 w-12 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center flex-shrink-0">
+                                <ImageIcon className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.product_name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                SKU: {item.product_sku}
+                              </div>
                             </div>
                           </div>
                         </td>

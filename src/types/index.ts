@@ -117,6 +117,7 @@ export interface Product {
   reserved_stock: number;
   available_stock: number;
   status: 'active' | 'inactive' | 'discontinued';
+  image_url?: string;
   created_at: string;
   updated_at: string;
   created_by: string;

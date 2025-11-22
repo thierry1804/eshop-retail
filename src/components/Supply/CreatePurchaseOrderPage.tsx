@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrderItem, Product, User } from '../../types';
 import { ArrowLeft, Plus, Trash2, Package, Search, X } from 'lucide-react';
@@ -27,13 +27,65 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showProductSearch, setShowProductSearch] = useState(false);
   const [showProductCreate, setShowProductCreate] = useState(false);
   const [showSupplierCreate, setShowSupplierCreate] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState<Product[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Raccourcis clavier
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S ou Cmd+S pour sauvegarder
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (items.length > 0 && !loading) {
+          const form = document.querySelector('form');
+          if (form) {
+            form.requestSubmit();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [items.length, loading]);
+
+  // Mise à jour des suggestions de recherche
+  useEffect(() => {
+    if (productSearchTerm.trim().length > 0) {
+      const filtered = products.filter(product => {
+        const searchLower = productSearchTerm.toLowerCase();
+        return (
+          product.name.toLowerCase().includes(searchLower) ||
+          product.sku.toLowerCase().includes(searchLower)
+        );
+      }).slice(0, 8); // Limiter à 8 suggestions
+      setSearchSuggestions(filtered);
+    } else {
+      setSearchSuggestions([]);
+    }
+    setSelectedSuggestionIndex(-1);
+  }, [productSearchTerm, products]);
+
+  // Fermer les suggestions quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setSearchSuggestions([]);
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchData = async () => {
@@ -59,11 +111,56 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
     }
   };
 
-  const addItem = (product: Product) => {
+  // Récupérer le dernier prix pour un produit et un fournisseur
+  const getLastPrice = async (productId: string, supplierId: string): Promise<number> => {
+    if (!supplierId) return 0;
+    
+    try {
+      // D'abord, récupérer les commandes du fournisseur
+      const { data: orders, error: ordersError } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('supplier_id', supplierId)
+        .order('created_at', { ascending: false })
+        .limit(10); // Limiter à 10 dernières commandes pour performance
+
+      if (ordersError || !orders || orders.length === 0) return 0;
+
+      const orderIds = orders.map(o => o.id);
+
+      // Ensuite, récupérer les items de ces commandes pour ce produit
+      const { data: items, error: itemsError } = await supabase
+        .from('purchase_order_items')
+        .select('unit_price, created_at')
+        .eq('product_id', productId)
+        .in('purchase_order_id', orderIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (itemsError || !items) return 0;
+      return items.unit_price || 0;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du prix:', error);
+      return 0;
+    }
+  };
+
+  const addItem = async (product: Product, quantity: number = 1) => {
     const existingItem = items.find(item => item.product_id === product.id);
     if (existingItem) {
-      alert('Ce produit est déjà dans la commande');
+      // Si le produit existe déjà, augmenter la quantité
+      const index = items.findIndex(item => item.product_id === product.id);
+      updateItem(index, 'quantity_ordered', existingItem.quantity_ordered + quantity);
+      setProductSearchTerm('');
+      setSearchSuggestions([]);
       return;
+    }
+
+    // Récupérer le dernier prix si un fournisseur est sélectionné
+    let suggestedPrice = 0;
+    if (formData.supplier_id) {
+      suggestedPrice = await getLastPrice(product.id, formData.supplier_id);
     }
 
     const newItem: PurchaseOrderItem = {
@@ -72,18 +169,59 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
       product_id: product.id,
       product_name: product.name,
       product_sku: product.sku,
-      quantity_ordered: 1,
+      quantity_ordered: quantity,
       quantity_received: 0,
-      unit_price: 0,
-      total_price: 0,
+      unit_price: suggestedPrice,
+      total_price: suggestedPrice * quantity,
       notes: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     setItems([...items, newItem]);
-    setShowProductSearch(false);
     setProductSearchTerm('');
+    setSearchSuggestions([]);
+    
+    // Remettre le focus sur la recherche
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  };
+
+  // Gérer la recherche par SKU direct
+  const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // Si une suggestion est sélectionnée, l'ajouter
+      if (selectedSuggestionIndex >= 0 && searchSuggestions[selectedSuggestionIndex]) {
+        await addItem(searchSuggestions[selectedSuggestionIndex]);
+        return;
+      }
+
+      // Sinon, chercher par SKU exact
+      const exactMatch = products.find(
+        p => p.sku.toLowerCase() === productSearchTerm.trim().toLowerCase()
+      );
+      
+      if (exactMatch) {
+        await addItem(exactMatch);
+      } else if (searchSuggestions.length > 0) {
+        // Prendre le premier résultat
+        await addItem(searchSuggestions[0]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev < searchSuggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Escape') {
+      setSearchSuggestions([]);
+      setProductSearchTerm('');
+    }
   };
 
   const handleProductCreated = (product: Product) => {
@@ -187,10 +325,6 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
   };
 
   const totalAmount = items.reduce((sum, item) => sum + item.total_price, 0);
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(productSearchTerm.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
@@ -322,24 +456,68 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{t('supply.items')}</h3>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowProductSearch(true)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('supply.addExistingItem')}
-                </button>
+            </div>
+
+            {/* Barre de recherche inline */}
+            <div className="mb-4 relative" ref={searchContainerRef}>
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Rechercher un produit par nom ou SKU (appuyez sur Entrée pour ajouter)"
+                    value={productSearchTerm}
+                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    onFocus={() => {
+                      if (productSearchTerm.trim().length > 0) {
+                        const filtered = products.filter(product => {
+                          const searchLower = productSearchTerm.toLowerCase();
+                          return (
+                            product.name.toLowerCase().includes(searchLower) ||
+                            product.sku.toLowerCase().includes(searchLower)
+                          );
+                        }).slice(0, 8);
+                        setSearchSuggestions(filtered);
+                      }
+                    }}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowProductCreate(true)}
-                  className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 flex items-center gap-1 text-sm"
+                  className="bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 flex items-center gap-2 whitespace-nowrap"
+                  title="Créer un nouveau produit"
                 >
-                  <Package className="h-4 w-4" />
-                  {t('supply.createNewProduct')}
+                  <Package className="h-5 w-5" />
+                  <span className="hidden sm:inline">Nouveau produit</span>
                 </button>
               </div>
+
+              {/* Suggestions de recherche */}
+              {searchSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto">
+                  {searchSuggestions.map((product, index) => (
+                    <div
+                      key={product.id}
+                      onClick={() => addItem(product)}
+                      className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 ${
+                        index === selectedSuggestionIndex ? 'bg-blue-50' : ''
+                      } ${index === searchSuggestions.length - 1 ? 'border-b-0' : ''}`}
+                    >
+                      <div className="font-medium text-gray-900">{product.name}</div>
+                      <div className="text-sm text-gray-500">SKU: {product.sku}</div>
+                      {product.current_stock !== undefined && (
+                        <div className="text-xs text-gray-400">
+                          Stock: {product.current_stock} {product.unit}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {items.length === 0 ? (
@@ -372,21 +550,41 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
                           type="number"
                           min="1"
                           value={item.quantity_ordered}
-                          onChange={(e) => updateItem(index, 'quantity_ordered', parseInt(e.target.value))}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 1;
+                            updateItem(index, 'quantity_ordered', val);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const nextInput = e.currentTarget.parentElement?.parentElement?.querySelector('input[type="number"][step="0.01"]') as HTMLInputElement;
+                              nextInput?.focus();
+                            }
+                          }}
                           className="w-full border border-gray-300 rounded-md px-3 py-2"
+                          autoFocus={index === items.length - 1 && item.quantity_ordered === 1}
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           {t('supply.unitPrice')}
+                          {item.unit_price > 0 && (
+                            <span className="text-xs text-gray-500 ml-1">(suggéré)</span>
+                          )}
                         </label>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={item.unit_price}
-                          onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                          onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && index === items.length - 1) {
+                              e.preventDefault();
+                              searchInputRef.current?.focus();
+                            }
+                          }}
                           className="w-full border border-gray-300 rounded-md px-3 py-2"
                         />
                       </div>
@@ -446,68 +644,6 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
         </form>
       </div>
 
-      {/* Modal de recherche de produits */}
-      {showProductSearch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
-                <button
-                  onClick={() => {
-                    setShowProductSearch(false);
-                    setProductSearchTerm('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="mt-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder={t('supply.searchProducts')}
-                    value={productSearchTerm}
-                    onChange={(e) => setProductSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="mt-3">
-                  <button
-                    onClick={() => {
-                      setShowProductSearch(false);
-                      setShowProductCreate(true);
-                    }}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
-                  >
-                    <Package className="h-4 w-4" />
-                    {t('supply.createNewProduct')}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
-              <div className="space-y-2">
-                {filteredProducts.map(product => (
-                  <div
-                    key={product.id}
-                    onClick={() => addItem(product)}
-                    className="p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-sm text-gray-500">SKU: {product.sku}</div>
-                    <div className="text-sm text-gray-500">
-                      Stock: {product.current_stock} {product.unit}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal de création rapide de produit */}
       {showProductCreate && (

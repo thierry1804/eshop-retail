@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, ProductPrice, StockMovement } from '../../types';
-import { Package, Edit, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Package, Edit, Plus, TrendingUp, TrendingDown, Image as ImageIcon } from 'lucide-react';
 import { ProductPrices } from './ProductPrices';
 import { StockMovements } from './StockMovements';
 
@@ -17,9 +17,11 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'details' | 'prices' | 'movements'>('details');
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     fetchProductData();
+    setImageError(false); // Réinitialiser l'erreur d'image quand le produit change
   }, [product.id]);
 
   const fetchProductData = async () => {
@@ -49,11 +51,28 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center">
-            <Package className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <h2 className="text-2xl font-bold">{product.name}</h2>
-              <p className="text-gray-600">SKU: {product.sku}</p>
+          <div className="flex items-start gap-4">
+            {/* Image du produit */}
+            {product.image_url && !imageError ? (
+              <div className="flex-shrink-0">
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-24 h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
+                  onError={() => setImageError(true)}
+                />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 w-24 h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                <ImageIcon className="h-12 w-12 text-gray-400" />
+              </div>
+            )}
+            <div className="flex items-center">
+              <Package className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <h2 className="text-2xl font-bold">{product.name}</h2>
+                <p className="text-gray-600">SKU: {product.sku}</p>
+              </div>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -115,6 +134,20 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
             {/* Informations générales */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Informations générales</h3>
+              
+              {/* Image en grand si disponible */}
+              {product.image_url && !imageError && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full max-w-md mx-auto rounded-lg shadow-md object-cover"
+                    style={{ maxHeight: '400px' }}
+                    onError={() => setImageError(true)}
+                  />
+                </div>
+              )}
+              
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div><strong>Description:</strong> {product.description || 'Aucune'}</div>
                 <div><strong>Code-barres:</strong> {product.barcode || 'Aucun'}</div>
