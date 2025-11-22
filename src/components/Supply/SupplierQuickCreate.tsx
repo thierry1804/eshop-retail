@@ -76,8 +76,8 @@ export const SupplierQuickCreate: React.FC<SupplierQuickCreateProps> = ({ onClos
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80]">
+      <div className="bg-white rounded-lg w-full max-w-md z-[81]">
         <div className="flex justify-between items-center p-6 border-b">
           <h3 className="text-lg font-bold flex items-center">
             <Building2 className="h-5 w-5 mr-2" />
