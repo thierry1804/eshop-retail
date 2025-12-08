@@ -297,6 +297,7 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
                 min="0"
                 required
                 value={formData.price}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setFormData({...formData, price: e.target.value})}
                 className={`mt-1 block w-full border rounded-md px-3 py-2 ${
                   minCost !== null && minCost > 0 && parseFloat(formData.price || '0') < minCost

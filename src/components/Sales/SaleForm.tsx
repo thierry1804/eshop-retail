@@ -27,11 +27,31 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const clientSearchRef = useRef<HTMLDivElement>(null);
+  // Fonction pour obtenir la date du jour au format YYYY-MM-DD
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Fonction pour convertir une date ISO en format YYYY-MM-DD
+  const isoToDateString = (isoString: string) => {
+    if (!isoString) return getTodayDateString();
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     client_id: sale?.client_id || '',
     description: sale?.description || '',
     total_amount: sale?.total_amount || 0,
     deposit: sale?.deposit || 0,
+    sale_date: sale?.created_at ? isoToDateString(sale.created_at) : getTodayDateString(),
   });
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +72,11 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     setIsVisible(true);
     // Charger les clients en arrière-plan
     fetchClients();
-  }, []);
+    // Charger les articles de vente si on modifie une vente existante
+    if (sale?.id) {
+      fetchSaleItems();
+    }
+  }, [sale?.id]);
 
   // Effet pour filtrer les clients selon le terme de recherche
   useEffect(() => {
@@ -107,6 +131,37 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       setClients((data as Client[]) || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
+    }
+  };
+
+  const fetchSaleItems = async () => {
+    if (!sale?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', sale.id)
+        .order('created_at');
+
+      if (error) throw error;
+
+      // Convertir les articles de la base de données au format SaleItem
+      const items: SaleItem[] = (data || []).map((item: any) => ({
+        id: item.id,
+        article_id: item.article_id || undefined,
+        product_name: item.product_name || item.name,
+        sku: item.code || undefined,
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price),
+        total_price: Number(item.total_price || item.total_amount),
+        isNewProduct: false
+      }));
+
+      setSaleItems(items);
+    } catch (error) {
+      console.error('Error fetching sale items:', error);
+      setError('Erreur lors du chargement des articles de vente');
     }
   };
 
@@ -267,6 +322,13 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         }
       }
 
+      // Convertir la date sélectionnée en ISO string avec l'heure de minuit (fuseau horaire local)
+      // formData.sale_date est au format YYYY-MM-DD
+      const [year, month, day] = formData.sale_date.split('-').map(Number);
+      const saleDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+      // Convertir en ISO string en préservant la date locale
+      const saleDateISO = saleDate.toISOString();
+
       if (sale) {
         // Update existing sale
         const updateData = {
@@ -276,6 +338,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
           deposit: formData.deposit,
           remaining_balance: remainingBalance,
           status,
+          created_at: saleDateISO,
         };
 
         const { error } = await (supabase as any)
@@ -284,14 +347,73 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
           .eq('id', sale.id);
         
         if (error) throw error;
+
+        // Récupérer les articles existants
+        const { data: existingItems, error: fetchItemsError } = await supabase
+          .from('sale_items')
+          .select('id')
+          .eq('sale_id', sale.id);
+
+        if (fetchItemsError) throw fetchItemsError;
+
+        const existingItemIds = new Set((existingItems || []).map((item: any) => item.id));
+        const currentItemIds = new Set(saleItems.filter(item => item.id).map(item => item.id));
+
+        // Supprimer les articles qui ne sont plus dans la liste
+        const itemsToDelete = Array.from(existingItemIds).filter(id => !currentItemIds.has(id));
+        if (itemsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('sale_items')
+            .delete()
+            .in('id', itemsToDelete);
+          
+          if (deleteError) throw deleteError;
+        }
+
+        // Mettre à jour ou créer les articles
+        for (const item of saleItems) {
+          if (item.id && existingItemIds.has(item.id)) {
+            // Mettre à jour l'article existant
+            const { error: updateError } = await supabase
+              .from('sale_items')
+              .update({
+                article_id: item.article_id,
+                product_name: item.product_name,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total_price: item.total_price
+              } as any)
+              .eq('id', item.id);
+            
+            if (updateError) throw updateError;
+          } else {
+            // Créer un nouvel article
+            const { error: insertError } = await supabase
+              .from('sale_items')
+              .insert({
+                sale_id: sale.id,
+                article_id: item.article_id,
+                product_name: item.product_name,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total_price: item.total_price
+              } as any);
+            
+            if (insertError) throw insertError;
+          }
+        }
       } else {
         // Create new sale
         const { data: saleData, error } = await supabase
           .from('sales')
           .insert({
-            ...formData,
+            client_id: formData.client_id,
+            description: formData.description,
+            total_amount: formData.total_amount,
+            deposit: formData.deposit,
             remaining_balance: remainingBalance,
             status,
+            created_at: saleDateISO,
             created_by: userProfileId,
           } as any)
           .select()
@@ -304,11 +426,10 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
           const saleItemsData = saleItems.map(item => ({
             sale_id: (saleData as any).id,
             article_id: item.article_id,
-            name: item.product_name,
-            code: item.sku || `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // SKU de l'article ou temporaire
+            product_name: item.product_name,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            total_amount: item.total_price
+            total_price: item.total_price
           }));
 
           const { error: itemsError } = await supabase
@@ -431,20 +552,36 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
               </div>
             )}
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
-                  Client *
+            {/* Date et Client sur une seule ligne */}
+            <div className="grid grid-cols-12 gap-4">
+              {/* Champ Date - prend 3 colonnes */}
+              <div className="col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date de la vente
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowNewClientForm(!showNewClientForm)}
-                  className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  <Plus size={16} />
-                  <span>Nouveau client</span>
-                </button>
+                <input
+                  type="date"
+                  value={formData.sale_date}
+                  onChange={(e) => setFormData({ ...formData, sale_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
+
+              {/* Champ Client - prend 9 colonnes */}
+              <div className="col-span-9">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientForm(!showNewClientForm)}
+                    className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    <Plus size={16} />
+                    <span>Nouveau client</span>
+                  </button>
+                </div>
 
               {!showNewClientForm ? (
                 <div className="relative" ref={clientSearchRef}>
@@ -596,6 +733,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
                   </div>
                 </div>
               )}
+              </div>
             </div>
 
             {/* Gestionnaire d'articles */}

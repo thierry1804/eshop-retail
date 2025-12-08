@@ -468,6 +468,7 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                                 min="1"
                                 value={item.quantity_ordered}
                                 onChange={(e) => updateItem(item.id, 'quantity_ordered', parseInt(e.target.value) || 1)}
+                                onFocus={(e) => e.target.select()}
                                 onBlur={(e) => {
                                   const value = parseInt(e.target.value);
                                   if (!value || value < 1) {
@@ -608,6 +609,7 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                               min="1"
                               value={item.quantity_ordered}
                               onChange={(e) => updateItem(item.id, 'quantity_ordered', parseInt(e.target.value) || 1)}
+                              onFocus={(e) => e.target.select()}
                               onBlur={(e) => {
                                 const value = parseInt(e.target.value);
                                 if (!value || value < 1) {
@@ -635,6 +637,7 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                                   setEditingPrices({ ...editingPrices, [item.id]: inputValue });
                                 }
                               }}
+                              onFocus={(e) => e.target.select()}
                               onBlur={(e) => {
                                 const inputValue = e.target.value.replace(',', '.');
                                 const numericValue = parseFloat(inputValue);

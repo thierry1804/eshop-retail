@@ -210,6 +210,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onSave, onCancel }) 
               name="amount"
               value={formData.amount}
               onChange={handleInputChange}
+              onFocus={(e) => e.target.select()}
               placeholder={t('expenses.amountPlaceholder')}
               step="0.01"
               min="0"

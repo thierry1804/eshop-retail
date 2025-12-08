@@ -189,6 +189,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.length}
                 onChange={(e) => setFormData({...formData, length: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -204,6 +205,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.width}
                 onChange={(e) => setFormData({...formData, width: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -219,6 +221,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.height}
                 onChange={(e) => setFormData({...formData, height: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -246,6 +249,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.weight_kg}
                 onChange={(e) => setFormData({...formData, weight_kg: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -263,6 +267,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.rate_per_m3}
                 onChange={(e) => setFormData({...formData, rate_per_m3: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -278,6 +283,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.rate_per_kg}
                 onChange={(e) => setFormData({...formData, rate_per_kg: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />
@@ -294,6 +300,7 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 min="0"
                 value={formData.exchange_rate_mga}
                 onChange={(e) => setFormData({...formData, exchange_rate_mga: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="0.00"
               />

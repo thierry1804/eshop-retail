@@ -204,6 +204,7 @@ const MovementForm: React.FC<MovementFormProps> = ({ product, onClose, onSave, u
               min="1"
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+              onFocus={(e) => e.target.select()}
               className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
             />
           </div>

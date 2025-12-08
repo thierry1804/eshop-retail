@@ -433,6 +433,14 @@
     "saveError": "保存时出错",
     "viewDetails": "查看详情",
     "saving": "保存中...",
+    "statusLabel": "状态",
+    "details": {
+      "title": "配送详情",
+      "generalInfo": "一般信息",
+      "clientInfo": "客户信息",
+      "deliveryInfo": "配送信息",
+      "saleInfo": "销售信息"
+    },
     "status": {
       "pending": "待处理",
       "preparing": "准备中",

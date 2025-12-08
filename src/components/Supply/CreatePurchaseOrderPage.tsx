@@ -554,6 +554,7 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
                             const val = parseInt(e.target.value) || 1;
                             updateItem(index, 'quantity_ordered', val);
                           }}
+                          onFocus={(e) => e.target.select()}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -579,6 +580,7 @@ export const CreatePurchaseOrderPage: React.FC<CreatePurchaseOrderPageProps> = (
                           min="0"
                           value={item.unit_price}
                           onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && index === items.length - 1) {
                               e.preventDefault();

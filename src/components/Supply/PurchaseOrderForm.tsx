@@ -427,6 +427,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                           min="1"
                           value={item.quantity_ordered}
                           onChange={(e) => updateItem(index, 'quantity_ordered', parseInt(e.target.value))}
+                          onFocus={(e) => e.target.select()}
                           className="w-full border border-gray-300 rounded-md px-3 py-2"
                         />
                       </div>
@@ -441,6 +442,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                           min="0"
                           value={item.unit_price}
                           onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
+                          onFocus={(e) => e.target.select()}
                           className="w-full border border-gray-300 rounded-md px-3 py-2"
                         />
                       </div>

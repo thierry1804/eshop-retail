@@ -423,6 +423,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                   min="0"
                   value={formData.exchange_rate_mga || ''}
                   onChange={(e) => setFormData({...formData, exchange_rate_mga: e.target.value ? parseFloat(e.target.value) : undefined})}
+                  onFocus={(e) => e.target.select()}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                   placeholder={`Taux de change ${purchaseOrder.currency} vers MGA`}
                 />
@@ -509,6 +510,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                               max={maxQuantity}
                               value={item.quantity_received}
                               onChange={(e) => updateReceiptItem(index, 'quantity_received', parseInt(e.target.value))}
+                              onFocus={(e) => e.target.select()}
                               className="w-20 mx-auto border border-gray-300 rounded-md px-3 py-2 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                           </td>
@@ -521,6 +523,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                                 step="0.01"
                                 min={calculatedPrice !== null ? calculatedPrice : 0}
                                 value={displayPrice}
+                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => {
                                   const inputValue = parseFloat(e.target.value) || 0;
                                   updateReceiptItem(index, 'unit_price', inputValue);

@@ -442,6 +442,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                 type="number"
                 value={formData.min_stock_level}
                   onChange={(e) => setFormData({ ...formData, min_stock_level: parseInt(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -451,6 +452,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                 type="number"
                 value={formData.max_stock_level}
                 onChange={(e) => setFormData({...formData, max_stock_level: e.target.value})}
+                  onFocus={(e) => e.target.select()}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -460,6 +462,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                 type="number"
                 value={formData.current_stock}
                   onChange={(e) => setFormData({ ...formData, current_stock: parseInt(e.target.value) || 0 })}
+                  onFocus={(e) => e.target.select()}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -482,6 +485,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                   type="number"
                   step="0.001"
                   value={formData.weight}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Poids (optionnel)"

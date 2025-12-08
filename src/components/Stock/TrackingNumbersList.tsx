@@ -189,9 +189,15 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     });
   };
 
-  // Fonction pour scroller automatiquement vers un élément lorsqu'il reçoit le focus
+  // Fonction pour scroller automatiquement vers un élément lorsqu'il reçoit le focus et sélectionner le texte
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.currentTarget;
+    
+    // Sélectionner le texte si c'est un input
+    if (target instanceof HTMLInputElement) {
+      target.select();
+    }
+    
     const scrollContainer = tableContainerRef.current;
     
     if (!scrollContainer) return;

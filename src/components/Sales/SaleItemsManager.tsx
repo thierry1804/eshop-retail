@@ -33,6 +33,11 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
     unit_price: 0,
     total_price: 0
   });
+
+  // Fonction pour sélectionner tout le texte au focus
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
   const [selectedProductPrices, setSelectedProductPrices] = useState<any[]>([]);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [generatedSKU, setGeneratedSKU] = useState('');
@@ -380,6 +385,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                 placeholder="1"
                 value={newProductData.current_stock}
                 onChange={(e) => setNewProductData({ ...newProductData, current_stock: Number(e.target.value) })}
+                onFocus={handleNumberInputFocus}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -392,6 +398,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                 placeholder="0"
                 value={newProductData.min_stock_level}
                 onChange={(e) => setNewProductData({ ...newProductData, min_stock_level: Number(e.target.value) })}
+                onFocus={handleNumberInputFocus}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -535,6 +542,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                     min="1"
                     value={currentItem.quantity || 1}
                     onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                    onFocus={handleNumberInputFocus}
                     className="w-16 px-1 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </td>
@@ -546,6 +554,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                       step="100"
                       value={currentItem.unit_price || 0}
                       onChange={(e) => handleUnitPriceChange(Number(e.target.value))}
+                      onFocus={handleNumberInputFocus}
                       className="w-20 px-1 py-1 text-sm border border-gray-300 rounded text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
                       placeholder="0"
                     />
@@ -660,6 +669,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                     step="100"
                     value={deposit}
                     onChange={(e) => onDepositChange(Number(e.target.value))}
+                    onFocus={handleNumberInputFocus}
                     className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right"
                   />
                 </td>

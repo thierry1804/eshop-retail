@@ -385,6 +385,7 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                       min="0"
                       value={formData.delivery_fee}
                       onChange={(e) => setFormData({...formData, delivery_fee: parseFloat(e.target.value) || 0})}
+                      onFocus={(e) => e.target.select()}
                       className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
                     />
                   ) : (
@@ -393,7 +394,7 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{t('deliveries.status')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('deliveries.statusLabel')}</label>
                   {editing ? (
                     <select
                       value={formData.status}

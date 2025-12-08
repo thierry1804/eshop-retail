@@ -485,6 +485,14 @@
     "saveError": "Erreur lors de l'enregistrement",
     "viewDetails": "Voir détails",
     "saving": "Enregistrement...",
+    "statusLabel": "Statut",
+    "details": {
+      "title": "Détails de la livraison",
+      "generalInfo": "Informations générales",
+      "clientInfo": "Informations client",
+      "deliveryInfo": "Informations de livraison",
+      "saleInfo": "Informations de vente"
+    },
     "status": {
       "pending": "En attente",
       "preparing": "Préparation",
