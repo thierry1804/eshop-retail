@@ -84,6 +84,56 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     }
   };
 
+  const syncTrackingNumberStatuses = async () => {
+    try {
+      // Récupérer tous les tracking numbers
+      const { data: trackingNumbers, error: trackingError } = await supabase
+        .from('tracking_numbers')
+        .select('id, tracking_number');
+
+      if (trackingError) throw trackingError;
+
+      // Pour chaque tracking number, vérifier le statut des commandes associées
+      for (const tn of trackingNumbers || []) {
+        // Récupérer toutes les commandes avec ce tracking_number
+        const { data: orders, error: ordersError } = await supabase
+          .from('purchase_orders')
+          .select('status')
+          .eq('tracking_number', tn.tracking_number)
+          .not('tracking_number', 'is', null)
+          .neq('tracking_number', '');
+
+        if (ordersError) {
+          console.error('Erreur lors de la récupération des commandes:', ordersError);
+          continue;
+        }
+
+        if (!orders || orders.length === 0) continue;
+
+        // Vérifier si toutes les commandes sont "received"
+        const allReceived = orders.every(order => order.status === 'received');
+        
+        // Si toutes les commandes sont reçues, mettre à jour le statut du tracking number
+        if (allReceived) {
+          const { error: updateError } = await supabase
+            .from('tracking_numbers')
+            .update({ 
+              status: 'received',
+              updated_at: new Date().toISOString(),
+              updated_by: user.id
+            })
+            .eq('id', tn.id);
+
+          if (updateError) {
+            console.error('Erreur lors de la mise à jour du statut:', updateError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation des statuts:', error);
+    }
+  };
+
   const fetchTrackingNumbers = async () => {
     try {
       // Récupérer les tracking numbers uniques
@@ -128,8 +178,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
   const syncAndFetchTrackingNumbers = async () => {
     try {
       setLoading(true);
-      // D'abord synchroniser, puis récupérer
+      // D'abord synchroniser les tracking numbers, puis synchroniser les statuts, puis récupérer
       await syncTrackingNumbers();
+      await syncTrackingNumberStatuses();
       await fetchTrackingNumbers();
     } catch (error) {
       console.error('Erreur:', error);
@@ -605,6 +656,12 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                           )}
                           <button
                             onClick={async () => {
+                              // Empêcher la suppression si le statut est "received"
+                              if (tn.status === 'received') {
+                                alert(t('tracking.cannotDeleteReceived'));
+                                return;
+                              }
+                              
                               if (confirm(t('tracking.confirmDelete'))) {
                                 const { error } = await supabase
                                   .from('tracking_numbers')
@@ -617,8 +674,15 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                                 }
                               }
                             }}
-                            className="text-red-600 hover:text-red-800"
-                            title={t('common.delete')}
+                            disabled={tn.status === 'received'}
+                            className={`${tn.status === 'received' 
+                              ? 'text-gray-400 cursor-not-allowed' 
+                              : 'text-red-600 hover:text-red-800'
+                            }`}
+                            title={tn.status === 'received' 
+                              ? t('tracking.cannotDeleteReceived') 
+                              : t('common.delete')
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>

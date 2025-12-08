@@ -147,6 +147,7 @@
     "status": {
       "paid": "已付款",
       "ongoing": "进行中",
+      "returned": "已退回",
       "unknown": "未知"
     },
     "filters": {
@@ -176,7 +177,36 @@
       "remaining": "剩余"
     },
     "actions": {
-      "addPayment": "添加付款"
+      "addPayment": "添加付款",
+      "createDelivery": "创建交付",
+      "return": "退回销售"
+    },
+    "return": {
+      "title": "退回商品",
+      "selectItems": "选择要退回的商品",
+      "noItems": "此销售未找到商品",
+      "quantity": "数量",
+      "returned": "已退回",
+      "remaining": "剩余",
+      "unitPrice": "单价",
+      "returnQty": "退回数量",
+      "returnAmount": "退回金额",
+      "fullyReturned": "已完全退回",
+      "notes": "备注",
+      "notesPlaceholder": "退回备注（可选）",
+      "summary": "摘要",
+      "itemsSelected": "已选择商品",
+      "totalQuantity": "总数量",
+      "confirmReturn": "确认退回",
+      "processing": "处理中...",
+      "loading": "加载商品中...",
+      "confirm": "您确定要退回此销售吗？\n\n描述：{{description}}\n\n此操作将：\n- 取消销售\n- 将商品退回库存\n- 取消相关交付",
+      "success": "商品已成功退回",
+      "error": {
+        "noUser": "用户未登录",
+        "failed": "退回商品时出错",
+        "noItemsSelected": "请至少选择一个要退回的商品"
+      }
     },
     "tiktokLive": {
       "title": "TikTok直播销售",
@@ -546,7 +576,9 @@
     "goodPayer": "良好付款人",
     "averagePayer": "一般付款人",
     "poorPayer": "不良付款人",
-    "notEvaluated": "未评估"
+    "notEvaluated": "未评估",
+    "cancel": "取消",
+    "optional": "可选"
   },
   "errors": {
     "general": "发生错误",

@@ -153,6 +153,7 @@
     "saleClient": "Client",
     "saleDescription": "Description",
     "saleStatus": "Statut",
+    "totalAmount": "Montant total",
     "noSales": "Aucune vente enregistrée",
     "noSalesFound": "Aucune vente trouvée pour ces critères",
     "searchPlaceholder": "Rechercher par client, téléphone ou description...",
@@ -166,6 +167,7 @@
     "status": {
       "paid": "Réglée",
       "ongoing": "En cours",
+      "returned": "Retournée",
       "unknown": "Inconnue"
     },
     "filters": {
@@ -199,7 +201,35 @@
     },
     "actions": {
       "addPayment": "Ajouter un paiement",
-      "createDelivery": "Créer une livraison"
+      "createDelivery": "Créer une livraison",
+      "return": "Retourner la vente"
+    },
+    "return": {
+      "title": "Retourner des articles",
+      "selectItems": "Sélectionner les articles à retourner",
+      "noItems": "Aucun article trouvé pour cette vente",
+      "quantity": "Quantité",
+      "returned": "Retourné",
+      "remaining": "Restant",
+      "unitPrice": "Prix unitaire",
+      "returnQty": "Quantité à retourner",
+      "returnAmount": "Montant du retour",
+      "fullyReturned": "Déjà retourné",
+      "notes": "Notes",
+      "notesPlaceholder": "Notes sur le retour (optionnel)",
+      "summary": "Résumé",
+      "itemsSelected": "article(s) sélectionné(s)",
+      "totalQuantity": "quantité(s) totale(s)",
+      "confirmReturn": "Confirmer le retour",
+      "processing": "Traitement en cours...",
+      "loading": "Chargement des articles...",
+      "confirm": "Êtes-vous sûr de vouloir retourner cette vente ?\n\nDescription: {{description}}\n\nCette action va :\n- Annuler la vente\n- Remettre les articles en stock\n- Annuler les livraisons associées",
+      "success": "Articles retournés avec succès",
+      "error": {
+        "noUser": "Utilisateur non connecté",
+        "failed": "Erreur lors du retour des articles",
+        "noItemsSelected": "Veuillez sélectionner au moins un article à retourner"
+      }
     },
     "calendar": {
       "title": "Calendrier des ventes",
@@ -602,7 +632,9 @@
     "goodPayer": "Bon payeur",
     "averagePayer": "Payeur moyen",
     "poorPayer": "Mauvais payeur",
-    "notEvaluated": "Non évalué"
+    "notEvaluated": "Non évalué",
+    "cancel": "Annuler",
+    "optional": "Optionnel"
   },
   "errors": {
     "general": "Une erreur s'est produite",
@@ -655,6 +687,7 @@
     "noTrackingNumbersFound": "Aucun numéro de suivi trouvé",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce tracking ?",
     "deleteError": "Erreur lors de la suppression",
+    "cannotDeleteReceived": "Impossible de supprimer un tracking number marqué comme reçu",
     "saveError": "Erreur lors de l'enregistrement",
     "requiredFields": "Veuillez remplir tous les champs obligatoires",
     "syncTracking": "Synchroniser",

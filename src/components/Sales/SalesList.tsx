@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck } from 'lucide-react';
+import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
 import { Calendar } from '../Common/Calendar';
 import { DatePickerWithSales } from '../Common/DatePickerWithSales';
 import { DeliveryForm } from '../Delivery/DeliveryForm';
+import { ReturnItemsModal } from './ReturnItemsModal';
 import { supabase } from '../../lib/supabase';
 import { Sale, User } from '../../types';
 import { formatDateToLocalString } from '../../lib/dateUtils';
@@ -19,7 +20,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paid'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paid' | 'returned'>('all');
   const [dateFilter, setDateFilter] = useState<string>(() => {
     // Par défaut, filtrer par la date du jour
     const today = new Date();
@@ -28,6 +29,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const [showForm, setShowForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,9 +175,20 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         return { label: t('sales.status.paid'), className: 'text-green-600 bg-green-100' };
       case 'ongoing':
         return { label: t('sales.status.ongoing'), className: 'text-yellow-600 bg-yellow-100' };
+      case 'returned':
+        return { label: t('sales.status.returned'), className: 'text-red-600 bg-red-100' };
       default:
         return { label: t('sales.status.unknown'), className: 'text-gray-600 bg-gray-100' };
     }
+  };
+
+  const handleReturnSale = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowReturnModal(true);
+  };
+
+  const handleReturnSuccess = async () => {
+    await fetchSales();
   };
 
   if (loading) {
@@ -251,6 +264,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             <option value="all">{t('sales.filters.allStatuses')}</option>
             <option value="ongoing">{t('sales.status.ongoing')}</option>
             <option value="paid">{t('sales.status.paid')}</option>
+            <option value="returned">{t('sales.status.returned')}</option>
           </select>
           <DatePickerWithSales
             value={dateFilter}
@@ -367,6 +381,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                       title={t('sales.actions.addPayment')}
                     >
                       <CreditCard size={18} />
+                    </button>
+                  )}
+                  {sale.status !== 'returned' && (
+                    <button
+                      onClick={() => handleReturnSale(sale)}
+                      className="text-red-600 hover:text-red-800 transition-colors p-1"
+                      title={t('sales.actions.return')}
+                    >
+                      <RotateCcw size={18} />
                     </button>
                   )}
                   <button
@@ -529,6 +552,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                             <CreditCard size={18} />
                           </button>
                         )}
+                        {sale.status !== 'returned' && (
+                          <button
+                            onClick={() => handleReturnSale(sale)}
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            title={t('sales.actions.return')}
+                          >
+                            <RotateCcw size={18} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleCreateDelivery(sale)}
                           className="text-orange-600 hover:text-orange-800 transition-colors"
@@ -618,6 +650,17 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             delivery_date: new Date().toISOString().split('T')[0],
             client_address: selectedSale.client?.address || ''
           }}
+        />
+      )}
+
+      {showReturnModal && selectedSale && (
+        <ReturnItemsModal
+          sale={selectedSale}
+          onClose={() => {
+            setShowReturnModal(false);
+            setSelectedSale(null);
+          }}
+          onSuccess={handleReturnSuccess}
         />
       )}
     </div>

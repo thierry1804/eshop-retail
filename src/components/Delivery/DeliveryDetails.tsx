@@ -357,7 +357,9 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                       <option value="standard">{t('deliveries.methods.standard')}</option>
                     </select>
                   ) : (
-                    <p className="mt-1 text-sm text-gray-900">{delivery.delivery_method || '-'}</p>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {delivery.delivery_method ? t(`deliveries.methods.${delivery.delivery_method}`) || delivery.delivery_method : '-'}
+                    </p>
                   )}
                 </div>
 
@@ -372,7 +374,9 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                       <option value="delivery">{t('deliveries.types.delivery')}</option>
                     </select>
                   ) : (
-                    <p className="mt-1 text-sm text-gray-900">{delivery.delivery_type || '-'}</p>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {delivery.delivery_type ? t(`deliveries.types.${delivery.delivery_type}`) || delivery.delivery_type : '-'}
+                    </p>
                   )}
                 </div>
 
@@ -425,9 +429,9 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                   {t('deliveries.details.clientInfo')}
                 </h3>
                 <div className="space-y-2">
-                  <p><strong>{t('clients.name')}:</strong> {client.first_name} {client.last_name}</p>
-                  <p><strong>{t('clients.phone')}:</strong> {client.phone}</p>
-                  <p><strong>{t('clients.address')}:</strong> {client.address}</p>
+                  <p><strong>{t('common.name')}:</strong> {client.first_name} {client.last_name}</p>
+                  <p><strong>{t('common.phone')}:</strong> {client.phone}</p>
+                  <p><strong>{t('common.address')}:</strong> {client.address}</p>
                 </div>
               </div>
             )}
@@ -536,9 +540,9 @@ export const DeliveryDetails: React.FC<DeliveryDetailsProps> = ({ deliveryId, on
                   {t('deliveries.details.saleInfo')}
                 </h3>
                 <div className="space-y-2">
-                  <p><strong>{t('sales.description')}:</strong> {sale.description}</p>
-                  <p><strong>{t('sales.totalAmount')}:</strong> {sale.total_amount} €</p>
-                  <p><strong>{t('sales.status')}:</strong> {sale.status}</p>
+                  <p><strong>{t('common.description')}:</strong> {sale.description}</p>
+                  <p><strong>{t('sales.amounts.total')}:</strong> {sale.total_amount.toLocaleString()} MGA</p>
+                  <p><strong>{t('sales.saleStatus')}:</strong> {t(`sales.status.${sale.status}`) || sale.status}</p>
                 </div>
               </div>
             )}
