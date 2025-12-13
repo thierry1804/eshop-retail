@@ -110,6 +110,9 @@ export type Database = {
           amount: number;
           payment_method: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
           notes: string;
+          provider?: string;
+          phone_number?: string;
+          transaction_id?: string;
           created_at: string;
           created_by: string;
         };
@@ -119,6 +122,9 @@ export type Database = {
           amount: number;
           payment_method: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
           notes?: string;
+          provider?: string;
+          phone_number?: string;
+          transaction_id?: string;
           created_at?: string;
           created_by?: string;
         };
@@ -128,6 +134,9 @@ export type Database = {
           amount?: number;
           payment_method?: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
           notes?: string;
+          provider?: string;
+          phone_number?: string;
+          transaction_id?: string;
           created_at?: string;
           created_by?: string;
         };

@@ -351,10 +351,15 @@ export const TikTokLiveSales: React.FC = () => {
           }
           
           // Mettre à jour les stats si disponibles
-          if (message.data.viewers !== undefined || message.data.likes !== undefined) {
+          // Gérer à la fois viewerCount (format backend) et viewers (format attendu)
+          const viewerCount = message.data.viewerCount ?? message.data.viewers;
+          const likes = message.data.likes;
+          
+          if (viewerCount !== undefined || likes !== undefined) {
+            console.log('📊 TikTokLiveSales: Mise à jour des stats:', { viewerCount, likes });
             setStats({
-              viewers: message.data.viewers,
-              likes: message.data.likes,
+              viewers: viewerCount,
+              likes: likes,
             });
           }
         }

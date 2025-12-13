@@ -303,7 +303,10 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
     onItemsChange(items.filter(item => item.id !== itemId));
   };
 
-  const totalAmount = items.reduce((sum, item) => sum + item.total_price, 0);
+  const totalAmount = items.reduce((sum, item) => {
+    const itemTotal = Number(item.total_price) || 0;
+    return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+  }, 0);
   const remainingBalance = totalAmount - deposit;
 
   return (
@@ -315,7 +318,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
           Articles de la vente
         </h3>
         <span className="text-sm text-gray-500">
-          Total: {totalAmount.toLocaleString()} MGA
+          Total: {isNaN(totalAmount) ? '0' : totalAmount.toLocaleString()} MGA
         </span>
       </div>
 
@@ -613,10 +616,14 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                       <span className="text-sm text-gray-900">{item.quantity}</span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="text-sm text-gray-900">{item.unit_price.toLocaleString()}</span>
+                      <span className="text-sm text-gray-900">
+                        {isNaN(item.unit_price) ? '0' : item.unit_price.toLocaleString()}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="text-sm font-medium text-gray-900">{item.total_price.toLocaleString()}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {isNaN(item.total_price) ? '0' : item.total_price.toLocaleString()}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button
@@ -651,7 +658,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                   Total:
                 </td>
                 <td className="px-3 py-2 text-right font-bold text-gray-900">
-                  {totalAmount.toLocaleString()} MGA
+                  {isNaN(totalAmount) ? '0' : totalAmount.toLocaleString()} MGA
                 </td>
                 <td className="px-3 py-2"></td>
               </tr>
@@ -682,7 +689,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                   Reste:
                 </td>
                 <td className="px-3 py-2 text-right font-bold text-red-600">
-                  {remainingBalance.toLocaleString()} MGA
+                  {isNaN(remainingBalance) ? '0' : remainingBalance.toLocaleString()} MGA
                 </td>
                 <td className="px-3 py-2"></td>
               </tr>

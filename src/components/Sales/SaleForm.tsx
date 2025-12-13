@@ -138,30 +138,78 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
     if (!sale?.id) return;
 
     try {
+      // Récupérer les articles
       const { data, error } = await supabase
         .from('sale_items')
         .select('*')
         .eq('sale_id', sale.id)
         .order('created_at');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw error;
+      }
+
+      // Identifier les articles sans product_name qui ont un article_id
+      const itemsWithoutName = (data || []).filter((item: any) => 
+        !item.product_name?.trim() && item.article_id
+      );
+
+      // Récupérer les noms des produits manquants depuis la table products
+      const productNamesMap: Record<string, string> = {};
+      if (itemsWithoutName.length > 0) {
+        const articleIds = itemsWithoutName.map((item: any) => item.article_id).filter(Boolean);
+        if (articleIds.length > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select('id, name')
+            .in('id', articleIds);
+
+          if (!productsError && productsData) {
+            productsData.forEach((product: any) => {
+              productNamesMap[product.id] = product.name;
+            });
+          }
+        }
+      }
 
       // Convertir les articles de la base de données au format SaleItem
-      const items: SaleItem[] = (data || []).map((item: any) => ({
-        id: item.id,
-        article_id: item.article_id || undefined,
-        product_name: item.product_name || item.name,
-        sku: item.code || undefined,
-        quantity: item.quantity,
-        unit_price: Number(item.unit_price),
-        total_price: Number(item.total_price || item.total_amount),
-        isNewProduct: false
-      }));
+      const items: SaleItem[] = (data || []).map((item: any) => {
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unit_price) || 0;
+        // Calculer total_price si manquant ou invalide
+        const totalPrice = item.total_price != null ? Number(item.total_price) : (quantity * unitPrice);
+        
+        // Récupérer product_name : d'abord depuis sale_items, sinon depuis products via article_id
+        let productName = item.product_name?.trim();
+        if (!productName && item.article_id && productNamesMap[item.article_id]) {
+          productName = productNamesMap[item.article_id];
+          console.log(`✅ Nom récupéré depuis products pour article_id ${item.article_id}: ${productName}`);
+        }
+        
+        if (!productName) {
+          console.warn('⚠️ Article sans product_name:', { id: item.id, article_id: item.article_id, product_name: item.product_name });
+        }
+        
+        return {
+          id: item.id,
+          article_id: item.article_id || undefined,
+          product_name: productName || 'Article sans nom',
+          sku: undefined, // SKU n'est pas stocké dans sale_items
+          quantity: quantity,
+          unit_price: unitPrice,
+          total_price: isNaN(totalPrice) ? 0 : totalPrice,
+          isNewProduct: false
+        };
+      });
 
+      console.log('✅ Articles de vente chargés:', items);
       setSaleItems(items);
-    } catch (error) {
-      console.error('Error fetching sale items:', error);
-      setError('Erreur lors du chargement des articles de vente');
+      setError(''); // Réinitialiser l'erreur en cas de succès
+    } catch (error: any) {
+      console.error('❌ Error fetching sale items:', error);
+      const errorMessage = error.message || error.details || 'Erreur inconnue';
+      setError(`Erreur lors du chargement des articles de vente: ${errorMessage}`);
     }
   };
 
@@ -322,12 +370,34 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         }
       }
 
-      // Convertir la date sélectionnée en ISO string avec l'heure de minuit (fuseau horaire local)
-      // formData.sale_date est au format YYYY-MM-DD
+      // Convertir la date sélectionnée en conservant l'heure originale si c'est une modification
+      // formData.sale_date est au format YYYY-MM-DD - c'est la date saisie par l'utilisateur
       const [year, month, day] = formData.sale_date.split('-').map(Number);
-      const saleDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-      // Convertir en ISO string en préservant la date locale
-      const saleDateISO = saleDate.toISOString();
+      
+      let saleDateISO: string;
+      
+      if (sale && sale.created_at) {
+        // Si c'est une modification, conserver l'heure originale mais changer la date
+        const originalDate = new Date(sale.created_at);
+        const originalHours = originalDate.getUTCHours();
+        const originalMinutes = originalDate.getUTCMinutes();
+        const originalSeconds = originalDate.getUTCSeconds();
+        const originalMilliseconds = originalDate.getUTCMilliseconds();
+        
+        // Créer la nouvelle date avec la date saisie mais l'heure originale
+        const newDate = new Date(Date.UTC(year, month - 1, day, originalHours, originalMinutes, originalSeconds, originalMilliseconds));
+        saleDateISO = newDate.toISOString();
+        
+        console.log('📅 Modification: Date originale:', sale.created_at);
+        console.log('📅 Heure conservée:', `${originalHours}:${originalMinutes}:${originalSeconds}`);
+        console.log('📅 Nouvelle date:', saleDateISO);
+      } else {
+        // Si c'est une création, utiliser midi UTC pour éviter les problèmes de fuseau horaire
+        const saleDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+        saleDateISO = saleDate.toISOString();
+        
+        console.log('📅 Création: Date saisie:', formData.sale_date, '→ Date ISO:', saleDateISO);
+      }
 
       if (sale) {
         // Update existing sale
@@ -504,7 +574,10 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
 
   // Mettre à jour le montant total automatiquement basé sur les articles
   useEffect(() => {
-    const totalFromItems = saleItems.reduce((sum, item) => sum + item.total_price, 0);
+    const totalFromItems = saleItems.reduce((sum, item) => {
+      const itemTotal = Number(item.total_price) || 0;
+      return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+    }, 0);
     if (totalFromItems > 0) {
       setFormData(prev => ({ ...prev, total_amount: totalFromItems }));
     }

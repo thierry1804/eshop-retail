@@ -42,6 +42,9 @@ export interface Payment {
   amount: number;
   payment_method: 'cash' | 'mobile_money' | 'bank_transfer' | 'other';
   notes: string;
+  provider?: string;
+  phone_number?: string;
+  transaction_id?: string;
   created_at: string;
   created_by: string;
   sale?: Sale;

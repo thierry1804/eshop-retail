@@ -37,6 +37,7 @@ DECLARE
     v_stock_movement_id UUID;
     v_result JSONB;
     v_errors TEXT[] := ARRAY[]::TEXT[];
+    v_product_name TEXT;
 BEGIN
     -- Vérifier que la vente existe
     SELECT * INTO v_sale
@@ -71,6 +72,14 @@ BEGIN
         LOOP
             -- Vérifier que l'article a un article_id (product_id)
             IF v_sale_item.article_id IS NOT NULL THEN
+                -- Récupérer le nom du produit depuis la table products
+                SELECT name INTO v_product_name
+                FROM products
+                WHERE id = v_sale_item.article_id;
+                
+                -- Si le nom n'est pas trouvé, utiliser une valeur par défaut
+                v_product_name := COALESCE(v_product_name, 'Article');
+                
                 -- Créer un mouvement de stock pour remettre l'article en stock
                 INSERT INTO stock_movements (
                     product_id,
@@ -86,7 +95,7 @@ BEGIN
                     v_sale_item.quantity,
                     'return',
                     p_sale_id,
-                    COALESCE(p_return_notes, 'Retour de vente - ' || v_sale_item.product_name),
+                    COALESCE(p_return_notes, 'Retour de vente - ' || v_product_name),
                     p_user_id
                 )
                 RETURNING id INTO v_stock_movement_id;

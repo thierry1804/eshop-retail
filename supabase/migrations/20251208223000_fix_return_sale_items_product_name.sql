@@ -1,43 +1,8 @@
--- Migration pour ajouter le support des retours partiels d'articles
--- Cette migration permet de :
--- 1. Ajouter une colonne returned_quantity à sale_items pour tracer les quantités retournées
--- 2. Créer une table sale_item_returns pour l'historique des retours
--- 3. Modifier la fonction return_sale pour accepter une liste d'articles à retourner
+-- Migration pour corriger les fonctions de retour de vente
+-- Problème: Les fonctions utilisent v_sale_item.product_name qui n'existe pas dans la table sale_items
+-- Solution: Récupérer le nom du produit depuis la table products via article_id
 
--- Ajouter une colonne pour tracer les quantités retournées
-ALTER TABLE sale_items 
-ADD COLUMN IF NOT EXISTS returned_quantity INTEGER DEFAULT 0 CHECK (returned_quantity >= 0 AND returned_quantity <= quantity);
-
--- Créer une table pour l'historique des retours d'articles
-CREATE TABLE IF NOT EXISTS sale_item_returns (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sale_id UUID NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
-    sale_item_id UUID NOT NULL REFERENCES sale_items(id) ON DELETE CASCADE,
-    quantity_returned INTEGER NOT NULL CHECK (quantity_returned > 0),
-    return_notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by UUID NOT NULL
-);
-
--- Index pour améliorer les performances
-CREATE INDEX IF NOT EXISTS idx_sale_item_returns_sale ON sale_item_returns(sale_id);
-CREATE INDEX IF NOT EXISTS idx_sale_item_returns_item ON sale_item_returns(sale_item_id);
-
--- RLS (Row Level Security)
-ALTER TABLE sale_item_returns ENABLE ROW LEVEL SECURITY;
-
--- Politiques RLS pour sale_item_returns
-CREATE POLICY "Allow read access to authenticated users" ON sale_item_returns
-    FOR SELECT USING (auth.role() = 'authenticated');
-
-CREATE POLICY "Allow insert to authenticated users" ON sale_item_returns
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-
--- Fonction pour retourner des articles spécifiques d'une vente
--- p_sale_id: ID de la vente
--- p_user_id: ID de l'utilisateur qui effectue le retour
--- p_items_to_return: Tableau JSON avec [{sale_item_id, quantity_to_return}, ...]
--- p_return_notes: Notes optionnelles sur le retour
+-- Corriger la fonction return_sale_items
 CREATE OR REPLACE FUNCTION return_sale_items(
     p_sale_id UUID,
     p_user_id UUID,
@@ -228,12 +193,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Commentaire sur la fonction
-COMMENT ON FUNCTION return_sale_items(UUID, UUID, JSONB, TEXT) IS 
-'Fonction pour retourner des articles spécifiques d''une vente : remet les articles en stock et met à jour les quantités retournées. Si tous les articles sont retournés, la vente devient ''returned'' et les livraisons sont annulées.';
-
--- Garder l'ancienne fonction pour la compatibilité (retour complet de la vente)
--- Elle appelle maintenant return_sale_items avec tous les articles
+-- Corriger la fonction return_sale (ancienne fonction pour retour complet)
 CREATE OR REPLACE FUNCTION return_sale(
     p_sale_id UUID,
     p_user_id UUID,
@@ -241,29 +201,109 @@ CREATE OR REPLACE FUNCTION return_sale(
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_all_items JSONB;
-    v_item RECORD;
+    v_sale RECORD;
+    v_sale_item RECORD;
+    v_delivery RECORD;
+    v_stock_movement_id UUID;
+    v_result JSONB;
+    v_errors TEXT[] := ARRAY[]::TEXT[];
+    v_product_name TEXT;
 BEGIN
-    -- Récupérer tous les articles de la vente
-    SELECT jsonb_agg(
-        jsonb_build_object(
-            'sale_item_id', id,
-            'quantity_to_return', quantity
-        )
-    ) INTO v_all_items
-    FROM sale_items
-    WHERE sale_id = p_sale_id;
+    -- Vérifier que la vente existe
+    SELECT * INTO v_sale
+    FROM sales
+    WHERE id = p_sale_id;
     
-    -- Si aucun article, retourner une erreur
-    IF v_all_items IS NULL OR jsonb_array_length(v_all_items) = 0 THEN
+    IF NOT FOUND THEN
         RETURN jsonb_build_object(
             'success', false,
-            'error', 'Aucun article trouvé pour cette vente'
+            'error', 'Vente non trouvée'
         );
     END IF;
     
-    -- Appeler la fonction de retour partiel avec tous les articles
-    RETURN return_sale_items(p_sale_id, p_user_id, v_all_items, p_return_notes);
+    -- Vérifier que la vente n'est pas déjà retournée
+    IF v_sale.status = 'returned' THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Cette vente a déjà été retournée'
+        );
+    END IF;
+    
+    -- Commencer une transaction implicite (chaque opération est dans un bloc TRY)
+    BEGIN
+        -- 1. Changer le statut de la vente en 'returned'
+        UPDATE sales
+        SET status = 'returned'::sale_status
+        WHERE id = p_sale_id;
+        
+        -- 2. Pour chaque article de la vente, créer un mouvement de stock de type 'in'
+        FOR v_sale_item IN
+            SELECT * FROM sale_items WHERE sale_id = p_sale_id
+        LOOP
+            -- Vérifier que l'article a un article_id (product_id)
+            IF v_sale_item.article_id IS NOT NULL THEN
+                -- Récupérer le nom du produit depuis la table products
+                SELECT name INTO v_product_name
+                FROM products
+                WHERE id = v_sale_item.article_id;
+                
+                -- Si le nom n'est pas trouvé, utiliser une valeur par défaut
+                v_product_name := COALESCE(v_product_name, 'Article');
+                
+                -- Créer un mouvement de stock pour remettre l'article en stock
+                INSERT INTO stock_movements (
+                    product_id,
+                    movement_type,
+                    quantity,
+                    reference_type,
+                    reference_id,
+                    notes,
+                    created_by
+                ) VALUES (
+                    v_sale_item.article_id,
+                    'in',
+                    v_sale_item.quantity,
+                    'return',
+                    p_sale_id,
+                    COALESCE(p_return_notes, 'Retour de vente - ' || v_product_name),
+                    p_user_id
+                )
+                RETURNING id INTO v_stock_movement_id;
+            END IF;
+        END LOOP;
+        
+        -- 3. Annuler les livraisons associées à cette vente
+        FOR v_delivery IN
+            SELECT * FROM deliveries WHERE sale_id = p_sale_id
+        LOOP
+            -- Ne mettre à jour que si la livraison n'est pas déjà livrée ou annulée
+            IF v_delivery.status NOT IN ('delivered', 'cancelled') THEN
+                UPDATE deliveries
+                SET 
+                    status = 'cancelled',
+                    updated_by = p_user_id,
+                    updated_at = NOW()
+                WHERE id = v_delivery.id;
+            END IF;
+        END LOOP;
+        
+        -- Retourner un résultat de succès
+        v_result := jsonb_build_object(
+            'success', true,
+            'sale_id', p_sale_id,
+            'message', 'Vente retournée avec succès'
+        );
+        
+    EXCEPTION WHEN OTHERS THEN
+        -- En cas d'erreur, retourner les détails
+        v_result := jsonb_build_object(
+            'success', false,
+            'error', SQLERRM,
+            'detail', SQLSTATE
+        );
+    END;
+    
+    RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
