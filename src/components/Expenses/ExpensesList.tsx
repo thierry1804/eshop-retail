@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
 import ExpenseForm from './ExpenseForm';
 import DeletedExpensesList from './DeletedExpensesList';
+import { formatCompactNumber } from '../../lib/formatUtils';
+import { Search, Filter, X, Plus, Calendar, DollarSign, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 type Expense = Database['public']['Tables']['expenses']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -30,6 +32,9 @@ const ExpensesList: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const formRef = React.useRef<HTMLFormElement>(null);
 
   // Récupération des dépenses avec les détails des catégories et fournisseurs
   const fetchExpenses = async () => {
@@ -194,12 +199,22 @@ const ExpensesList: React.FC = () => {
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
 
-  // Formatage du montant
+  // Formatage du montant avec format compact
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'MGA'
-    }).format(amount);
+    return formatCompactNumber(amount, 'MGA');
+  };
+
+  // Calcul des statistiques
+  const stats = {
+    total: filteredExpenses.length,
+    totalAmount: totalExpenses,
+    thisMonth: filteredExpenses.filter(e => {
+      const expenseDate = new Date(e.date);
+      const now = new Date();
+      return expenseDate.getMonth() === now.getMonth() && 
+             expenseDate.getFullYear() === now.getFullYear();
+    }).reduce((sum, e) => sum + Number(e.amount), 0),
+    average: filteredExpenses.length > 0 ? totalExpenses / filteredExpenses.length : 0
   };
 
   // Gestion des actions du formulaire
@@ -376,194 +391,240 @@ const ExpensesList: React.FC = () => {
     );
   }
 
+  const hasActiveFilters = searchTerm || selectedCategory || selectedSupplier || dateFilter || startDate || endDate;
+
   return (
-    <div className="p-3 sm:p-4 md:p-6">
-      <div className="mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              {t('navigation.expenses')}
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
-              {t('expenses.title')}
-            </p>
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      {/* Header avec onglets */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {t('navigation.expenses')}
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            {t('expenses.title')}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'active'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <span className="hidden sm:inline">Dépenses actives</span>
+            <span className="sm:hidden">Actives</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('deleted')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'deleted'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <span className="hidden sm:inline">Dépenses supprimées</span>
+            <span className="sm:hidden">Supprimées</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Cartes de statistiques */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total dépenses</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">{formatAmount(stats.totalAmount)}</p>
+            </div>
+            <div className="bg-red-100 p-3 rounded-lg">
+              <DollarSign className="h-6 w-6 text-red-600" />
+            </div>
           </div>
-          <div className="flex space-x-2 flex-shrink-0">
-            <button
-              onClick={() => setActiveTab('active')}
-              className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md text-sm sm:text-base whitespace-nowrap"
-            >
-              <span className="hidden sm:inline">Dépenses actives</span>
-              <span className="sm:hidden">Actives</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('deleted')}
-              className="px-3 sm:px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 text-sm sm:text-base whitespace-nowrap"
-            >
-              <span className="hidden sm:inline">Dépenses supprimées</span>
-              <span className="sm:hidden">Supprimées</span>
-            </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Ce mois</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{formatAmount(stats.thisMonth)}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Nombre</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            </div>
+            <div className="bg-gray-100 p-3 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-gray-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Moyenne</p>
+              <p className="text-2xl font-bold text-purple-600 mt-1">{formatAmount(stats.average)}</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filtres et recherche */}
-      <div className="bg-white rounded-lg shadow mb-4 sm:mb-6 p-3 sm:p-4 md:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
-          {/* Recherche */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('app.search')}
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={t('expenses.searchPlaceholder')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Filtre par catégorie */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('expenses.expenseCategory')}
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('expenses.filters.allCategories')}</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtre par fournisseur */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('expenses.expenseSupplier')}
-            </label>
-            <select
-              value={selectedSupplier}
-              onChange={(e) => setSelectedSupplier(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('expenses.filters.allSuppliers')}</option>
-              {suppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtre par date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('expenses.filters.dateFilter')}
-            </label>
-            <select
-              value={dateFilter}
-              onChange={(e) => {
-                setDateFilter(e.target.value);
-                // Effacer les dates personnalisées quand on sélectionne un filtre prédéfini
-                if (e.target.value) {
-                  setStartDate('');
-                  setEndDate('');
-                }
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('expenses.filters.allDates')}</option>
-              <option value="today">{t('expenses.filters.today')}</option>
-              <option value="thisWeek">{t('expenses.filters.thisWeek')}</option>
-              <option value="thisMonth">{t('expenses.filters.thisMonth')}</option>
-              <option value="lastMonth">{t('expenses.filters.lastMonth')}</option>
-            </select>
-          </div>
-
-          {/* Bouton d'ajout */}
-          <div className="flex items-end">
-            <button 
-              onClick={handleAddExpense}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {t('expenses.addExpense')}
-            </button>
-          </div>
+      {/* Barre de recherche et bouton d'ajout */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={t('expenses.searchPlaceholder')}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
+        <button
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+          className={`px-4 py-2.5 border border-gray-300 rounded-lg flex items-center gap-2 transition-colors ${
+            hasActiveFilters
+              ? 'bg-blue-50 text-blue-700 border-blue-300'
+              : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <Filter className="h-5 w-5" />
+          <span className="hidden sm:inline">Filtres</span>
+          {filtersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {hasActiveFilters && (
+            <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-0.5">
+              {[searchTerm, selectedCategory, selectedSupplier, dateFilter, startDate, endDate].filter(Boolean).length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={handleAddExpense}
+          className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center gap-2 font-medium shadow-sm"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="hidden sm:inline">{t('expenses.addExpense')}</span>
+          <span className="sm:hidden">Ajouter</span>
+        </button>
+      </div>
 
-        {/* Filtre par plage de dates personnalisée */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4 pt-3 sm:pt-4 border-t border-gray-200">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('expenses.filters.fromDate')}
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                // Effacer le filtre temporel quand on sélectionne une date personnalisée
-                if (e.target.value) {
-                  setDateFilter('');
-                }
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('expenses.filters.toDate')}
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                // Effacer le filtre temporel quand on sélectionne une date personnalisée
-                if (e.target.value) {
-                  setDateFilter('');
-                }
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={() => {
-                setStartDate('');
-                setEndDate('');
-                setDateFilter('');
-              }}
-              className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              {t('expenses.filters.clearDateFilters')}
-            </button>
-          </div>
-        </div>
-
-        {/* Résumé et actions */}
-        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
-            <div className="flex flex-col sm:flex-row sm:space-x-4 gap-1 sm:gap-0 text-xs sm:text-sm text-gray-600">
-              <span>
-                {t('expenses.summary.totalExpenses')}: <span className="font-semibold text-base sm:text-lg text-red-600">{formatAmount(totalExpenses)}</span>
-              </span>
-              <span>
-                {filteredExpenses.length} {t('expenses.summary.displayed')}
-              </span>
+      {/* Panneau de filtres expandable */}
+      {filtersExpanded && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Filtre par catégorie */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('expenses.expenseCategory')}
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('expenses.filters.allCategories')}</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            
-            {/* Bouton pour effacer les filtres */}
-            {(searchTerm || selectedCategory || selectedSupplier || dateFilter || startDate || endDate) && (
+
+            {/* Filtre par fournisseur */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('expenses.expenseSupplier')}
+              </label>
+              <select
+                value={selectedSupplier}
+                onChange={(e) => setSelectedSupplier(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('expenses.filters.allSuppliers')}</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtre par date rapide */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('expenses.filters.dateFilter')}
+              </label>
+              <select
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  if (e.target.value) {
+                    setStartDate('');
+                    setEndDate('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('expenses.filters.allDates')}</option>
+                <option value="today">{t('expenses.filters.today')}</option>
+                <option value="thisWeek">{t('expenses.filters.thisWeek')}</option>
+                <option value="thisMonth">{t('expenses.filters.thisMonth')}</option>
+                <option value="lastMonth">{t('expenses.filters.lastMonth')}</option>
+              </select>
+            </div>
+
+            {/* Date de début */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('expenses.filters.fromDate')}
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (e.target.value) {
+                    setDateFilter('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Date de fin */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('expenses.filters.toDate')}
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (e.target.value) {
+                    setDateFilter('');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Bouton effacer filtres */}
+            <div className="flex items-end">
               <button
                 onClick={() => {
                   setSearchTerm('');
@@ -573,20 +634,42 @@ const ExpensesList: React.FC = () => {
                   setStartDate('');
                   setEndDate('');
                 }}
-                className="px-3 py-1 text-xs sm:text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 whitespace-nowrap"
+                disabled={!hasActiveFilters}
+                className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                  hasActiveFilters
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                }`}
               >
+                <X className="h-4 w-4" />
                 {t('expenses.filters.clearFilters')}
               </button>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Résumé compact */}
+      {!filtersExpanded && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-gray-600">
+                {t('expenses.summary.totalExpenses')}: <span className="font-semibold text-red-600">{formatAmount(totalExpenses)}</span>
+              </span>
+              <span className="text-gray-600">
+                {filteredExpenses.length} {t('expenses.summary.displayed')}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Liste des dépenses - Mobile Card View */}
       <div className="lg:hidden space-y-3">
         {filteredExpenses.length === 0 ? (
-          <div className="p-6 sm:p-8 text-center bg-white rounded-lg shadow">
-            <div className="text-gray-400 text-sm sm:text-lg">
+          <div className="p-8 text-center bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="text-gray-400 text-base">
               {searchTerm || selectedCategory || selectedSupplier || dateFilter || startDate || endDate
                 ? t('expenses.noExpensesFound')
                 : t('expenses.noExpenses')
@@ -595,18 +678,24 @@ const ExpensesList: React.FC = () => {
           </div>
         ) : (
           filteredExpenses.map((expense) => (
-            <div key={expense.id} className="bg-white rounded-lg shadow-md p-4">
+            <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                <div className="flex-1 min-w-0 pr-3">
+                  <div className="text-base font-semibold text-gray-900 truncate mb-1">
                     {expense.description || '-'}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {formatDate(expense.date)}
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <span>{formatDate(expense.date)}</span>
+                    {expense.category?.name && (
+                      <>
+                        <span>•</span>
+                        <span className="bg-gray-100 px-2 py-0.5 rounded">{expense.category.name}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="ml-2 flex flex-col items-end gap-1 flex-shrink-0">
-                  <div className="text-sm font-medium text-red-600">
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="text-lg font-bold text-red-600">
                     {formatAmount(Number(expense.amount))}
                   </div>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -618,53 +707,47 @@ const ExpensesList: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <div className="space-y-1 text-xs pt-2 border-t border-gray-100">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Catégorie:</span>
-                  <span className="text-gray-900">{expense.category?.name || '-'}</span>
-                </div>
-                {expense.supplier?.name && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Fournisseur:</span>
-                    <span className="text-gray-900 truncate ml-2">{expense.supplier.name}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleEditExpense(expense)}
-                      disabled={expense.locked || false}
-                      className={`text-xs font-medium ${expense.locked
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-900'
+              {(expense.supplier?.name || !expense.locked) && (
+                <div className="pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    {expense.supplier?.name && (
+                      <div className="text-xs text-gray-600">
+                        <span className="font-medium">Fournisseur:</span> {expense.supplier.name}
+                      </div>
+                    )}
+                    <div className="flex gap-3 ml-auto">
+                      <button 
+                        onClick={() => handleEditExpense(expense)}
+                        disabled={expense.locked || false}
+                        className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+                          expense.locked
+                            ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                            : 'text-blue-600 hover:bg-blue-50'
                         }`}
-                      title={expense.locked ? t('expenses.audit.lockedExpense') : t('app.edit')}
-                    >
-                      {t('app.edit')}
-                    </button>
-                    <span className="text-gray-300">|</span>
-                    <button 
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      className="text-xs font-medium text-red-600 hover:text-red-900"
-                      title={t('expenses.audit.softDelete')}
-                    >
-                      {t('app.delete')}
-                    </button>
-                  </div>
-                  <div className="text-gray-400 text-xs">
-                    {(expense as any).created_by_user?.name || '-'}
+                        title={expense.locked ? t('expenses.audit.lockedExpense') : t('app.edit')}
+                      >
+                        {t('app.edit')}
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        className="text-sm font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md transition-colors"
+                        title={t('expenses.audit.softDelete')}
+                      >
+                        {t('app.delete')}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
       </div>
 
       {/* Liste des dépenses - Desktop Table View */}
-      <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {filteredExpenses.length === 0 ? (
-          <div className="p-8 text-center">
+          <div className="p-12 text-center">
             <div className="text-gray-400 text-lg">
               {searchTerm || selectedCategory || selectedSupplier || dateFilter || startDate || endDate
                 ? t('expenses.noExpensesFound')
@@ -677,57 +760,57 @@ const ExpensesList: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.date')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.description')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.category')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.supplier')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.amount')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('expenses.table.status')}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('expenses.audit.createdBy')}
-                    </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('expenses.audit.updatedBy')}
-                    </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t('common.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
+                  <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(expense.date)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs truncate">
+                      <div className="max-w-xs truncate font-medium">
                         {expense.description || '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.category?.name || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {expense.category?.name ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                          {expense.category.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.supplier?.name || '-'}
+                      {expense.supplier?.name || <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">
                       {formatAmount(Number(expense.amount))}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
                         expense.locked 
                           ? 'bg-red-100 text-red-800' 
                           : 'bg-green-100 text-green-800'
@@ -735,38 +818,23 @@ const ExpensesList: React.FC = () => {
                         {expense.locked ? t('expenses.locked') : t('expenses.unlocked')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        <div className="font-medium">{(expense as any).created_by_user?.name || '-'}</div>
-                        <div className="text-gray-500 text-xs">
-                          {expense.created_at ? formatDate(expense.created_at) : '-'}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        <div className="font-medium">{(expense as any).updated_by_user?.name || '-'}</div>
-                        <div className="text-gray-500 text-xs">
-                          {expense.updated_at ? formatDate(expense.updated_at) : '-'}
-                        </div>
-                      </div>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="flex items-center gap-2">
                         <button 
                           onClick={() => handleEditExpense(expense)}
                           disabled={expense.locked || false}
-                          className={`${expense.locked
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-blue-600 hover:text-blue-900'
-                            }`}
+                          className={`px-3 py-1.5 rounded-md transition-colors ${
+                            expense.locked
+                              ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                              : 'text-blue-600 hover:bg-blue-50'
+                          }`}
                           title={expense.locked ? t('expenses.audit.lockedExpense') : t('app.edit')}
                         >
                           {t('app.edit')}
                         </button>
                         <button 
                           onClick={() => handleDeleteExpense(expense.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
                           title={t('expenses.audit.softDelete')}
                         >
                           {t('app.delete')}
@@ -781,19 +849,81 @@ const ExpensesList: React.FC = () => {
         )}
       </div>
 
-      {/* Modal pour le formulaire */}
+      {/* Offcanvas pour le formulaire */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <ExpenseForm
-                expense={editingExpense || undefined}
-                onSave={handleFormSave}
-                onCancel={handleFormCancel}
-              />
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+            onClick={handleFormCancel}
+          />
+          
+          {/* Offcanvas */}
+          <div className="fixed inset-y-0 right-0 w-full max-w-3xl bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col">
+            {/* Header fixe */}
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  {editingExpense ? t('expenses.editExpense') : t('expenses.addExpense')}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+                  {editingExpense ? 'Modifier les informations de la dépense' : 'Ajouter une nouvelle dépense'}
+                </p>
+              </div>
+              <button
+                onClick={handleFormCancel}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Fermer"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4 sm:p-6">
+                <ExpenseForm
+                  ref={formRef}
+                  expense={editingExpense || undefined}
+                  onSave={handleFormSave}
+                  onCancel={handleFormCancel}
+                  onLoadingChange={setFormLoading}
+                />
+              </div>
+            </div>
+            
+            {/* Footer fixe avec boutons */}
+            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-3 flex justify-end gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleFormCancel}
+                disabled={formLoading}
+                className="px-4 sm:px-6 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('app.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formRef.current) {
+                    formRef.current.requestSubmit();
+                  }
+                }}
+                disabled={formLoading || editingExpense?.locked || false}
+                className="px-4 sm:px-6 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {formLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  t('app.save')
+                )}
+              </button>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

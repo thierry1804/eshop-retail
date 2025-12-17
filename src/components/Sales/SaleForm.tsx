@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, ShoppingCart, Plus, User, Search, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Client, Sale } from '../../types';
+import { findClientByPhone } from '../../lib/clientUtils';
 
 interface SaleItem {
   id: string;
@@ -274,6 +275,36 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         }
       }
 
+      // Vérifier si un client avec ce numéro de téléphone existe déjà
+      const existingClient = await findClientByPhone(newClientData.phone);
+      
+      if (existingClient) {
+        // Un client existe déjà avec ce numéro, le sélectionner automatiquement
+        setError('Un client avec ce numéro existe déjà. Sélection automatique du client existant.');
+        
+        // S'assurer que le client est dans la liste
+        const clientInList = clients.find(c => c.id === existingClient.id);
+        if (!clientInList) {
+          setClients(prev => [...prev, existingClient]);
+        }
+        
+        // Sélectionner automatiquement le client existant
+        handleClientSelect(existingClient);
+        
+        // Réinitialiser le formulaire de client
+        setNewClientData({
+          first_name: '',
+          last_name: '',
+          phone: '',
+          address: '',
+          notes: ''
+        });
+        
+        setShowNewClientForm(false);
+        setCreatingClient(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('clients')
         .insert({
@@ -326,7 +357,19 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       return;
     }
 
-    if (formData.deposit > formData.total_amount) {
+    // Recalculer le total_amount à partir des articles avant la soumission
+    const totalFromItems = saleItems.reduce((sum, item) => {
+      const itemTotal = Number(item.total_price) || 0;
+      return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+    }, 0);
+
+    if (totalFromItems <= 0) {
+      setError('Le montant total de la vente doit être supérieur à 0');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.deposit > totalFromItems) {
       setError('L\'acompte ne peut pas être supérieur au montant total');
       setLoading(false);
       return;
@@ -334,7 +377,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const remainingBalance = formData.total_amount - formData.deposit;
+      const remainingBalance = totalFromItems - formData.deposit;
       const status = remainingBalance === 0 ? 'paid' : 'ongoing';
 
       // Vérifier si l'utilisateur a un profil
@@ -404,7 +447,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
         const updateData = {
           client_id: formData.client_id,
           description: formData.description,
-          total_amount: formData.total_amount,
+          total_amount: totalFromItems,
           deposit: formData.deposit,
           remaining_balance: remainingBalance,
           status,
@@ -479,7 +522,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
           .insert({
             client_id: formData.client_id,
             description: formData.description,
-            total_amount: formData.total_amount,
+            total_amount: totalFromItems,
             deposit: formData.deposit,
             remaining_balance: remainingBalance,
             status,
@@ -578,9 +621,8 @@ export const SaleForm: React.FC<SaleFormProps> = ({ sale, onClose, onSubmit }) =
       const itemTotal = Number(item.total_price) || 0;
       return sum + (isNaN(itemTotal) ? 0 : itemTotal);
     }, 0);
-    if (totalFromItems > 0) {
-      setFormData(prev => ({ ...prev, total_amount: totalFromItems }));
-    }
+    // Toujours mettre à jour le total_amount, même s'il est 0
+    setFormData(prev => ({ ...prev, total_amount: totalFromItems }));
   }, [saleItems]);
 
   const handleClose = () => {

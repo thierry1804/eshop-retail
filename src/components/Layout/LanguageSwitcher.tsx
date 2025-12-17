@@ -2,7 +2,11 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 
-export const LanguageSwitcher: React.FC = () => {
+interface LanguageSwitcherProps {
+  collapsed?: boolean;
+}
+
+export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ collapsed = false }) => {
   const { i18n, t } = useTranslation();
 
   const changeLanguage = (lng: string) => {
@@ -12,16 +16,16 @@ export const LanguageSwitcher: React.FC = () => {
   const currentLanguage = i18n.language;
 
   return (
-    <div className="relative group">
+    <div className={`relative group ${collapsed ? 'w-full' : ''}`}>
       <button
-        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+        className={`flex items-center ${collapsed ? 'justify-center w-full' : 'space-x-2'} px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors`}
         title={t('language.switchLanguage')}
       >
         <Globe size={16} />
-        <span>{currentLanguage === 'zh' ? '中文' : 'FR'}</span>
+        {!collapsed && <span>{currentLanguage === 'zh' ? '中文' : 'FR'}</span>}
       </button>
       
-      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+      <div className={`absolute ${collapsed ? 'left-0' : 'right-0'} mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}>
         <div className="py-1">
           <button
             onClick={() => changeLanguage('fr')}

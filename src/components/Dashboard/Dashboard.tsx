@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { StatCard } from './StatCard';
 import { supabase } from '../../lib/supabase';
 import { DashboardStats, Client, ClientWithSales } from '../../types';
+import { formatCompactNumber } from '../../lib/formatUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export const Dashboard: React.FC = () => {
@@ -141,9 +142,19 @@ export const Dashboard: React.FC = () => {
       case 'custom':
         // Pour les dates personnalisées, le graphique s'accorde avec le filtre
         if (customDateRange.from && customDateRange.to) {
-          fromDate = new Date(customDateRange.from);
-          toDate = new Date(customDateRange.to);
-          toDate.setHours(23, 59, 59, 999);
+          // Si les dates sont identiques, afficher le mois en cours de la date sélectionnée
+          if (customDateRange.from === customDateRange.to) {
+            const selectedDate = new Date(customDateRange.from);
+            // Premier jour du mois de la date sélectionnée
+            fromDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            // Dernier jour du mois de la date sélectionnée
+            toDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59);
+          } else {
+            // Si les dates sont différentes, utiliser la période sélectionnée
+            fromDate = new Date(customDateRange.from);
+            toDate = new Date(customDateRange.to);
+            toDate.setHours(23, 59, 59, 999);
+          }
         }
         break;
       default:
@@ -307,15 +318,13 @@ export const Dashboard: React.FC = () => {
           setChartData(emptyChartData);
           return;
         }
-      } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
+      } else if (dateFilter === 'custom' && fromDate && toDate) {
         if (!sales || sales.length === 0) {
-          // Pour le filtre personnalisé, générer toutes les dates entre from et to même sans données
-          const startDate = new Date(customDateRange.from);
-          const endDate = new Date(customDateRange.to);
-          
+          // Pour le filtre personnalisé, générer toutes les dates entre fromDate et toDate même sans données
+          // Utiliser les dates calculées par getChartDateRange() qui incluent l'extension à 2 mois si nécessaire
           const emptyChartData = [];
-          const currentDate = new Date(startDate);
-          while (currentDate <= endDate) {
+          const currentDate = new Date(fromDate);
+          while (currentDate <= toDate) {
             const dateStr = currentDate.toISOString().split('T')[0];
             emptyChartData.push({
               date: dateStr,
@@ -377,13 +386,11 @@ export const Dashboard: React.FC = () => {
             totalRevenue: salesByDay[dateStr]?.totalRevenue || 0
           });
         }
-      } else if (dateFilter === 'custom' && customDateRange.from && customDateRange.to) {
-        // Pour le filtre personnalisé, générer toutes les dates entre from et to
-        const startDate = new Date(customDateRange.from);
-        const endDate = new Date(customDateRange.to);
-        
-        const currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
+      } else if (dateFilter === 'custom' && fromDate && toDate) {
+        // Pour le filtre personnalisé, générer toutes les dates entre fromDate et toDate
+        // Utiliser les dates calculées par getChartDateRange() qui incluent l'extension à 2 mois si nécessaire
+        const currentDate = new Date(fromDate);
+        while (currentDate <= toDate) {
           const dateStr = currentDate.toISOString().split('T')[0];
           chartDataArray.push({
             date: dateStr,
@@ -408,10 +415,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'MGA',
-    }).format(amount);
+    return formatCompactNumber(amount, 'MGA');
   };
 
   const getTrustRatingColor = (rating: string) => {

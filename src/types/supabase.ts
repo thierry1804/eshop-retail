@@ -76,7 +76,7 @@ export type Database = {
           total_amount: number;
           deposit: number;
           remaining_balance: number;
-          status: 'ongoing' | 'paid' | 'returned';
+          status: 'ongoing' | 'paid' | 'returned' | 'partially_returned';
           created_at: string;
           created_by: string;
         };
@@ -87,7 +87,7 @@ export type Database = {
           total_amount: number;
           deposit?: number;
           remaining_balance?: number;
-          status?: 'ongoing' | 'paid' | 'returned';
+          status?: 'ongoing' | 'paid' | 'returned' | 'partially_returned';
           created_at?: string;
           created_by?: string;
         };
@@ -98,7 +98,7 @@ export type Database = {
           total_amount?: number;
           deposit?: number;
           remaining_balance?: number;
-          status?: 'ongoing' | 'paid' | 'returned';
+          status?: 'ongoing' | 'paid' | 'returned' | 'partially_returned';
           created_at?: string;
           created_by?: string;
         };

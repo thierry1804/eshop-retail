@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { Client } from '../../types';
 import { logger } from '../../lib/logger';
+import { findClientByPhone } from '../../lib/clientUtils';
 
 interface ClientFormProps {
   client?: Client;
@@ -52,6 +53,15 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
         // Logger le succès de la mise à jour
         await logger.logFormSubmit('ClientForm', formData, true);
       } else {
+        // Vérifier si un client avec ce numéro de téléphone existe déjà
+        const existingClient = await findClientByPhone(formData.phone);
+        
+        if (existingClient) {
+          setError('Un client avec ce numéro de téléphone existe déjà. Veuillez le sélectionner dans la liste.');
+          setLoading(false);
+          return;
+        }
+
         // Logger l'action de création
         await logger.logCRUDAction('CREATE', 'clients', 'new', formData);
 

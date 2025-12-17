@@ -281,7 +281,10 @@
       "today": "今天",
       "thisWeek": "本周",
       "thisMonth": "本月",
-      "lastMonth": "上月"
+      "lastMonth": "上月",
+      "fromDate": "开始日期",
+      "toDate": "结束日期",
+      "clearDateFilters": "清除日期筛选"
     },
     "summary": {
       "totalExpenses": "总支出",

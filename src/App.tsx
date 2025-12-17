@@ -20,6 +20,7 @@ import { User } from './types';
 import { logger } from './lib/logger';
 import { OfflineIndicator } from './components/Offline/OfflineIndicator';
 import { syncManager } from './lib/offline/sync-manager';
+import { useSidebar } from './contexts/SidebarContext';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -27,6 +28,7 @@ function App() {
   const [pageParams, setPageParams] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
+  const { isCollapsed } = useSidebar();
 
   useEffect(() => {
     console.log('🚀 App: Initialisation de l\'application');
@@ -336,7 +338,7 @@ function App() {
         logger.logNavigation(currentPage, page);
         setCurrentPage(page);
       }} onLogout={handleLogout} />
-      <main className="md:ml-64">
+      <main className={`transition-all duration-300 ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 pt-16 md:pt-6 pb-3 sm:pb-4 md:pb-6">
           {renderCurrentPage()}
         </div>

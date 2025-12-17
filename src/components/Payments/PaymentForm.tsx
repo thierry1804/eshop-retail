@@ -95,6 +95,8 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ sale, onClose, onSubmi
       }
 
       // Create payment
+      // Le trigger SQL update_sale_balance() mettra automatiquement à jour
+      // le remaining_balance et le status de la vente
       const { error: paymentError } = await supabase
         .from('payments')
         .insert(paymentData);
@@ -104,19 +106,8 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ sale, onClose, onSubmi
         throw paymentError;
       }
 
-      // Update sale remaining balance
-      const newRemainingBalance = sale.remaining_balance - amount;
-      const newStatus = newRemainingBalance === 0 ? 'paid' : 'ongoing';
-
-      const { error: saleError } = await supabase
-        .from('sales')
-        .update({
-          remaining_balance: newRemainingBalance,
-          status: newStatus,
-        })
-        .eq('id', sale.id);
-
-      if (saleError) throw saleError;
+      // Le trigger SQL s'occupe de la mise à jour du remaining_balance
+      // Pas besoin de mettre à jour manuellement
 
       onSubmit();
     } catch (error: any) {
@@ -172,7 +163,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ sale, onClose, onSubmi
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Déjà payé:</span>
-                  <span className="font-medium">{formatCurrency(sale.total_amount - sale.remaining_balance)}</span>
+                  <span className="font-medium">{formatCurrency(Math.max(0, sale.total_payments || (sale.total_amount - sale.remaining_balance)))}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1">
                   <span className="text-gray-600 font-medium">Solde restant:</span>

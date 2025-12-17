@@ -28,7 +28,7 @@ export interface Sale {
   total_amount: number;
   deposit: number;
   remaining_balance: number;
-  status: 'ongoing' | 'paid' | 'returned';
+  status: 'ongoing' | 'paid' | 'returned' | 'partially_returned';
   created_at: string;
   created_by: string;
   client?: Client;
@@ -82,7 +82,7 @@ export interface Supplier {
 
 export interface Expense {
   id: string;
-  user_id: string;
+  user_id: string | null;
   amount: number;
   category_id?: string;
   supplier_id?: string;

@@ -168,6 +168,7 @@
       "paid": "Réglée",
       "ongoing": "En cours",
       "returned": "Retournée",
+      "partially_returned": "Partiellement retournée",
       "unknown": "Inconnue"
     },
     "filters": {
@@ -312,7 +313,10 @@
       "today": "Aujourd'hui",
       "thisWeek": "Cette semaine",
       "thisMonth": "Ce mois",
-      "lastMonth": "Mois dernier"
+      "lastMonth": "Mois dernier",
+      "fromDate": "Date de début",
+      "toDate": "Date de fin",
+      "clearDateFilters": "Effacer les filtres de date"
     },
     "summary": {
       "totalExpenses": "Dépenses totales",

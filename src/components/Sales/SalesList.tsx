@@ -20,7 +20,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paid' | 'returned'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paid' | 'returned' | 'partially_returned'>('all');
   const [dateFilter, setDateFilter] = useState<string>(() => {
     // Par défaut, filtrer par la date du jour
     const today = new Date();
@@ -177,6 +177,8 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         return { label: t('sales.status.ongoing'), className: 'text-yellow-600 bg-yellow-100' };
       case 'returned':
         return { label: t('sales.status.returned'), className: 'text-red-600 bg-red-100' };
+      case 'partially_returned':
+        return { label: t('sales.status.partially_returned'), className: 'text-orange-600 bg-orange-100' };
       default:
         return { label: t('sales.status.unknown'), className: 'text-gray-600 bg-gray-100' };
     }
@@ -265,6 +267,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             <option value="ongoing">{t('sales.status.ongoing')}</option>
             <option value="paid">{t('sales.status.paid')}</option>
             <option value="returned">{t('sales.status.returned')}</option>
+            <option value="partially_returned">{t('sales.status.partially_returned')}</option>
           </select>
           <DatePickerWithSales
             value={dateFilter}
@@ -383,7 +386,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                       <CreditCard size={18} />
                     </button>
                   )}
-                  {sale.status !== 'returned' && (
+                  {sale.status !== 'returned' && sale.status !== 'partially_returned' && (
                     <button
                       onClick={() => handleReturnSale(sale)}
                       className="text-red-600 hover:text-red-800 transition-colors p-1"
@@ -552,7 +555,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                             <CreditCard size={18} />
                           </button>
                         )}
-                        {sale.status !== 'returned' && (
+                        {sale.status !== 'returned' && sale.status !== 'partially_returned' && (
                           <button
                             onClick={() => handleReturnSale(sale)}
                             className="text-red-600 hover:text-red-800 transition-colors"
