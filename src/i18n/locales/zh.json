@@ -358,14 +358,18 @@
       "sortByName": "按名称排序",
       "sortBySku": "按SKU排序",
       "sortByStock": "按库存排序",
-      "sortByPrice": "按价格排序"
+      "sortByPrice": "按价格排序",
+      "showDuplicatesOnly": "仅显示同名产品"
     },
     "table": {
       "product": "产品",
       "sku": "SKU",
       "stock": "库存",
       "price": "价格",
-      "status": "状态"
+      "status": "状态",
+      "activity": "活动",
+      "hasOrder": "已订购",
+      "hasMovement": "已销售或已采购"
     },
     "form": {
       "addNewProduct": "添加新产品",

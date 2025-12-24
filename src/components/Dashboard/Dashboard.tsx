@@ -174,7 +174,8 @@ export const Dashboard: React.FC = () => {
       console.log('📊 Dashboard: Récupération des statistiques de ventes...');
       let salesQuery = supabase
         .from('sales')
-        .select('total_amount, deposit, remaining_balance, status, created_at');
+        .select('total_amount, deposit, remaining_balance, status, created_at')
+        .neq('status', 'returned'); // Exclure les ventes complètement retournées
 
       if (fromDate && toDate) {
         salesQuery = salesQuery
@@ -282,6 +283,7 @@ export const Dashboard: React.FC = () => {
       let salesQuery = supabase
         .from('sales')
         .select('total_amount, deposit, remaining_balance, status, created_at')
+        .neq('status', 'returned') // Exclure les ventes complètement retournées
         .order('created_at', { ascending: true });
 
       if (fromDate && toDate) {

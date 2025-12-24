@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Product, User } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, Image as ImageIcon } from 'lucide-react';
+import { Product, User, PurchaseOrder, Sale } from '../../types';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, Image as ImageIcon, ShoppingCart, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
+import { PurchaseOrderDetails } from '../Supply/PurchaseOrderDetails';
+import { SaleForm } from '../Sales/SaleForm';
 
 interface ProductsListProps {
   user: User;
@@ -19,7 +21,13 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('name');
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [productOrders, setProductOrders] = useState<Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }>>({});
+  const [productMovements, setProductMovements] = useState<Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }>>({});
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [showSaleForm, setShowSaleForm] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -40,10 +48,159 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
 
       if (error) throw error;
       setProducts(data || []);
+
+      // Récupérer les informations sur les commandes et mouvements
+      if (data && data.length > 0) {
+        await fetchProductOrdersAndMovements(data.map(p => p.id));
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProductOrdersAndMovements = async (productIds: string[]) => {
+    try {
+      // Récupérer les dernières commandes pour chaque produit
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('purchase_order_items')
+        .select('product_id, purchase_order_id, purchase_orders(created_at)')
+        .in('product_id', productIds);
+
+      if (ordersError) {
+        console.error('Erreur lors du chargement des commandes:', ordersError);
+      } else {
+        const ordersMap: Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }> = {};
+        productIds.forEach(id => {
+          ordersMap[id] = { hasOrder: false };
+        });
+        
+        if (ordersData) {
+          // Trier par date de commande (plus récente en premier)
+          const sortedOrders = [...ordersData].sort((a: any, b: any) => {
+            const dateA = Array.isArray(a.purchase_orders) 
+              ? a.purchase_orders[0]?.created_at 
+              : a.purchase_orders?.created_at;
+            const dateB = Array.isArray(b.purchase_orders) 
+              ? b.purchase_orders[0]?.created_at 
+              : b.purchase_orders?.created_at;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+          });
+
+          sortedOrders.forEach((item: any) => {
+            const productId = item.product_id;
+            if (productId && !ordersMap[productId]?.hasOrder) {
+              const purchaseOrder = Array.isArray(item.purchase_orders) 
+                ? item.purchase_orders[0] 
+                : item.purchase_orders;
+              const orderDate = purchaseOrder?.created_at;
+              const orderId = item.purchase_order_id;
+              
+              ordersMap[productId] = {
+                hasOrder: true,
+                lastOrderDate: orderDate || undefined,
+                orderId: orderId
+              };
+            }
+          });
+        }
+        setProductOrders(ordersMap);
+      }
+
+      // Récupérer les derniers mouvements (vente ou approvisionnement) pour chaque produit
+      const { data: movementsData, error: movementsError } = await supabase
+        .from('stock_movements')
+        .select('product_id, reference_type, reference_id, created_at')
+        .in('product_id', productIds)
+        .in('reference_type', ['purchase', 'sale'])
+        .order('created_at', { ascending: false });
+
+      if (movementsError) {
+        console.error('Erreur lors du chargement des mouvements:', movementsError);
+      } else {
+        const movementsMap: Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }> = {};
+        productIds.forEach(id => {
+          movementsMap[id] = { hasMovement: false };
+        });
+        
+        if (movementsData) {
+          movementsData.forEach((movement: any) => {
+            const productId = movement.product_id;
+            if (productId && !movementsMap[productId]?.hasMovement) {
+              movementsMap[productId] = {
+                hasMovement: true,
+                lastMovementDate: movement.created_at,
+                referenceId: movement.reference_id,
+                referenceType: movement.reference_type
+              };
+            }
+          });
+        }
+        setProductMovements(movementsMap);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des commandes et mouvements:', error);
+    }
+  };
+
+  const handleOrderClick = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select(`
+          *,
+          purchase_order_items (
+            id,
+            product_id,
+            quantity_ordered,
+            quantity_received,
+            unit_price,
+            total_price,
+            products (
+              name,
+              sku
+            )
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setSelectedOrder(data as PurchaseOrder);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la commande:', error);
+    }
+  };
+
+  const handleMovementClick = async (referenceId: string, referenceType: string) => {
+    try {
+      if (referenceType === 'sale') {
+        // Charger la vente
+        const { data, error } = await supabase
+          .from('sales')
+          .select(`
+            *,
+            client:clients(*)
+          `)
+          .eq('id', referenceId)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setSelectedSale(data as Sale);
+          setShowSaleForm(true);
+        }
+      } else if (referenceType === 'purchase') {
+        // Charger la commande d'achat
+        await handleOrderClick(referenceId);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la référence:', error);
     }
   };
 
@@ -52,7 +209,17 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || product.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    
+    // Filtrer les produits avec des noms identiques si le filtre est activé
+    let matchesDuplicates = true;
+    if (showDuplicatesOnly) {
+      const nameCount = products.filter(p => 
+        p.name.toLowerCase() === product.name.toLowerCase()
+      ).length;
+      matchesDuplicates = nameCount > 1;
+    }
+    
+    return matchesSearch && matchesStatus && matchesDuplicates;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -145,6 +312,15 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
               <option value="stock">{t('stock.filters.sortByStock')}</option>
               <option value="price">{t('stock.filters.sortByPrice')}</option>
             </select>
+            <label className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-sm sm:text-base">
+              <input
+                type="checkbox"
+                checked={showDuplicatesOnly}
+                onChange={(e) => setShowDuplicatesOnly(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-gray-700">{t('stock.filters.showDuplicatesOnly')}</span>
+            </label>
           </div>
         </div>
       </div>
@@ -191,6 +367,41 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Prix:</span>
                   <span className="text-gray-900 font-medium">{getCurrentPrice(product)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Activité:</span>
+                  <div className="flex items-center gap-2">
+                    {productOrders[product.id]?.hasOrder && productOrders[product.id]?.orderId && (
+                      <button
+                        onClick={() => handleOrderClick(productOrders[product.id].orderId!)}
+                        className="cursor-pointer hover:opacity-70 transition-opacity"
+                        title={t('stock.table.hasOrder')}
+                      >
+                        <ShoppingCart 
+                          className="h-4 w-4 text-blue-600" 
+                        />
+                      </button>
+                    )}
+                    {productMovements[product.id]?.hasMovement && 
+                     productMovements[product.id]?.referenceId && 
+                     productMovements[product.id]?.referenceType && (
+                      <button
+                        onClick={() => handleMovementClick(
+                          productMovements[product.id].referenceId!,
+                          productMovements[product.id].referenceType!
+                        )}
+                        className="cursor-pointer hover:opacity-70 transition-opacity"
+                        title={t('stock.table.hasMovement')}
+                      >
+                        <ArrowUpDown 
+                          className="h-4 w-4 text-green-600" 
+                        />
+                      </button>
+                    )}
+                    {!productOrders[product.id]?.hasOrder && !productMovements[product.id]?.hasMovement && (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -252,6 +463,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                   {t('stock.table.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('stock.table.activity')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('common.actions')}
                 </th>
               </tr>
@@ -308,6 +522,40 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         {t(`stock.status.${product.status}`)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {productOrders[product.id]?.hasOrder && productOrders[product.id]?.orderId && (
+                          <button
+                            onClick={() => handleOrderClick(productOrders[product.id].orderId!)}
+                            className="cursor-pointer hover:opacity-70 transition-opacity"
+                            title={t('stock.table.hasOrder')}
+                          >
+                            <ShoppingCart 
+                              className="h-4 w-4 text-blue-600" 
+                            />
+                          </button>
+                        )}
+                        {productMovements[product.id]?.hasMovement && 
+                         productMovements[product.id]?.referenceId && 
+                         productMovements[product.id]?.referenceType && (
+                          <button
+                            onClick={() => handleMovementClick(
+                              productMovements[product.id].referenceId!,
+                              productMovements[product.id].referenceType!
+                            )}
+                            className="cursor-pointer hover:opacity-70 transition-opacity"
+                            title={t('stock.table.hasMovement')}
+                          >
+                            <ArrowUpDown 
+                              className="h-4 w-4 text-green-600" 
+                            />
+                          </button>
+                        )}
+                        {!productOrders[product.id]?.hasOrder && !productMovements[product.id]?.hasMovement && (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => setSelectedProduct(product)}
@@ -363,6 +611,34 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             setShowForm(true);
           }}
           user={user}
+        />
+      )}
+
+      {selectedOrder && (
+        <PurchaseOrderDetails
+          order={selectedOrder}
+          onClose={() => {
+            setSelectedOrder(null);
+          }}
+          onEdit={() => {
+            setSelectedOrder(null);
+          }}
+          user={user}
+        />
+      )}
+
+      {showSaleForm && selectedSale && (
+        <SaleForm
+          sale={selectedSale}
+          onClose={() => {
+            setShowSaleForm(false);
+            setSelectedSale(null);
+          }}
+          onSubmit={() => {
+            setShowSaleForm(false);
+            setSelectedSale(null);
+            fetchProducts();
+          }}
         />
       )}
     </div>

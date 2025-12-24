@@ -403,14 +403,18 @@
       "sortByName": "Trier par nom",
       "sortBySku": "Trier par SKU",
       "sortByStock": "Trier par stock",
-      "sortByPrice": "Trier par prix"
+      "sortByPrice": "Trier par prix",
+      "showDuplicatesOnly": "Noms identiques uniquement"
     },
     "table": {
       "product": "PRODUIT",
       "sku": "SKU",
       "stock": "STOCK",
       "price": "PRIX",
-      "status": "STATUT"
+      "status": "STATUT",
+      "activity": "ACTIVITÉ",
+      "hasOrder": "A été commandé",
+      "hasMovement": "A fait l'objet d'une vente ou d'un approvisionnement"
     },
     "form": {
       "addNewProduct": "Ajouter un nouveau produit",
