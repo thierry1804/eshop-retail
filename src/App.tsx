@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Layout/Navbar';
 import { LoginForm } from './components/Auth/LoginForm';
 import { Dashboard } from './components/Dashboard/Dashboard';
@@ -30,31 +30,126 @@ function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const { isCollapsed } = useSidebar();
 
+  // Flag pour éviter les initialisations multiples
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
+    // Ne s'exécuter qu'une seule fois
+    if (hasInitializedRef.current) {
+      console.log('⚠️ App: Initialisation déjà effectuée, skip');
+      return;
+    }
+    hasInitializedRef.current = true;
+
     console.log('🚀 App: Initialisation de l\'application');
     const startTime = performance.now();
     
     try {
       checkAuth();
       
-      // Démarrer le gestionnaire de synchronisation
-      if (navigator.onLine) {
-        syncManager.startAutoSync();
-      }
+      // Désactiver la synchronisation automatique pour éviter les requêtes excessives
+      // Les données sont déjà dans Supabase, pas besoin de synchroniser en continu
+      // syncManager.startAutoSync(); // Désactivé pour réduire les requêtes
       
       // Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log(`🔄 App: Événement auth détecté: ${event}`);
+        
+        if (event === 'TOKEN_REFRESHED' && session) {
+          // Ignorer silencieusement les rafraîchissements de token trop fréquents
+          // Ne mettre à jour que si l'utilisateur n'est pas défini ou si c'est vraiment nécessaire
+          if (!user) {
+            console.log('🔄 App: Token rafraîchi, mise à jour de la session (utilisateur manquant)');
+            const storedUser = localStorage.getItem('user');
+            if (storedUser && session.user) {
+              try {
+                const parsedUser = JSON.parse(storedUser);
+                if (parsedUser.id === session.user.id) {
+                  parsedUser.updated_at = new Date().toISOString();
+                  localStorage.setItem('user', JSON.stringify(parsedUser));
+                  setUser(parsedUser);
+                }
+              } catch (error) {
+                console.warn('⚠️ App: Erreur lors de la mise à jour du localStorage:', error);
+              }
+            }
+          }
+          // Ne pas logger chaque rafraîchissement pour éviter le spam dans la console
+          return;
+        }
+        
         if (event === 'SIGNED_IN' && session) {
           console.log('👤 App: Utilisateur connecté, récupération du profil...');
           await fetchUserProfile(session.user.id);
-          // Démarrer la synchronisation après connexion
-          if (navigator.onLine) {
-            syncManager.startAutoSync();
-          }
+          // Synchronisation désactivée pour éviter les requêtes excessives
+          // if (navigator.onLine) {
+          //   syncManager.startAutoSync();
+          // }
         } else if (event === 'SIGNED_OUT') {
+          // Vérifier si c'est vraiment une déconnexion ou juste une erreur de rafraîchissement
+          // Ne déconnecter que si l'utilisateur n'a pas de session valide dans le localStorage
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              // Attendre un peu pour laisser le temps à Supabase de se stabiliser après une erreur 429
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Vérifier si la session est toujours valide (avec timeout pour éviter les blocages)
+              const sessionPromise = supabase.auth.getSession();
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 2000)
+              );
+              
+              try {
+                const { data: { session: currentSession } } = await Promise.race([
+                  sessionPromise,
+                  timeoutPromise
+                ]) as any;
+                
+                if (currentSession && currentSession.user) {
+                  console.log('⚠️ App: Événement SIGNED_OUT reçu mais session toujours valide, ignoré (probable erreur 429)');
+                  // Remettre l'utilisateur si la session est toujours valide
+                  const parsedUser = JSON.parse(storedUser);
+                  if (parsedUser.id === currentSession.user.id) {
+                    setUser(parsedUser);
+                  }
+                  return; // Ignorer la déconnexion si la session est toujours valide
+                }
+              } catch (sessionError) {
+                // En cas d'erreur ou timeout, vérifier le localStorage directement
+                console.warn('⚠️ App: Erreur lors de la vérification de session, vérification du localStorage:', sessionError);
+                // Si on a un utilisateur stocké, ne pas déconnecter immédiatement
+                // Attendre un peu plus et réessayer
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const { data: { session: retrySession } } = await supabase.auth.getSession();
+                if (retrySession && retrySession.user) {
+                  console.log('⚠️ App: Session récupérée après retry, ignoré SIGNED_OUT');
+                  const parsedUser = JSON.parse(storedUser);
+                  if (parsedUser.id === retrySession.user.id) {
+                    setUser(parsedUser);
+                  }
+                  return;
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ App: Erreur lors de la vérification de session:', error);
+              // En cas d'erreur, ne pas déconnecter immédiatement, attendre un peu
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              const { data: { session: finalSession } } = await supabase.auth.getSession();
+              if (finalSession && finalSession.user) {
+                console.log('⚠️ App: Session récupérée après erreur, ignoré SIGNED_OUT');
+                const parsedUser = JSON.parse(storedUser);
+                if (parsedUser.id === finalSession.user.id) {
+                  setUser(parsedUser);
+                }
+                return;
+              }
+            }
+          }
+          
           console.log('👋 App: Utilisateur déconnecté');
           setUser(null);
+          localStorage.removeItem('user');
           syncManager.stopAutoSync();
         }
       });
@@ -111,10 +206,10 @@ function App() {
         }
       }
 
-      // Timeout plus long pour la vérification de session
+      // Timeout pour la vérification de session
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout session')), 10000) // 10 secondes
+        setTimeout(() => reject(new Error('Timeout session')), 5000) // 5 secondes
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
@@ -127,7 +222,30 @@ function App() {
       
       if (session) {
         console.log('✅ App: Session trouvée, récupération du profil utilisateur...');
-        await fetchUserProfile(session.user.id);
+        // Vérifier si la session est expirée ou proche de l'expiration
+        const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+        const now = Date.now();
+        const timeUntilExpiry = expiresAt - now;
+        
+        // Si la session expire dans moins de 5 minutes, essayer de la rafraîchir
+        if (timeUntilExpiry < 300000 && timeUntilExpiry > 0) {
+          console.log('🔄 App: Session expire bientôt, tentative de rafraîchissement...');
+          try {
+            const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshedSession && !refreshError) {
+              console.log('✅ App: Session rafraîchie avec succès');
+              await fetchUserProfile(refreshedSession.user.id);
+            } else {
+              console.log('⚠️ App: Impossible de rafraîchir la session, utilisation de la session actuelle');
+              await fetchUserProfile(session.user.id);
+            }
+          } catch (refreshError) {
+            console.warn('⚠️ App: Erreur lors du rafraîchissement, utilisation de la session actuelle:', refreshError);
+            await fetchUserProfile(session.user.id);
+          }
+        } else {
+          await fetchUserProfile(session.user.id);
+        }
       } else {
         console.log('❌ App: Aucune session trouvée');
         setLoading(false);
@@ -146,10 +264,10 @@ function App() {
     const startTime = performance.now();
     
     try {
-      // Timeout plus long pour éviter les déconnexions prématurées
+      // Timeout pour éviter les déconnexions prématurées
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout après 10 secondes')), 10000)
+        setTimeout(() => reject(new Error('Timeout après 5 secondes')), 5000)
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;

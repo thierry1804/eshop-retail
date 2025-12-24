@@ -257,6 +257,7 @@ export interface PurchaseOrder {
   created_at: string;
   updated_at: string;
   purchase_order_items?: PurchaseOrderItem[];
+  receipts?: Receipt[];
 }
 
 export interface PurchaseOrderItem {

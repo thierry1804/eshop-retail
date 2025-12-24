@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, User } from '../../types';
 import { Plus, Search, Eye, Edit, Package, RefreshCw, DollarSign, AlertCircle, TrendingUp } from 'lucide-react';
@@ -23,8 +23,15 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrder | null>(null);
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    fetchOrders(true); // Chargement initial
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchOrders(true); // Chargement initial
+    }
   }, []);
 
   const fetchOrders = async (isInitialLoad = false) => {
@@ -52,6 +59,11 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
               name,
               sku
             )
+          ),
+          receipts (
+            id,
+            receipt_date,
+            status
           )
         `)
         .order('created_at', { ascending: false });

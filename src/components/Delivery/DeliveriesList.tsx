@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
 import { Plus, Search, Truck, MapPin, Clock, Eye, Edit, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
@@ -23,51 +23,34 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'list' | 'schedule' | 'report'>('list');
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    fetchDeliveries();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchDeliveries();
+    }
   }, []);
 
   const fetchDeliveries = async () => {
     try {
       setLoading(true);
 
-      // Première approche : requête simple sans relations
+      // OPTIMISÉ: Une seule requête avec jointures au lieu de 3 requêtes séparées
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
-        .select('*')
+        .select(`
+          *,
+          clients:client_id(id, first_name, last_name, phone),
+          sales:sale_id(id, description, total_amount)
+        `)
         .order('delivery_date', { ascending: false });
 
       if (deliveriesError) throw deliveriesError;
 
-      if (!deliveriesData || deliveriesData.length === 0) {
-        setDeliveries([]);
-        return;
-      }
-
-      // Récupérer les IDs uniques des clients et ventes
-      const clientIds = [...new Set(deliveriesData.map(d => d.client_id).filter(Boolean))];
-      const saleIds = [...new Set(deliveriesData.map(d => d.sale_id).filter(Boolean))];
-
-      // Récupérer les données des clients
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('id, first_name, last_name, phone')
-        .in('id', clientIds);
-
-      // Récupérer les données des ventes
-      const { data: salesData } = await supabase
-        .from('sales')
-        .select('id, description, total_amount')
-        .in('id', saleIds);
-
-      // Combiner les données
-      const enrichedDeliveries = deliveriesData.map(delivery => ({
-        ...delivery,
-        clients: clientsData?.find(c => c.id === delivery.client_id),
-        sales: salesData?.find(s => s.id === delivery.sale_id)
-      }));
-
-      setDeliveries(enrichedDeliveries);
+      setDeliveries(deliveriesData || []);
     } catch (error) {
       console.error('Erreur lors du chargement des livraisons:', error);
     } finally {

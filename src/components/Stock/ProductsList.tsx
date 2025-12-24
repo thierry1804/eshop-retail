@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, Image as ImageIcon, ShoppingCart, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
@@ -23,19 +23,27 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [sortBy, setSortBy] = useState<string>('name');
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const [productOrders, setProductOrders] = useState<Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }>>({});
-  const [productMovements, setProductMovements] = useState<Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }>>({});
+  // États pour les commandes et mouvements (non chargés pour réduire les requêtes)
+  // Les setters ne sont pas utilisés car fetchProductOrdersAndMovements est désactivée
+  const [productOrders] = useState<Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }>>({});
+  const [productMovements] = useState<Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }>>({});
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 30;
 
   useEffect(() => {
+    console.log('📦 ProductsList: Initialisation du composant');
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
     try {
+      console.log('📦 ProductsList: Début du chargement des produits');
       setLoading(true);
+      const startTime = performance.now();
+      
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -46,105 +54,39 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
         `)
         .order('name');
 
-      if (error) throw error;
+      const endTime = performance.now();
+      console.log(`📦 ProductsList: Requête produits terminée en ${(endTime - startTime).toFixed(2)}ms`);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur lors du chargement des produits:', error);
+        throw error;
+      }
+      
+      console.log(`✅ ProductsList: ${data?.length || 0} produits récupérés`);
       setProducts(data || []);
 
-      // Récupérer les informations sur les commandes et mouvements
-      if (data && data.length > 0) {
-        await fetchProductOrdersAndMovements(data.map(p => p.id));
-      }
+      // Désactiver le loading immédiatement pour afficher les produits
+      console.log('📦 ProductsList: Fin du chargement, désactivation du loading');
+      setLoading(false);
+
+      // DÉSACTIVÉ : Récupération des commandes et mouvements désactivée pour réduire les requêtes
+      // Cette fonction génère trop de requêtes (plusieurs lots de 50 produits) et déclenche des rafraîchissements de token
+      // Les données sont déjà dans Supabase, pas besoin de les charger en masse
+      // if (data && data.length > 0) {
+      //   console.log('📦 ProductsList: Récupération des commandes et mouvements en arrière-plan...');
+      //   fetchProductOrdersAndMovements((data as Product[]).map(p => p.id)).catch(error => {
+      //     console.error('❌ ProductsList: Erreur lors de la récupération des commandes/mouvements:', error);
+      //   });
+      // }
     } catch (error) {
-      console.error('Erreur lors du chargement des produits:', error);
-    } finally {
+      console.error('❌ ProductsList: Erreur lors du chargement des produits:', error);
       setLoading(false);
     }
   };
 
-  const fetchProductOrdersAndMovements = async (productIds: string[]) => {
-    try {
-      // Récupérer les dernières commandes pour chaque produit
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('purchase_order_items')
-        .select('product_id, purchase_order_id, purchase_orders(created_at)')
-        .in('product_id', productIds);
-
-      if (ordersError) {
-        console.error('Erreur lors du chargement des commandes:', ordersError);
-      } else {
-        const ordersMap: Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }> = {};
-        productIds.forEach(id => {
-          ordersMap[id] = { hasOrder: false };
-        });
-        
-        if (ordersData) {
-          // Trier par date de commande (plus récente en premier)
-          const sortedOrders = [...ordersData].sort((a: any, b: any) => {
-            const dateA = Array.isArray(a.purchase_orders) 
-              ? a.purchase_orders[0]?.created_at 
-              : a.purchase_orders?.created_at;
-            const dateB = Array.isArray(b.purchase_orders) 
-              ? b.purchase_orders[0]?.created_at 
-              : b.purchase_orders?.created_at;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return new Date(dateB).getTime() - new Date(dateA).getTime();
-          });
-
-          sortedOrders.forEach((item: any) => {
-            const productId = item.product_id;
-            if (productId && !ordersMap[productId]?.hasOrder) {
-              const purchaseOrder = Array.isArray(item.purchase_orders) 
-                ? item.purchase_orders[0] 
-                : item.purchase_orders;
-              const orderDate = purchaseOrder?.created_at;
-              const orderId = item.purchase_order_id;
-              
-              ordersMap[productId] = {
-                hasOrder: true,
-                lastOrderDate: orderDate || undefined,
-                orderId: orderId
-              };
-            }
-          });
-        }
-        setProductOrders(ordersMap);
-      }
-
-      // Récupérer les derniers mouvements (vente ou approvisionnement) pour chaque produit
-      const { data: movementsData, error: movementsError } = await supabase
-        .from('stock_movements')
-        .select('product_id, reference_type, reference_id, created_at')
-        .in('product_id', productIds)
-        .in('reference_type', ['purchase', 'sale'])
-        .order('created_at', { ascending: false });
-
-      if (movementsError) {
-        console.error('Erreur lors du chargement des mouvements:', movementsError);
-      } else {
-        const movementsMap: Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }> = {};
-        productIds.forEach(id => {
-          movementsMap[id] = { hasMovement: false };
-        });
-        
-        if (movementsData) {
-          movementsData.forEach((movement: any) => {
-            const productId = movement.product_id;
-            if (productId && !movementsMap[productId]?.hasMovement) {
-              movementsMap[productId] = {
-                hasMovement: true,
-                lastMovementDate: movement.created_at,
-                referenceId: movement.reference_id,
-                referenceType: movement.reference_type
-              };
-            }
-          });
-        }
-        setProductMovements(movementsMap);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des commandes et mouvements:', error);
-    }
-  };
+  // NOTE: fetchProductOrdersAndMovements a été supprimée car elle générait trop de requêtes
+  // (plusieurs lots de 50 produits) et déclenchait des rafraîchissements de token excessifs,
+  // causant des erreurs 429. Les données sont déjà dans Supabase, pas besoin de les charger en masse.
 
   const handleOrderClick = async (orderId: string) => {
     try {
@@ -239,6 +181,17 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   });
 
+  // Calcul de la pagination
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
+
+  // Réinitialiser à la page 1 quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, sortBy, showDuplicatesOnly]);
+
   const getStockStatus = (product: Product) => {
     if (product.current_stock === 0) return { status: 'out', color: 'text-red-600', icon: AlertTriangle };
     if (product.current_stock <= product.min_stock_level) return { status: 'low', color: 'text-yellow-600', icon: AlertTriangle };
@@ -327,7 +280,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
 
       {/* Liste des produits - Mobile Card View */}
       <div className="md:hidden space-y-3">
-        {sortedProducts.map((product) => {
+        {paginatedProducts.map((product) => {
           const stockStatus = getStockStatus(product);
           const StockIcon = stockStatus.icon;
           
@@ -441,6 +394,36 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
         )}
       </div>
 
+      {/* Pagination - Mobile */}
+      {sortedProducts.length > itemsPerPage && (
+        <div className="md:hidden bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)} sur {sortedProducts.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('app.previous')}
+              </button>
+              <span className="text-sm text-gray-700">
+                Page {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('app.next')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Liste des produits - Desktop Table View */}
       <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -471,7 +454,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sortedProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const stockStatus = getStockStatus(product);
                 const StockIcon = stockStatus.icon;
                 
@@ -585,6 +568,59 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* Pagination - Desktop */}
+      {sortedProducts.length > itemsPerPage && (
+        <div className="hidden md:block bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Affichage de {startIndex + 1} à {Math.min(endIndex, sortedProducts.length)} sur {sortedProducts.length} produits
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('app.previous')}
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 text-sm border rounded-lg ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="px-2 text-gray-500">...</span>;
+                  }
+                  return null;
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('app.next')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modales */}
       {showForm && (

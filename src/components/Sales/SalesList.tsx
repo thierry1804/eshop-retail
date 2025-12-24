@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
@@ -36,8 +36,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [salesByDate, setSalesByDate] = useState<Record<string, number>>({});
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    fetchSales();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchSales();
+    }
   }, []);
 
   useEffect(() => {

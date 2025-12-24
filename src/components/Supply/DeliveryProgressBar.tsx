@@ -11,6 +11,24 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
     return null;
   }
 
+  // Si la commande est reçue, utiliser la date de réception la plus récente
+  const isReceived = order.status === 'received';
+  let referenceDate = new Date();
+  referenceDate.setHours(0, 0, 0, 0);
+  
+  if (isReceived && (order as any).receipts && Array.isArray((order as any).receipts) && (order as any).receipts.length > 0) {
+    // Trouver la date de réception la plus récente
+    const receiptDates = (order as any).receipts
+      .map((receipt: any) => receipt.receipt_date ? new Date(receipt.receipt_date) : null)
+      .filter((date: Date | null) => date !== null) as Date[];
+    
+    if (receiptDates.length > 0) {
+      const latestReceiptDate = new Date(Math.max(...receiptDates.map(d => d.getTime())));
+      latestReceiptDate.setHours(0, 0, 0, 0);
+      referenceDate = latestReceiptDate;
+    }
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -21,8 +39,8 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
   expectedDate.setHours(0, 0, 0, 0);
 
   const totalDays = Math.ceil((expectedDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysElapsed = Math.ceil((today.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysRemaining = Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const daysElapsed = Math.ceil((referenceDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.ceil((expectedDate.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
 
   // Calculer le pourcentage de progression
   let percentage = 0;
@@ -33,8 +51,14 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
   if (totalDays > 0) {
     percentage = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
     
-    if (daysRemaining < 0) {
-      // Date dépassée
+    // Si la commande est reçue, toujours afficher en vert
+    if (isReceived) {
+      status = 'normal';
+      color = 'bg-green-500';
+      bgColor = 'bg-green-100';
+      percentage = 100;
+    } else if (daysRemaining < 0) {
+      // Date dépassée (seulement si pas reçue)
       status = 'overdue';
       color = 'bg-red-500';
       bgColor = 'bg-red-100';
@@ -47,7 +71,11 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
     }
   } else {
     // Date de livraison avant ou égale à la date de commande
-    if (daysRemaining < 0) {
+    if (isReceived) {
+      status = 'normal';
+      color = 'bg-green-500';
+      bgColor = 'bg-green-100';
+    } else if (daysRemaining < 0) {
       status = 'overdue';
       color = 'bg-red-500';
       bgColor = 'bg-red-100';
@@ -60,16 +88,19 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
       <div className="flex items-center gap-2">
         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className={`h-full ${color} transition-all duration-300`}
+            className={`h-full ${isReceived ? 'bg-green-500' : color} transition-all duration-300`}
             style={{ width: `${Math.min(100, percentage)}%` }}
           />
         </div>
         <span className={`text-xs font-medium ${
+          isReceived ? 'text-green-600' :
           status === 'overdue' ? 'text-red-600' :
           status === 'warning' ? 'text-orange-600' :
           'text-gray-600'
         }`}>
-          {daysRemaining < 0 
+          {isReceived 
+            ? 'Reçu'
+            : daysRemaining < 0 
             ? `${Math.abs(daysRemaining)}j en retard`
             : daysRemaining === 0
             ? 'Aujourd\'hui'
@@ -92,11 +123,14 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
           }
         </span>
         <span className={`text-sm font-semibold ${
+          isReceived ? 'text-green-600' :
           status === 'overdue' ? 'text-red-600' :
           status === 'warning' ? 'text-orange-600' :
           'text-blue-600'
         }`}>
-          {daysRemaining < 0 
+          {isReceived
+            ? 'Commande reçue'
+            : daysRemaining < 0 
             ? `${Math.abs(daysRemaining)} jour${Math.abs(daysRemaining) > 1 ? 's' : ''} en retard`
             : daysRemaining === 0
             ? 'Livraison prévue aujourd\'hui'
@@ -112,7 +146,11 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
       </div>
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>Commande: {new Date(order.order_date).toLocaleDateString()}</span>
-        <span>Livraison prévue: {new Date(order.expected_delivery_date).toLocaleDateString()}</span>
+        {isReceived && referenceDate !== today ? (
+          <span>Reçu le: {referenceDate.toLocaleDateString()}</span>
+        ) : (
+          <span>Livraison prévue: {new Date(order.expected_delivery_date).toLocaleDateString()}</span>
+        )}
       </div>
     </div>
   );

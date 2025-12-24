@@ -21,10 +21,14 @@ const useSupabaseTest = import.meta.env.VITE_SUPABASE_TEST === 'true';
 const useSimpleTest = import.meta.env.VITE_SIMPLE_TEST === 'true';
 const useTestMode = import.meta.env.VITE_TEST_MODE === 'true';
 
+// Désactiver StrictMode en production pour éviter les re-renders doubles et les requêtes en double
+const isDevelopment = import.meta.env.DEV;
+const AppContent = (
+  <SidebarProvider>
+    {useDatabaseTest ? <DatabaseTest /> : useRLSTest ? <RLSTest /> : useSupabaseTest ? <SupabaseTest /> : useSimpleTest ? <SimpleTest /> : useTestMode ? <AppTest /> : <App />}
+  </SidebarProvider>
+);
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <SidebarProvider>
-      {useDatabaseTest ? <DatabaseTest /> : useRLSTest ? <RLSTest /> : useSupabaseTest ? <SupabaseTest /> : useSimpleTest ? <SimpleTest /> : useTestMode ? <AppTest /> : <App />}
-    </SidebarProvider>
-  </StrictMode>
+  isDevelopment ? <StrictMode>{AppContent}</StrictMode> : AppContent
 );

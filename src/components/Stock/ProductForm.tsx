@@ -38,6 +38,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -200,13 +201,52 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
     }
   };
 
+  const checkProductNameExists = async (name: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name')
+        .ilike('name', name.trim());
+      
+      if (error) throw error;
+      
+      // Si on modifie un produit, exclure le produit actuel de la vérification
+      if (product && data) {
+        return data.some(p => p.id !== product.id);
+      }
+      
+      return (data && data.length > 0) || false;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du nom:', error);
+      return false; // En cas d'erreur, on laisse passer pour ne pas bloquer l'utilisateur
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setNameError(null);
+    
     try {
       // Vérifier que l'utilisateur a un ID valide
       if (!user.id || user.id === '00000000-0000-0000-0000-000000000000') {
         throw new Error('Utilisateur non authentifié. Veuillez vous reconnecter.');
+      }
+
+      // Vérifier si le nom existe déjà
+      if (formData.name.trim()) {
+        // Pour les nouveaux produits, toujours vérifier
+        // Pour les produits existants, vérifier seulement si le nom a changé
+        const shouldCheck = isNewProduct || (product && product.name.toLowerCase().trim() !== formData.name.toLowerCase().trim());
+        
+        if (shouldCheck) {
+          const nameExists = await checkProductNameExists(formData.name);
+          if (nameExists) {
+            setNameError(t('stock.form.nameExists'));
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       // Upload de l'image si présente
@@ -296,9 +336,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => {
+                  setFormData({...formData, name: e.target.value});
+                  setNameError(null); // Réinitialiser l'erreur quand l'utilisateur modifie le nom
+                }}
+                  className={`w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    nameError ? 'border-red-500' : 'border-gray-300'
+                  }`}
               />
+              {nameError && (
+                <p className="mt-1 text-sm text-red-600">{nameError}</p>
+              )}
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productSku')} *</label>

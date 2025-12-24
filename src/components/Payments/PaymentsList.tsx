@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Calendar, CreditCard } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Payment } from '../../types';
@@ -10,8 +10,15 @@ export const PaymentsList: React.FC = () => {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    fetchPayments();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchPayments();
+    }
   }, []);
 
   useEffect(() => {
@@ -36,10 +43,21 @@ export const PaymentsList: React.FC = () => {
 
   const fetchPayments = async () => {
     try {
-      // Récupérer les paiements
+      // Récupérer les paiements avec leurs ventes et clients en une seule requête
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('*')
+        .select(`
+          *,
+          sale:sales!payments_sale_id_fkey(
+            id,
+            description,
+            clients(
+              first_name,
+              last_name,
+              phone
+            )
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (paymentsError) {
@@ -47,34 +65,7 @@ export const PaymentsList: React.FC = () => {
         return;
       }
 
-      // Récupérer les ventes avec leurs clients
-      const { data: salesData, error: salesError } = await supabase
-        .from('sales')
-        .select(`
-          id,
-          description,
-          clients (
-            first_name,
-            last_name,
-            phone
-          )
-        `);
-
-      if (salesError) {
-        console.error('Erreur récupération ventes:', salesError);
-        return;
-      }
-
-      // Créer un map des ventes par ID
-      const salesMap = new Map(salesData?.map(sale => [sale.id, sale]) || []);
-
-      // Associer les ventes aux paiements
-      const paymentsWithSales = paymentsData?.map(payment => ({
-        ...payment,
-        sale: salesMap.get(payment.sale_id) || null
-      })) || [];
-
-      setPayments(paymentsWithSales);
+      setPayments(paymentsData || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
     } finally {

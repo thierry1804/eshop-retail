@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Euro, TrendingUp, Users, AlertCircle, CreditCard, Target, Calendar, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { StatCard } from './StatCard';
@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { DashboardStats, Client, ClientWithSales } from '../../types';
 import { formatCompactNumber } from '../../lib/formatUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { debounce } from '../../lib/requestThrottle';
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -31,13 +32,25 @@ export const Dashboard: React.FC = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
 
+  // Flag pour éviter les requêtes pendant l'initialisation
+  const isInitializingRef = useRef(true);
+  const hasInitializedRef = useRef(false);
+  const hasLoadedDataRef = useRef(false); // Nouveau flag pour savoir si on a déjà chargé les données
+
   useEffect(() => {
-    console.log('📊 Dashboard: Initialisation du tableau de bord');
-    initializeDateFilter();
+    // Ne s'exécuter qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      console.log('📊 Dashboard: Initialisation du tableau de bord');
+      hasInitializedRef.current = true;
+      initializeDateFilter();
+    }
   }, []);
 
   const initializeDateFilter = async () => {
     try {
+      // Marquer comme en cours d'initialisation
+      isInitializingRef.current = true;
+
       // Récupérer la date de la dernière vente
       const { data: lastSale, error } = await supabase
         .from('sales')
@@ -48,18 +61,24 @@ export const Dashboard: React.FC = () => {
 
       if (error || !lastSale) {
         console.log('📊 Dashboard: Aucune vente trouvée, utilisation du filtre par défaut');
-        fetchDashboardData();
+        // Pas de changement de filtre, le filtre par défaut est 'today'
+        // Terminer l'initialisation et charger les données
+        isInitializingRef.current = false;
+        await fetchDashboardData();
+        await fetchChartData();
+        // Marquer que les données ont été chargées
+        hasLoadedDataRef.current = true;
         return;
       }
 
       const lastSaleDate = new Date(lastSale.created_at);
       const today = new Date();
 
-      // Si la dernière vente est d'aujourd'hui, utiliser le filtre "today"
+      // Appliquer les filtres AVANT de terminer l'initialisation
+      // pour que l'useEffect charge les données avec les bons filtres
       if (lastSaleDate.toDateString() === today.toDateString()) {
         setDateFilter('today');
       } else {
-        // Sinon, utiliser un filtre personnalisé pour la date de la dernière vente
         setDateFilter('custom');
         setCustomDateRange({
           from: lastSaleDate.toISOString().split('T')[0],
@@ -67,25 +86,74 @@ export const Dashboard: React.FC = () => {
         });
       }
 
-      fetchDashboardData();
+      // Attendre un court instant pour que React applique les changements de state
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Terminer l'initialisation
+      isInitializingRef.current = false;
+
+      // Déclencher manuellement le chargement des données
+      // Appeler directement sans debounce pour un chargement immédiat
+      console.log('📊 Dashboard: Chargement initial des données...');
+      await fetchDashboardData();
+      await fetchChartData();
+
+      // Marquer que les données ont été chargées
+      // À partir de maintenant, l'useEffect peut prendre le relais
+      hasLoadedDataRef.current = true;
+      console.log('📊 Dashboard: Initialisation terminée, useEffect activé');
     } catch (error) {
       console.error('❌ Dashboard: Erreur lors de l\'initialisation du filtre de date:', error);
-      fetchDashboardData();
+      isInitializingRef.current = false;
     }
   };
 
+  // Debounced version des fonctions de fetch pour éviter les requêtes excessives
+  const debouncedFetchDashboardDataRef = useRef<ReturnType<typeof debounce>>();
+  const debouncedFetchChartDataRef = useRef<ReturnType<typeof debounce>>();
+
   useEffect(() => {
-    console.log('📊 Dashboard: Filtre de date changé, rechargement des données');
-    fetchDashboardData();
-    fetchChartData();
+    // Créer les fonctions debounced une seule fois
+    if (!debouncedFetchDashboardDataRef.current) {
+      debouncedFetchDashboardDataRef.current = debounce(() => {
+        fetchDashboardData();
+      }, 500);
+    }
+    if (!debouncedFetchChartDataRef.current) {
+      debouncedFetchChartDataRef.current = debounce(() => {
+        fetchChartData();
+      }, 500);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Ne JAMAIS charger pendant l'initialisation
+    if (isInitializingRef.current) {
+      console.log('📊 Dashboard: En cours d\'initialisation, skip du rechargement');
+      return;
+    }
+
+    // Ne charger QUE si on a déjà fait le premier chargement
+    // Cela évite que l'useEffect charge les données avant que initializeDateFilter() n'ait terminé
+    if (!hasLoadedDataRef.current) {
+      console.log('📊 Dashboard: Données pas encore chargées, skip du rechargement');
+      return;
+    }
+
+    console.log('📊 Dashboard: Filtre de date changé, rechargement des données (debounced)');
+    debouncedFetchDashboardDataRef.current?.();
+    debouncedFetchChartDataRef.current?.();
   }, [dateFilter, customDateRange]);
 
-  const getDateRange = () => {
+  const getDateRange = (overrideFilter?: string, overrideCustomRange?: { from: string; to: string }) => {
     const now = new Date();
     let fromDate: Date | null = null;
     let toDate: Date | null = null;
 
-    switch (dateFilter) {
+    const filter = overrideFilter || dateFilter;
+    const customRange = overrideCustomRange || customDateRange;
+
+    switch (filter) {
       case 'today':
         fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -106,9 +174,9 @@ export const Dashboard: React.FC = () => {
         toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
         break;
       case 'custom':
-        if (customDateRange.from && customDateRange.to) {
-          fromDate = new Date(customDateRange.from);
-          toDate = new Date(customDateRange.to);
+        if (customRange.from && customRange.to) {
+          fromDate = new Date(customRange.from);
+          toDate = new Date(customRange.to);
           toDate.setHours(23, 59, 59, 999);
         }
         break;

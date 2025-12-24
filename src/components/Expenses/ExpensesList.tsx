@@ -36,39 +36,75 @@ const ExpensesList: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
 
-  // Récupération des dépenses avec les détails des catégories et fournisseurs
-  const fetchExpenses = async () => {
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
+  // OPTIMISÉ: Récupération en parallèle de toutes les données nécessaires
+  const fetchAllData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          category:categories(*),
-          supplier:suppliers(*),
-          created_by_user:user_profiles!expenses_created_by_fkey(*),
-          updated_by_user:user_profiles!expenses_updated_by_fkey(*),
-          deleted_by_user:user_profiles!expenses_deleted_by_fkey(*)
-        `)
-        .is('deleted_at', null) // Exclure les dépenses supprimées
-        .order('date', { ascending: false });
+      // Lancer les 3 requêtes EN PARALLÈLE au lieu de séquentiellement
+      const [expensesResult, categoriesResult, suppliersResult] = await Promise.all([
+        // 1. Expenses avec jointures
+        supabase
+          .from('expenses')
+          .select(`
+            *,
+            category:categories(*),
+            supplier:suppliers(*),
+            created_by_user:user_profiles!expenses_created_by_fkey(*),
+            updated_by_user:user_profiles!expenses_updated_by_fkey(*),
+            deleted_by_user:user_profiles!expenses_deleted_by_fkey(*)
+          `)
+          .is('deleted_at', null)
+          .order('date', { ascending: false }),
 
-      if (expensesError) {
-        console.error('Erreur lors de la récupération des dépenses:', expensesError);
-        // Gestion spécifique des erreurs
-        if (expensesError.code === '42501') {
+        // 2. Toutes les catégories (pour les dropdowns)
+        supabase
+          .from('categories')
+          .select('*')
+          .order('name'),
+
+        // 3. Tous les fournisseurs (pour les dropdowns)
+        supabase
+          .from('suppliers')
+          .select('*')
+          .order('name')
+      ]);
+
+      // Traiter les expenses
+      if (expensesResult.error) {
+        console.error('Erreur lors de la récupération des dépenses:', expensesResult.error);
+        if (expensesResult.error.code === '42501') {
           setError('Erreur de permissions : Vous n\'avez pas les droits pour voir les dépenses.');
-        } else if (expensesError.message.includes('relation') && expensesError.message.includes('does not exist')) {
+        } else if (expensesResult.error.message.includes('relation') && expensesResult.error.message.includes('does not exist')) {
           setError('Erreur de base de données : Table des dépenses non trouvée. Veuillez contacter l\'administrateur.');
         } else {
-          setError(`Erreur lors de la récupération des dépenses : ${expensesError.message}`);
+          setError(`Erreur lors de la récupération des dépenses : ${expensesResult.error.message}`);
         }
         return;
       }
+      setExpenses(expensesResult.data || []);
 
-      setExpenses(expensesData || []);
+      // Traiter les catégories (filtrer pour expenses)
+      if (!categoriesResult.error && categoriesResult.data) {
+        const filtered = categoriesResult.data.filter(cat => {
+          const modules = cat.modules || [];
+          return Array.isArray(modules) && modules.includes('expenses');
+        });
+        setCategories(filtered);
+      }
+
+      // Traiter les fournisseurs (filtrer pour expenses)
+      if (!suppliersResult.error && suppliersResult.data) {
+        const filtered = suppliersResult.data.filter(supplier => {
+          const modules = supplier.modules || [];
+          return Array.isArray(modules) && modules.includes('expenses');
+        });
+        setSuppliers(filtered);
+      }
     } catch (err) {
       console.error('Erreur inattendue:', err);
       setError(t('expenses.generalError'));
@@ -77,60 +113,12 @@ const ExpensesList: React.FC = () => {
     }
   };
 
-  // Récupération des catégories pour les dépenses
-  const fetchCategories = async () => {
-    try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .order('name');
-
-      if (error) {
-        console.error('Erreur lors de la récupération des catégories:', error);
-        return;
-      }
-
-      // Filtrer côté client pour les catégories qui contiennent 'expenses' dans leur tableau modules
-      const filtered = (data || []).filter(cat => {
-        const modules = cat.modules || [];
-        return Array.isArray(modules) && modules.includes('expenses');
-      });
-
-      setCategories(filtered);
-    } catch (err) {
-      console.error('Erreur inattendue lors de la récupération des catégories:', err);
-    }
-  };
-
-  // Récupération des fournisseurs pour les dépenses
-  const fetchSuppliers = async () => {
-    try {
-        const { data, error } = await supabase
-          .from('suppliers')
-          .select('*')
-          .order('name');
-
-      if (error) {
-        console.error('Erreur lors de la récupération des fournisseurs:', error);
-        return;
-      }
-
-      // Filtrer côté client pour les fournisseurs qui contiennent 'expenses' dans leur tableau modules
-      const filtered = (data || []).filter(supplier => {
-        const modules = supplier.modules || [];
-        return Array.isArray(modules) && modules.includes('expenses');
-      });
-
-      setSuppliers(filtered);
-    } catch (err) {
-      console.error('Erreur inattendue lors de la récupération des fournisseurs:', err);
-    }
-  };
-
   useEffect(() => {
-    fetchExpenses();
-    fetchCategories();
-    fetchSuppliers();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      fetchAllData();
+    }
   }, []);
 
   // Fonction pour vérifier si une date correspond au filtre

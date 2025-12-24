@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Phone, MapPin, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ClientForm } from './ClientForm';
@@ -21,9 +21,16 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    console.log('👥 ClientsList: Initialisation de la liste des clients');
-    fetchClients();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      console.log('👥 ClientsList: Initialisation de la liste des clients');
+      fetchClients();
+    }
   }, []);
 
   useEffect(() => {

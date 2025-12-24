@@ -22,121 +22,21 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Flag pour éviter les chargements multiples au montage
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    syncAndFetchTrackingNumbers();
+    // Ne charger qu'une seule fois au montage
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      syncAndFetchTrackingNumbers();
+    }
   }, []);
 
-  // Synchroniser automatiquement les tracking numbers depuis les commandes
-  const syncTrackingNumbers = async () => {
+  // OPTIMISÉ: Fonction légère pour rafraîchir seulement (utilisée après save/delete)
+  const refreshTrackingNumbers = async () => {
     try {
-      // Récupérer toutes les commandes avec un tracking_number
-      const { data: ordersWithTracking, error: ordersError } = await supabase
-        .from('purchase_orders')
-        .select('id, tracking_number, created_by')
-        .not('tracking_number', 'is', null)
-        .neq('tracking_number', '');
-
-      if (ordersError) throw ordersError;
-
-      // Récupérer les tracking numbers existants (uniques)
-      const { data: existingTracking, error: trackingError } = await supabase
-        .from('tracking_numbers')
-        .select('tracking_number');
-
-      if (trackingError) throw trackingError;
-
-      // Créer un Set des tracking numbers existants
-      const existingTrackingNumbers = new Set(
-        (existingTracking || []).map(t => t.tracking_number)
-      );
-
-      // Grouper les commandes par tracking_number unique
-      const trackingNumberMap = new Map<string, { id: string; created_by: string }>();
-      
-      (ordersWithTracking || []).forEach(po => {
-        const trackingNum = po.tracking_number!;
-        // Si ce tracking_number n'existe pas encore, on prend la première commande comme référence
-        if (!existingTrackingNumbers.has(trackingNum) && !trackingNumberMap.has(trackingNum)) {
-          trackingNumberMap.set(trackingNum, {
-            id: po.id,
-            created_by: po.created_by || user.id
-          });
-        }
-      });
-
-      // Créer un seul enregistrement par tracking_number unique
-      const newTrackingNumbers = Array.from(trackingNumberMap.entries()).map(([tracking_number, data]) => ({
-        purchase_order_id: data.id, // Première commande comme référence
-        tracking_number: tracking_number,
-        status: 'pending',
-        created_by: data.created_by
-      }));
-
-      if (newTrackingNumbers.length > 0) {
-        const { error: insertError } = await supabase
-          .from('tracking_numbers')
-          .insert(newTrackingNumbers);
-
-        if (insertError) throw insertError;
-      }
-    } catch (error) {
-      console.error('Erreur lors de la synchronisation:', error);
-    }
-  };
-
-  const syncTrackingNumberStatuses = async () => {
-    try {
-      // Récupérer tous les tracking numbers
-      const { data: trackingNumbers, error: trackingError } = await supabase
-        .from('tracking_numbers')
-        .select('id, tracking_number');
-
-      if (trackingError) throw trackingError;
-
-      // Pour chaque tracking number, vérifier le statut des commandes associées
-      for (const tn of trackingNumbers || []) {
-        // Récupérer toutes les commandes avec ce tracking_number
-        const { data: orders, error: ordersError } = await supabase
-          .from('purchase_orders')
-          .select('status')
-          .eq('tracking_number', tn.tracking_number)
-          .not('tracking_number', 'is', null)
-          .neq('tracking_number', '');
-
-        if (ordersError) {
-          console.error('Erreur lors de la récupération des commandes:', ordersError);
-          continue;
-        }
-
-        if (!orders || orders.length === 0) continue;
-
-        // Vérifier si toutes les commandes sont "received"
-        const allReceived = orders.every(order => order.status === 'received');
-        
-        // Si toutes les commandes sont reçues, mettre à jour le statut du tracking number
-        if (allReceived) {
-          const { error: updateError } = await supabase
-            .from('tracking_numbers')
-            .update({ 
-              status: 'received',
-              updated_at: new Date().toISOString(),
-              updated_by: user.id
-            })
-            .eq('id', tn.id);
-
-          if (updateError) {
-            console.error('Erreur lors de la mise à jour du statut:', updateError);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Erreur lors de la synchronisation des statuts:', error);
-    }
-  };
-
-  const fetchTrackingNumbers = async () => {
-    try {
-      // Récupérer les tracking numbers uniques
+      // Récupérer les tracking numbers
       const { data: trackingData, error: trackingError } = await supabase
         .from('tracking_numbers')
         .select('*')
@@ -144,7 +44,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
       if (trackingError) throw trackingError;
 
-      // Compter le nombre de commandes pour chaque tracking_number
+      // Récupérer le nombre de commandes pour chaque
       const { data: ordersData, error: ordersError } = await supabase
         .from('purchase_orders')
         .select('tracking_number')
@@ -160,28 +60,150 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         trackingCountMap.set(tn, (trackingCountMap.get(tn) || 0) + 1);
       });
 
-      // Mapper les données - un seul enregistrement par tracking_number unique
-      const mapped = (trackingData || []).map((item: any) => {
-        const orderCount = trackingCountMap.get(item.tracking_number) || 1;
-        return {
-          ...item,
-          orderCount: orderCount
-        };
-      });
+      // Mapper avec le comptage
+      const mapped = (trackingData || []).map((item: any) => ({
+        ...item,
+        orderCount: trackingCountMap.get(item.tracking_number) || 1
+      }));
 
       setTrackingNumbers(mapped);
     } catch (error) {
-      console.error('Erreur lors du chargement:', error);
+      console.error('Erreur lors du rafraîchissement:', error);
     }
   };
 
+  // OPTIMISÉ: Fonction unique qui fait tout en 2-3 requêtes au lieu de 6
   const syncAndFetchTrackingNumbers = async () => {
     try {
       setLoading(true);
-      // D'abord synchroniser les tracking numbers, puis synchroniser les statuts, puis récupérer
-      await syncTrackingNumbers();
-      await syncTrackingNumberStatuses();
-      await fetchTrackingNumbers();
+
+      // 1️⃣ REQUÊTE 1: Récupérer TOUTES les commandes avec tracking_number + leur statut EN UNE FOIS
+      const { data: allOrders, error: ordersError } = await supabase
+        .from('purchase_orders')
+        .select('id, tracking_number, created_by, status')
+        .not('tracking_number', 'is', null)
+        .neq('tracking_number', '');
+
+      if (ordersError) throw ordersError;
+
+      // 2️⃣ REQUÊTE 2: Récupérer tous les tracking numbers existants EN UNE FOIS
+      const { data: existingTracking, error: trackingError } = await supabase
+        .from('tracking_numbers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (trackingError) throw trackingError;
+
+      // 🔧 TRAITEMENT LOCAL (pas de requêtes supplémentaires)
+
+      // Créer un Set des tracking numbers existants
+      const existingTrackingNumbers = new Set(
+        (existingTracking || []).map(t => t.tracking_number)
+      );
+
+      // Grouper les commandes par tracking_number
+      const ordersByTracking = new Map<string, Array<{ id: string; status: string; created_by: string }>>();
+
+      (allOrders || []).forEach(order => {
+        const tn = order.tracking_number!;
+        if (!ordersByTracking.has(tn)) {
+          ordersByTracking.set(tn, []);
+        }
+        ordersByTracking.get(tn)!.push({
+          id: order.id,
+          status: order.status,
+          created_by: order.created_by || user.id
+        });
+      });
+
+      // Identifier les nouveaux tracking numbers à créer
+      const newTrackingNumbers: Array<any> = [];
+      for (const [trackingNumber, orders] of ordersByTracking.entries()) {
+        if (!existingTrackingNumbers.has(trackingNumber)) {
+          // Prendre la première commande comme référence
+          const firstOrder = orders[0];
+          newTrackingNumbers.push({
+            purchase_order_id: firstOrder.id,
+            tracking_number: trackingNumber,
+            status: 'pending',
+            created_by: firstOrder.created_by
+          });
+        }
+      }
+
+      // 3️⃣ REQUÊTE 3 (optionnelle): Insérer les nouveaux tracking numbers si nécessaire
+      if (newTrackingNumbers.length > 0) {
+        const { error: insertError } = await supabase
+          .from('tracking_numbers')
+          .insert(newTrackingNumbers);
+
+        if (insertError) {
+          console.error('Erreur lors de l\'insertion:', insertError);
+        }
+      }
+
+      // Calculer les statuts et préparer les mises à jour
+      const statusUpdates: Array<{ id: string; trackingNumber: string }> = [];
+      const trackingWithCounts: Array<any> = [];
+
+      for (const tracking of existingTracking || []) {
+        const orders = ordersByTracking.get(tracking.tracking_number) || [];
+        const orderCount = orders.length;
+
+        // Vérifier si toutes les commandes sont "received"
+        const allReceived = orders.length > 0 && orders.every(order => order.status === 'received');
+
+        // Si status doit être "received" mais ne l'est pas encore
+        if (allReceived && tracking.status !== 'received') {
+          statusUpdates.push({ id: tracking.id, trackingNumber: tracking.tracking_number });
+        }
+
+        // Ajouter le comptage de commandes
+        trackingWithCounts.push({
+          ...tracking,
+          orderCount: orderCount || 1
+        });
+      }
+
+      // Ajouter les nouveaux tracking numbers dans la liste affichée
+      for (const newTN of newTrackingNumbers) {
+        const orders = ordersByTracking.get(newTN.tracking_number) || [];
+        trackingWithCounts.push({
+          ...newTN,
+          id: newTN.tracking_number, // ID temporaire
+          orderCount: orders.length || 1
+        });
+      }
+
+      // 4️⃣ REQUÊTES 4+ (optionnelles): Mettre à jour les statuts si nécessaire
+      if (statusUpdates.length > 0) {
+        const updatePromises = statusUpdates.map(item =>
+          supabase
+            .from('tracking_numbers')
+            .update({
+              status: 'received',
+              updated_at: new Date().toISOString(),
+              updated_by: user.id
+            })
+            .eq('id', item.id)
+        );
+
+        const results = await Promise.allSettled(updatePromises);
+        const errors = results.filter(r => r.status === 'rejected');
+        if (errors.length > 0) {
+          console.error(`${errors.length} erreur(s) lors de la mise à jour des statuts`);
+        }
+
+        // Mettre à jour les statuts localement
+        trackingWithCounts.forEach(tn => {
+          if (statusUpdates.some(u => u.trackingNumber === tn.tracking_number)) {
+            tn.status = 'received';
+          }
+        });
+      }
+
+      // Mettre à jour l'état
+      setTrackingNumbers(trackingWithCounts);
     } catch (error) {
       console.error('Erreur:', error);
     } finally {
@@ -356,7 +378,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
       });
 
       // Rafraîchir les données
-      await fetchTrackingNumbers();
+      await refreshTrackingNumbers();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       alert(t('tracking.saveError'));
@@ -668,7 +690,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                                   .delete()
                                   .eq('id', tn.id);
                                 if (!error) {
-                                  fetchTrackingNumbers();
+                                  refreshTrackingNumbers();
                                 } else {
                                   alert(t('tracking.deleteError'));
                                 }
