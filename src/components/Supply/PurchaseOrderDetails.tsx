@@ -29,10 +29,36 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
   const [productImages, setProductImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchOrderItems();
-    fetchData();
+    // Si la commande a déjà des items chargés (depuis handleOrderClick), les utiliser
+    if (order.purchase_order_items && order.purchase_order_items.length > 0) {
+      const imagesMap: Record<string, string> = {};
+      const mappedItems = (order.purchase_order_items as any[]).map((item: any) => {
+        const product = Array.isArray(item.products) ? item.products[0] : item.products;
+        const productImageUrl = product?.image_url;
+        
+        if (productImageUrl && item.product_id) {
+          imagesMap[item.product_id] = productImageUrl;
+        }
+        
+        return {
+          ...item,
+          product_name: product?.name || '',
+          product_sku: product?.sku || ''
+        };
+      });
+      
+      setProductImages(imagesMap);
+      setItems(mappedItems);
+      setLoading(false);
+    } else {
+      // Sinon, charger les items
+      fetchOrderItems();
+    }
+    
+    // Ne charger les produits que si nécessaire (lazy loading)
+    // fetchData() sera appelé seulement quand showProductSearch devient true
     setTotalAmount(order.total_amount);
-  }, [order.id, order.total_amount]);
+  }, [order.id, order.total_amount, order.purchase_order_items]);
 
   const fetchOrderItems = async () => {
     try {
@@ -97,6 +123,9 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
   };
 
   const fetchData = async () => {
+    // Ne charger que si les produits ne sont pas déjà chargés
+    if (products.length > 0) return;
+    
     try {
       const { data, error } = await supabase
         .from('products')
@@ -381,7 +410,11 @@ export const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({ orde
                   <>
                     <button
                       type="button"
-                      onClick={() => setShowProductSearch(true)}
+                      onClick={() => {
+                        setShowProductSearch(true);
+                        // Charger les produits seulement quand on ouvre la recherche (lazy loading)
+                        fetchData();
+                      }}
                       className="bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-xs sm:text-sm whitespace-nowrap"
                     >
                       <Plus className="h-3 w-3 sm:h-4 sm:w-4" />

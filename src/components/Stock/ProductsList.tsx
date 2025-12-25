@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
@@ -23,9 +23,13 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [sortBy, setSortBy] = useState<string>('name');
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  // États pour les commandes et mouvements (non chargés pour réduire les requêtes)
-  // Les setters ne sont pas utilisés car fetchProductOrdersAndMovements est désactivée
-  const [productOrders] = useState<Record<string, { hasOrder: boolean; lastOrderDate?: string; orderId?: string }>>({});
+  // État pour stocker les IDs des dernières commandes par produit
+  const [productLastOrders, setProductLastOrders] = useState<Record<string, string>>({});
+  // État pour stocker les IDs des dernières ventes par produit
+  const [productLastSales, setProductLastSales] = useState<Record<string, string>>({});
+  // État pour stocker les IDs des derniers approvisionnements par produit
+  const [productLastStockIns, setProductLastStockIns] = useState<Record<string, { referenceId: string; referenceType?: string }>>({});
+  // États pour les mouvements (non chargés pour réduire les requêtes)
   const [productMovements] = useState<Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }>>({});
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -44,18 +48,26 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       setLoading(true);
       const startTime = performance.now();
       
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          category:categories(name),
-          supplier:suppliers(name),
-          prices:product_prices(*)
-        `)
-        .order('name');
+      // Exécuter les requêtes en parallèle pour optimiser les performances
+      const [productsResult, lastOrdersResult, lastSalesResult, lastStockInsResult] = await Promise.all([
+        supabase
+          .from('products')
+          .select(`
+            *,
+            category:categories(name),
+            supplier:suppliers(name),
+            prices:product_prices(*)
+          `)
+          .order('name'),
+        fetchLastOrders(),
+        fetchLastSales(),
+        fetchLastStockIns()
+      ]);
 
       const endTime = performance.now();
-      console.log(`📦 ProductsList: Requête produits terminée en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📦 ProductsList: Requêtes terminées en ${(endTime - startTime).toFixed(2)}ms`);
+
+      const { data, error } = productsResult;
 
       if (error) {
         console.error('❌ ProductsList: Erreur lors du chargement des produits:', error);
@@ -64,20 +76,13 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       
       console.log(`✅ ProductsList: ${data?.length || 0} produits récupérés`);
       setProducts(data || []);
+      setProductLastOrders(lastOrdersResult);
+      setProductLastSales(lastSalesResult);
+      setProductLastStockIns(lastStockInsResult);
 
       // Désactiver le loading immédiatement pour afficher les produits
       console.log('📦 ProductsList: Fin du chargement, désactivation du loading');
       setLoading(false);
-
-      // DÉSACTIVÉ : Récupération des commandes et mouvements désactivée pour réduire les requêtes
-      // Cette fonction génère trop de requêtes (plusieurs lots de 50 produits) et déclenche des rafraîchissements de token
-      // Les données sont déjà dans Supabase, pas besoin de les charger en masse
-      // if (data && data.length > 0) {
-      //   console.log('📦 ProductsList: Récupération des commandes et mouvements en arrière-plan...');
-      //   fetchProductOrdersAndMovements((data as Product[]).map(p => p.id)).catch(error => {
-      //     console.error('❌ ProductsList: Erreur lors de la récupération des commandes/mouvements:', error);
-      //   });
-      // }
     } catch (error) {
       console.error('❌ ProductsList: Erreur lors du chargement des produits:', error);
       setLoading(false);
@@ -88,8 +93,207 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   // (plusieurs lots de 50 produits) et déclenchait des rafraîchissements de token excessifs,
   // causant des erreurs 429. Les données sont déjà dans Supabase, pas besoin de les charger en masse.
 
+  const fetchLastOrders = async (): Promise<Record<string, string>> => {
+    try {
+      console.log('📦 ProductsList: Début du chargement des dernières commandes');
+      const startTime = performance.now();
+
+      // Récupérer toutes les commandes avec leurs produits
+      const { data, error } = await supabase
+        .from('purchase_order_items')
+        .select(`
+          product_id,
+          purchase_order_id,
+          purchase_orders!inner(
+            id,
+            created_at
+          )
+        `);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur lors du chargement des commandes:', error);
+        return {};
+      }
+
+      // Grouper par product_id et garder seulement la plus récente (triée par created_at DESC)
+      const lastOrdersMap: Record<string, string> = {};
+      if (data) {
+        // Type pour les données retournées par Supabase avec jointure
+        type OrderItemWithOrder = {
+          product_id: string;
+          purchase_order_id: string;
+          purchase_orders: {
+            id: string;
+            created_at: string;
+          } | {
+            id: string;
+            created_at: string;
+          }[] | null;
+        };
+
+        // Trier les données par date de commande décroissante
+        const sortedData = [...(data as OrderItemWithOrder[])].sort((a, b) => {
+          // Gérer le cas où purchase_orders peut être un objet ou un tableau
+          const orderA = Array.isArray(a.purchase_orders) ? a.purchase_orders[0] : a.purchase_orders;
+          const orderB = Array.isArray(b.purchase_orders) ? b.purchase_orders[0] : b.purchase_orders;
+          const dateA = orderA?.created_at || '';
+          const dateB = orderB?.created_at || '';
+          return dateB.localeCompare(dateA); // Tri décroissant
+        });
+
+        // Prendre la première commande (la plus récente) pour chaque produit
+        for (const item of sortedData) {
+          const productId = item.product_id;
+          // Si on n'a pas encore de commande pour ce produit, on garde celle-ci
+          if (!lastOrdersMap[productId]) {
+            lastOrdersMap[productId] = item.purchase_order_id;
+          }
+        }
+      }
+
+      const endTime = performance.now();
+      console.log(`✅ ProductsList: Dernières commandes chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📦 ProductsList: ${Object.keys(lastOrdersMap).length} produits avec commandes`);
+
+      return lastOrdersMap;
+    } catch (error) {
+      console.error('❌ ProductsList: Erreur lors du chargement des dernières commandes:', error);
+      return {};
+    }
+  };
+
+  const fetchLastSales = async (): Promise<Record<string, string>> => {
+    try {
+      console.log('📦 ProductsList: Début du chargement des dernières ventes');
+      const startTime = performance.now();
+
+      // Récupérer toutes les ventes avec leurs produits
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select(`
+          article_id,
+          sale_id,
+          sales!inner(
+            id,
+            created_at
+          )
+        `)
+        .not('article_id', 'is', null);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur lors du chargement des ventes:', error);
+        return {};
+      }
+
+      // Grouper par article_id et garder seulement la plus récente
+      const lastSalesMap: Record<string, string> = {};
+      if (data) {
+        type SaleItemWithSale = {
+          article_id: string;
+          sale_id: string;
+          sales: {
+            id: string;
+            created_at: string;
+          } | {
+            id: string;
+            created_at: string;
+          }[] | null;
+        };
+
+        // Trier les données par date de vente décroissante
+        const sortedData = [...(data as SaleItemWithSale[])].sort((a, b) => {
+          const saleA = Array.isArray(a.sales) ? a.sales[0] : a.sales;
+          const saleB = Array.isArray(b.sales) ? b.sales[0] : b.sales;
+          const dateA = saleA?.created_at || '';
+          const dateB = saleB?.created_at || '';
+          return dateB.localeCompare(dateA); // Tri décroissant
+        });
+
+        // Prendre la première vente (la plus récente) pour chaque produit
+        for (const item of sortedData) {
+          const productId = item.article_id;
+          // Si on n'a pas encore de vente pour ce produit, on garde celle-ci
+          if (!lastSalesMap[productId]) {
+            lastSalesMap[productId] = item.sale_id;
+          }
+        }
+      }
+
+      const endTime = performance.now();
+      console.log(`✅ ProductsList: Dernières ventes chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📦 ProductsList: ${Object.keys(lastSalesMap).length} produits avec ventes`);
+
+      return lastSalesMap;
+    } catch (error) {
+      console.error('❌ ProductsList: Erreur lors du chargement des dernières ventes:', error);
+      return {};
+    }
+  };
+
+  const fetchLastStockIns = async (): Promise<Record<string, { referenceId: string; referenceType?: string }>> => {
+    try {
+      console.log('📦 ProductsList: Début du chargement des derniers approvisionnements');
+      const startTime = performance.now();
+
+      // Récupérer tous les mouvements d'entrée (in) ou liés à des achats (purchase)
+      const { data, error } = await supabase
+        .from('stock_movements')
+        .select(`
+          product_id,
+          reference_id,
+          reference_type,
+          created_at
+        `)
+        .or('movement_type.eq.in,reference_type.eq.purchase')
+        .not('product_id', 'is', null);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur lors du chargement des approvisionnements:', error);
+        return {};
+      }
+
+      // Grouper par product_id et garder seulement le plus récent
+      const lastStockInsMap: Record<string, { referenceId: string; referenceType?: string }> = {};
+      if (data) {
+        type StockMovement = {
+          product_id: string;
+          reference_id: string | null;
+          reference_type: string | null;
+          created_at: string;
+        };
+
+        // Trier les données par date décroissante
+        const sortedData = [...(data as StockMovement[])].sort((a, b) => {
+          return b.created_at.localeCompare(a.created_at); // Tri décroissant
+        });
+
+        // Prendre le premier mouvement (le plus récent) pour chaque produit
+        for (const movement of sortedData) {
+          const productId = movement.product_id;
+          // Si on n'a pas encore d'approvisionnement pour ce produit, on garde celui-ci
+          if (!lastStockInsMap[productId] && movement.reference_id) {
+            lastStockInsMap[productId] = {
+              referenceId: movement.reference_id,
+              referenceType: movement.reference_type || undefined
+            };
+          }
+        }
+      }
+
+      const endTime = performance.now();
+      console.log(`✅ ProductsList: Derniers approvisionnements chargés en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📦 ProductsList: ${Object.keys(lastStockInsMap).length} produits avec approvisionnements`);
+
+      return lastStockInsMap;
+    } catch (error) {
+      console.error('❌ ProductsList: Erreur lors du chargement des derniers approvisionnements:', error);
+      return {};
+    }
+  };
+
   const handleOrderClick = async (orderId: string) => {
     try {
+      // Charger la commande avec tous les détails nécessaires en une seule requête
       const { data, error } = await supabase
         .from('purchase_orders')
         .select(`
@@ -103,7 +307,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             total_price,
             products (
               name,
-              sku
+              sku,
+              unit,
+              image_url
             )
           )
         `)
@@ -119,24 +325,32 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  const handleSaleClick = async (saleId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select(`
+          *,
+          client:clients(*)
+        `)
+        .eq('id', saleId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setSelectedSale(data as Sale);
+        setShowSaleForm(true);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement de la vente:', error);
+    }
+  };
+
   const handleMovementClick = async (referenceId: string, referenceType: string) => {
     try {
       if (referenceType === 'sale') {
         // Charger la vente
-        const { data, error } = await supabase
-          .from('sales')
-          .select(`
-            *,
-            client:clients(*)
-          `)
-          .eq('id', referenceId)
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setSelectedSale(data as Sale);
-          setShowSaleForm(true);
-        }
+        await handleSaleClick(referenceId);
       } else if (referenceType === 'purchase') {
         // Charger la commande d'achat
         await handleOrderClick(referenceId);
@@ -324,14 +538,43 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Activité:</span>
                   <div className="flex items-center gap-2">
-                    {productOrders[product.id]?.hasOrder && productOrders[product.id]?.orderId && (
+                    {productLastOrders[product.id] && (
                       <button
-                        onClick={() => handleOrderClick(productOrders[product.id].orderId!)}
-                        className="cursor-pointer hover:opacity-70 transition-opacity"
+                        onClick={() => handleOrderClick(productLastOrders[product.id])}
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-blue-50"
                         title={t('stock.table.hasOrder')}
                       >
                         <ShoppingCart 
                           className="h-4 w-4 text-blue-600" 
+                        />
+                      </button>
+                    )}
+                    {productLastSales[product.id] && (
+                      <button
+                        onClick={() => handleSaleClick(productLastSales[product.id])}
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-green-50"
+                        title="Dernière vente"
+                      >
+                        <ShoppingBag 
+                          className="h-4 w-4 text-green-600" 
+                        />
+                      </button>
+                    )}
+                    {productLastStockIns[product.id] && (
+                      <button
+                        onClick={() => {
+                          const stockIn = productLastStockIns[product.id];
+                          if (stockIn.referenceType === 'purchase') {
+                            handleOrderClick(stockIn.referenceId);
+                          } else {
+                            handleMovementClick(stockIn.referenceId, stockIn.referenceType || '');
+                          }
+                        }}
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-purple-50"
+                        title="Dernier approvisionnement"
+                      >
+                        <ArrowUp 
+                          className="h-4 w-4 text-purple-600" 
                         />
                       </button>
                     )}
@@ -347,39 +590,48 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         title={t('stock.table.hasMovement')}
                       >
                         <ArrowUpDown 
-                          className="h-4 w-4 text-green-600" 
+                          className="h-4 w-4 text-orange-600" 
                         />
                       </button>
                     )}
-                    {!productOrders[product.id]?.hasOrder && !productMovements[product.id]?.hasMovement && (
+                    {!productLastOrders[product.id] && !productLastSales[product.id] && !productLastStockIns[product.id] && !productMovements[product.id]?.hasMovement && (
                       <span className="text-gray-400">-</span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full ${
                     product.status === 'active' ? 'bg-green-100 text-green-800' :
                     product.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-red-100 text-red-800'
-                  }`}>
-                    {t(`stock.status.${product.status}`)}
+                  }`}
+                  title={t(`stock.status.${product.status}`)}
+                  >
+                    {product.status === 'active' ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : product.status === 'inactive' ? (
+                      <XCircle className="h-4 w-4" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
                   </span>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => setSelectedProduct(product)}
-                      className="text-blue-600 hover:text-blue-900 text-xs font-medium"
+                      className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                      title={t('stock.viewDetails')}
                     >
-                      {t('stock.viewDetails')}
+                      <Eye className="h-5 w-5" />
                     </button>
-                    <span className="text-gray-300">|</span>
                     <button
                       onClick={() => {
                         setSelectedProduct(product);
                         setShowForm(true);
                       }}
-                      className="text-indigo-600 hover:text-indigo-900 text-xs font-medium"
+                      className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 rounded hover:bg-indigo-50"
+                      title={t('app.edit')}
                     >
-                      {t('app.edit')}
+                      <Edit className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
@@ -497,20 +749,28 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                       {getCurrentPrice(product)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full ${
                         product.status === 'active' ? 'bg-green-100 text-green-800' :
                         product.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
-                      }`}>
-                        {t(`stock.status.${product.status}`)}
+                      }`}
+                      title={t(`stock.status.${product.status}`)}
+                      >
+                        {product.status === 'active' ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : product.status === 'inactive' ? (
+                          <XCircle className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {productOrders[product.id]?.hasOrder && productOrders[product.id]?.orderId && (
+                        {productLastOrders[product.id] && (
                           <button
-                            onClick={() => handleOrderClick(productOrders[product.id].orderId!)}
-                            className="cursor-pointer hover:opacity-70 transition-opacity"
+                            onClick={() => handleOrderClick(productLastOrders[product.id])}
+                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-blue-50"
                             title={t('stock.table.hasOrder')}
                           >
                             <ShoppingCart 
@@ -518,43 +778,49 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                             />
                           </button>
                         )}
-                        {productMovements[product.id]?.hasMovement && 
-                         productMovements[product.id]?.referenceId && 
-                         productMovements[product.id]?.referenceType && (
+                        {productLastStockIns[product.id] && (
                           <button
-                            onClick={() => handleMovementClick(
-                              productMovements[product.id].referenceId!,
-                              productMovements[product.id].referenceType!
-                            )}
-                            className="cursor-pointer hover:opacity-70 transition-opacity"
-                            title={t('stock.table.hasMovement')}
+                            className="hover:opacity-70 transition-opacity p-1 rounded hover:bg-purple-50"
+                            title="Dernier approvisionnement"
                           >
-                            <ArrowUpDown 
+                            <ArrowUp 
+                              className="h-4 w-4 text-purple-600" 
+                            />
+                          </button>
+                        )}
+                        {productLastSales[product.id] && (
+                          <button
+                            onClick={() => handleSaleClick(productLastSales[product.id])}
+                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-green-50"
+                            title="Dernière vente"
+                          >
+                            <ShoppingBag 
                               className="h-4 w-4 text-green-600" 
                             />
                           </button>
                         )}
-                        {!productOrders[product.id]?.hasOrder && !productMovements[product.id]?.hasMovement && (
-                          <span className="text-gray-400 text-xs">-</span>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setSelectedProduct(product)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        {t('stock.viewDetails')}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          setShowForm(true);
-                        }}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        {t('app.edit')}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setSelectedProduct(product)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                          title={t('stock.viewDetails')}
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowForm(true);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 rounded hover:bg-indigo-50"
+                          title={t('app.edit')}
+                        >
+                          <Edit className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
