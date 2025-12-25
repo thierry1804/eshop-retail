@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge, ClipboardCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
@@ -32,6 +32,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [productLastStockIns, setProductLastStockIns] = useState<Record<string, { referenceId: string; referenceType?: string }>>({});
   // États pour les mouvements (non chargés pour réduire les requêtes)
   const [productMovements] = useState<Record<string, { hasMovement: boolean; lastMovementDate?: string; referenceId?: string; referenceType?: string }>>({});
+  // État pour stocker les quantités entrées et sorties par produit
+  const [productQuantities, setProductQuantities] = useState<Record<string, { quantityIn: number; quantityOut: number }>>({});
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
@@ -52,7 +54,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       const startTime = performance.now();
       
       // Exécuter les requêtes en parallèle pour optimiser les performances
-      const [productsResult, lastOrdersResult, lastSalesResult, lastStockInsResult] = await Promise.all([
+      const [productsResult, lastOrdersResult, lastSalesResult, lastStockInsResult, quantitiesResult] = await Promise.all([
         supabase
           .from('products')
           .select(`
@@ -64,7 +66,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           .order('name'),
         fetchLastOrders(),
         fetchLastSales(),
-        fetchLastStockIns()
+        fetchLastStockIns(),
+        fetchProductQuantities()
       ]);
 
       const endTime = performance.now();
@@ -82,6 +85,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       setProductLastOrders(lastOrdersResult);
       setProductLastSales(lastSalesResult);
       setProductLastStockIns(lastStockInsResult);
+      setProductQuantities(quantitiesResult);
 
       // Désactiver le loading immédiatement pour afficher les produits
       console.log('📦 ProductsList: Fin du chargement, désactivation du loading');
@@ -294,6 +298,63 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  const fetchProductQuantities = async (): Promise<Record<string, { quantityIn: number; quantityOut: number }>> => {
+    try {
+      console.log('📦 ProductsList: Début du chargement des quantités entrées/sorties');
+      const startTime = performance.now();
+
+      // Récupérer tous les mouvements de stock avec leurs quantités
+      const { data, error } = await supabase
+        .from('stock_movements')
+        .select(`
+          product_id,
+          movement_type,
+          quantity
+        `)
+        .not('product_id', 'is', null);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur lors du chargement des quantités:', error);
+        return {};
+      }
+
+      // Calculer les quantités entrées et sorties par produit
+      const quantitiesMap: Record<string, { quantityIn: number; quantityOut: number }> = {};
+      if (data) {
+        type MovementData = {
+          product_id: string;
+          movement_type: 'in' | 'out' | 'adjustment' | 'transfer';
+          quantity: number;
+        };
+
+        for (const movement of data as MovementData[]) {
+          const productId = movement.product_id;
+          if (!quantitiesMap[productId]) {
+            quantitiesMap[productId] = { quantityIn: 0, quantityOut: 0 };
+          }
+
+          // Les entrées sont les mouvements de type 'in'
+          if (movement.movement_type === 'in') {
+            quantitiesMap[productId].quantityIn += movement.quantity || 0;
+          }
+          // Les sorties sont les mouvements de type 'out'
+          else if (movement.movement_type === 'out') {
+            quantitiesMap[productId].quantityOut += movement.quantity || 0;
+          }
+        }
+      }
+
+      const endTime = performance.now();
+      console.log(`✅ ProductsList: Quantités chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📦 ProductsList: ${Object.keys(quantitiesMap).length} produits avec quantités`);
+
+      return quantitiesMap;
+    } catch (error) {
+      console.error('❌ ProductsList: Erreur lors du chargement des quantités:', error);
+      return {};
+    }
+  };
+
   // Fonction pour normaliser le nom d'un produit (similaire à la fonction SQL)
   const normalizeProductName = (name: string): string => {
     return name.toLowerCase().trim().replace(/[àáâãäåèéêëìíîïòóôõöùúûüýÿÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝŸ]/g, (char) => {
@@ -478,6 +539,16 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           <p className="text-sm sm:text-base text-gray-600">{t('stock.subtitle')}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={() => {
+              // Utiliser un événement personnalisé pour changer de page
+              window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventories' }));
+            }}
+            className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Inventaires
+          </button>
           {getDuplicateGroups().length > 0 && (
             <button
               onClick={() => {
@@ -578,8 +649,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">{product.category?.name || 'Sans catégorie'}</div>
-                  <div className="text-xs text-gray-400 mt-1 font-mono">{product.sku}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {product.category?.name || 'Sans catégorie'} • <span className="font-mono text-gray-400">{product.sku}</span>
+                  </div>
                 </div>
               </div>
               <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
@@ -591,6 +663,14 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                       {product.current_stock} / {product.min_stock_level}
                     </span>
                   </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Qté entrée:</span>
+                  <span className="text-gray-900 font-medium">{productQuantities[product.id]?.quantityIn || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Qté sortie:</span>
+                  <span className="text-gray-900 font-medium">{productQuantities[product.id]?.quantityOut || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Prix:</span>
@@ -747,10 +827,13 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                   {t('stock.table.product')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.sku')}
+                  {t('stock.table.stock')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.stock')}
+                  IN
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  OUT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('stock.table.price')}
@@ -791,12 +874,11 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         )}
                         <div>
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">{product.category?.name || 'Sans catégorie'}</div>
+                          <div className="text-sm text-gray-500">
+                            {product.category?.name || 'Sans catégorie'} • <span className="font-mono text-gray-400">{product.sku}</span>
+                          </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.sku}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -805,6 +887,12 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                           {product.current_stock} / {product.min_stock_level}
                         </span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {productQuantities[product.id]?.quantityIn || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {productQuantities[product.id]?.quantityOut || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getCurrentPrice(product)}

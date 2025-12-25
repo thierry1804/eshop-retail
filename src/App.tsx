@@ -10,6 +10,7 @@ import { LogsViewer } from './components/Admin/LogsViewer';
 import { ReferentialsManager } from './components/Admin/ReferentialsManager';
 import ExpensesList from './components/Expenses/ExpensesList';
 import { ProductsList } from './components/Stock/ProductsList';
+import { InventoryList } from './components/Stock/InventoryList';
 import { TrackingNumbersList } from './components/Stock/TrackingNumbersList';
 import { DeliveriesList } from './components/Delivery/DeliveriesList';
 import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
@@ -32,6 +33,22 @@ function App() {
 
   // Flag pour éviter les initialisations multiples
   const hasInitializedRef = useRef(false);
+
+  // Écouter les événements de navigation personnalisés
+  useEffect(() => {
+    const handleNavigate = (event: CustomEvent) => {
+      const page = event.detail;
+      if (page) {
+        logger.logNavigation(currentPage, page);
+        setCurrentPage(page);
+      }
+    };
+
+    window.addEventListener('navigate' as any, handleNavigate as EventListener);
+    return () => {
+      window.removeEventListener('navigate' as any, handleNavigate as EventListener);
+    };
+  }, [currentPage]);
 
   useEffect(() => {
     // Ne s'exécuter qu'une seule fois
@@ -386,6 +403,8 @@ function App() {
         return <ExpensesList />;
       case 'stock':
         return user ? <ProductsList user={user} /> : null;
+      case 'inventories':
+        return user ? <InventoryList user={user} /> : null;
       case 'tracking':
         return user ? <TrackingNumbersList user={user} /> : null;
       case 'deliveries':

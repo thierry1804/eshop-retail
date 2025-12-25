@@ -172,6 +172,40 @@ export interface StockAlert {
   product?: Product;
 }
 
+export interface Inventory {
+  id: string;
+  inventory_date: string;
+  status: 'draft' | 'in_progress' | 'completed' | 'cancelled';
+  created_by: string;
+  completed_by?: string;
+  completed_at?: string;
+  notes?: string;
+  total_products: number;
+  counted_products: number;
+  total_discrepancies: number;
+  created_at: string;
+  updated_at: string;
+  created_by_user?: User;
+  completed_by_user?: User;
+  items?: InventoryItem[];
+}
+
+export interface InventoryItem {
+  id: string;
+  inventory_id: string;
+  product_id: string;
+  theoretical_quantity: number;
+  actual_quantity?: number;
+  discrepancy: number;
+  notes?: string;
+  counted_by?: string;
+  counted_at?: string;
+  created_at: string;
+  updated_at: string;
+  product?: Product;
+  counted_by_user?: User;
+}
+
 // Types pour le module de gestion des livraisons
 export interface Delivery {
   id: string;

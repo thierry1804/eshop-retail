@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video, Settings, PackageSearch, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { User, LogOut, Users, ShoppingCart, CreditCard, BarChart3, Menu, X, Activity, Receipt, Package, Truck, ShoppingBag, ChevronDown, ChevronRight, Video, Settings, PackageSearch, ChevronLeft, ChevronRight as ChevronRightIcon, ClipboardCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
@@ -30,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'tiktok-live': 'sales',
       'payments': 'sales',
       'stock': 'inventory',
+      'inventories': 'inventory',
       'supply': 'inventory',
       'deliveries': 'inventory',
       'tracking': 'inventory',
@@ -95,6 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
 
         // 📦 GESTION DES STOCKS (logistique)
         { id: 'stock', label: t('navigation.stock'), icon: Package, group: 'inventory' },
+        { id: 'inventories', label: 'Inventaires', icon: ClipboardCheck, group: 'inventory' },
         { id: 'supply', label: t('navigation.supply'), icon: ShoppingBag, group: 'inventory' },
         { id: 'deliveries', label: t('navigation.deliveries'), icon: Truck, group: 'inventory' },
         { id: 'tracking', label: t('navigation.tracking'), icon: PackageSearch, group: 'inventory' },
