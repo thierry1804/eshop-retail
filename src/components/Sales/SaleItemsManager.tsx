@@ -447,7 +447,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
           <button
             type="button"
             onClick={() => setShowNewProductForm(!showNewProductForm)}
-            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hidden"
           >
             <Plus className="h-4 w-4" />
             Nouveau produit
