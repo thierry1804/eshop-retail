@@ -363,3 +363,28 @@ export interface TikTokMessage {
     avatar?: string;
   };
 }
+
+// Types pour la fusion de produits
+export interface MergePreview {
+  master_product: Product;
+  duplicate_product: Product;
+  impact: {
+    stock_movements: number;
+    purchase_order_items: number;
+    sale_items: number;
+    receipt_items: number;
+    delivery_items: number;
+    product_prices: number;
+    stock_alerts: number;
+    new_master_stock: number;
+  };
+}
+
+export interface ProductMerge {
+  id: string;
+  master_product_id: string;
+  merged_product_id: string;
+  merged_at: string;
+  merged_by?: string;
+  merge_reason?: string;
+}

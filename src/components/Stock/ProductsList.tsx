@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
 import { PurchaseOrderDetails } from '../Supply/PurchaseOrderDetails';
 import { SaleForm } from '../Sales/SaleForm';
+import { ProductMergeModal } from './ProductMergeModal';
 
 interface ProductsListProps {
   user: User;
@@ -34,6 +35,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showSaleForm, setShowSaleForm] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 30;
 
@@ -291,6 +294,46 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  // Fonction pour normaliser le nom d'un produit (similaire à la fonction SQL)
+  const normalizeProductName = (name: string): string => {
+    return name.toLowerCase().trim().replace(/[àáâãäåèéêëìíîïòóôõöùúûüýÿÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝŸ]/g, (char) => {
+      const map: Record<string, string> = {
+        'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+        'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+        'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+        'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+        'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+        'ý': 'y', 'ÿ': 'y',
+        'À': 'A', 'Á': 'A', 'Â': 'A', 'Ã': 'A', 'Ä': 'A', 'Å': 'A',
+        'È': 'E', 'É': 'E', 'Ê': 'E', 'Ë': 'E',
+        'Ì': 'I', 'Í': 'I', 'Î': 'I', 'Ï': 'I',
+        'Ò': 'O', 'Ó': 'O', 'Ô': 'O', 'Õ': 'O', 'Ö': 'O',
+        'Ù': 'U', 'Ú': 'U', 'Û': 'U', 'Ü': 'U',
+        'Ý': 'Y', 'Ÿ': 'Y'
+      };
+      return map[char] || char;
+    });
+  };
+
+  // Fonction pour détecter les groupes de doublons
+  const getDuplicateGroups = (): Product[][] => {
+    const groups = new Map<string, Product[]>();
+    
+    products.forEach(product => {
+      // Exclure les produits déjà discontinués
+      if (product.status === 'discontinued') return;
+      
+      const normalizedName = normalizeProductName(product.name);
+      if (!groups.has(normalizedName)) {
+        groups.set(normalizedName, []);
+      }
+      groups.get(normalizedName)!.push(product);
+    });
+    
+    // Retourner seulement les groupes avec plus d'un produit
+    return Array.from(groups.values()).filter(group => group.length > 1);
+  };
+
   const handleOrderClick = async (orderId: string) => {
     try {
       // Charger la commande avec tous les détails nécessaires en une seule requête
@@ -434,13 +477,31 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('stock.title')}</h1>
           <p className="text-sm sm:text-base text-gray-600">{t('stock.subtitle')}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base"
-        >
-          <Plus className="h-4 w-4" />
-          {t('stock.newProduct')}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          {getDuplicateGroups().length > 0 && (
+            <button
+              onClick={() => {
+                const groups = getDuplicateGroups();
+                if (groups.length > 0) {
+                  setSelectedDuplicateGroup(groups[0]);
+                  setShowMergeModal(true);
+                }
+              }}
+              title={`Fusionner les doublons (${getDuplicateGroups().length})`}
+              className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <GitMerge className="h-4 w-4" />
+              ({getDuplicateGroups().length})
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <Plus className="h-4 w-4" />
+            {t('stock.newProduct')}
+          </button>
+        </div>
       </div>
 
       {/* Filtres et recherche */}
@@ -941,6 +1002,22 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             setSelectedSale(null);
             fetchProducts();
           }}
+        />
+      )}
+
+      {showMergeModal && selectedDuplicateGroup.length > 0 && (
+        <ProductMergeModal
+          duplicateGroup={selectedDuplicateGroup}
+          onClose={() => {
+            setShowMergeModal(false);
+            setSelectedDuplicateGroup([]);
+          }}
+          onMergeComplete={() => {
+            fetchProducts();
+            setShowMergeModal(false);
+            setSelectedDuplicateGroup([]);
+          }}
+          user={user}
         />
       )}
     </div>
