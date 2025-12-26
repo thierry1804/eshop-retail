@@ -36,21 +36,26 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
     setNotes(item.notes || '');
   }, [item.actual_quantity, item.notes]);
 
-  const handleQuantityChange = async (value: string) => {
-    const numValue = value === '' ? null : parseInt(value, 10);
-    
+  // Fonction pour mettre à jour l'état local uniquement (sans sauvegarder)
+  const handleQuantityInputChange = (value: string) => {
     // Validation : nombre positif ou vide
-    if (value !== '' && (isNaN(numValue!) || numValue! < 0)) {
+    if (value !== '' && (isNaN(parseInt(value, 10)) || parseInt(value, 10) < 0)) {
       return;
     }
-
     setActualQuantity(value);
+  };
 
-    // Sauvegarder automatiquement après 500ms de pause
-    if (value === '' || numValue !== null) {
+  // Fonction pour sauvegarder la quantité (appelée sur onBlur)
+  const handleQuantityBlur = async () => {
+    const numValue = actualQuantity === '' ? null : parseInt(actualQuantity, 10);
+    const valueToSave = numValue === null || isNaN(numValue) ? 0 : numValue;
+    
+    // Si la valeur a changé, sauvegarder
+    const currentValue = item.actual_quantity !== null && item.actual_quantity !== undefined ? item.actual_quantity : null;
+    if (valueToSave !== currentValue) {
       setIsUpdating(true);
       try {
-        await onUpdate(item.id, numValue || 0, notes);
+        await onUpdate(item.id, valueToSave, notes);
         setLastSaved(new Date());
       } catch (error) {
         console.error('Erreur lors de la mise à jour:', error);
@@ -60,13 +65,20 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
     }
   };
 
-  const handleNotesChange = async (value: string) => {
+  // Fonction pour mettre à jour l'état local des notes uniquement (sans sauvegarder)
+  const handleNotesInputChange = (value: string) => {
     setNotes(value);
-    // Sauvegarder les notes si une quantité est déjà saisie
-    if (actualQuantity !== '') {
+  };
+
+  // Fonction pour sauvegarder les notes (appelée sur onBlur)
+  const handleNotesBlur = async () => {
+    // Si les notes ont changé, sauvegarder
+    const currentNotes = item.notes || '';
+    if (notes !== currentNotes) {
+      const quantityToSave = actualQuantity === '' ? 0 : (parseInt(actualQuantity, 10) || 0);
       setIsUpdating(true);
       try {
-        await onUpdate(item.id, parseInt(actualQuantity, 10), value);
+        await onUpdate(item.id, quantityToSave, notes);
         setLastSaved(new Date());
       } catch (error) {
         console.error('Erreur lors de la mise à jour des notes:', error);
@@ -76,9 +88,14 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
     }
   };
 
-  const discrepancy = item.discrepancy || 0;
+  // Calculer l'écart basé sur la valeur actuelle (saisie ou sauvegardée)
+  const currentQuantity = actualQuantity === '' ? null : parseInt(actualQuantity, 10);
+  const calculatedDiscrepancy = currentQuantity !== null && !isNaN(currentQuantity) 
+    ? currentQuantity - item.theoretical_quantity 
+    : (item.discrepancy || 0);
+  const discrepancy = calculatedDiscrepancy;
   const hasDiscrepancy = discrepancy !== 0;
-  const isCounted = item.actual_quantity !== null && item.actual_quantity !== undefined;
+  const isCounted = currentQuantity !== null && !isNaN(currentQuantity);
 
   return (
     <tr className={`hover:bg-gray-50 ${disabled ? 'opacity-50' : ''} ${isCounted ? 'bg-green-50' : ''}`}>
@@ -119,12 +136,8 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
             type="number"
             min="0"
             value={actualQuantity}
-            onChange={(e) => handleQuantityChange(e.target.value)}
-            onBlur={(e) => {
-              if (e.target.value === '') {
-                handleQuantityChange('0');
-              }
-            }}
+            onChange={(e) => handleQuantityInputChange(e.target.value)}
+            onBlur={handleQuantityBlur}
             disabled={disabled || isUpdating}
             className={`w-24 px-3 py-2 border rounded-md text-sm ${
               hasDiscrepancy && isCounted
@@ -178,7 +191,8 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
         <input
           type="text"
           value={notes}
-          onChange={(e) => handleNotesChange(e.target.value)}
+          onChange={(e) => handleNotesInputChange(e.target.value)}
+          onBlur={handleNotesBlur}
           disabled={disabled || isUpdating}
           placeholder="Notes..."
           className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${
