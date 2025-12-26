@@ -28,8 +28,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({ user }) => {
       setLoading(true);
       console.log('🔍 Chargement des inventaires...');
       
-      // Récupérer les inventaires sans jointure pour éviter les problèmes
-      // Les jointures avec auth.users ne fonctionnent pas directement
+      // Récupérer les inventaires
       const { data, error } = await supabase
         .from('inventories')
         .select('*')
@@ -43,13 +42,18 @@ export const InventoryList: React.FC<InventoryListProps> = ({ user }) => {
 
       console.log(`✅ ${data?.length || 0} inventaire(s) récupéré(s)`, data);
 
-      // Si des données sont retournées, récupérer les profils utilisateurs séparément
+      // Si des données sont retournées, récupérer les profils utilisateurs
       if (data && data.length > 0) {
         const userIds = new Set<string>();
         data.forEach(inv => {
-          if (inv.created_by) userIds.add(inv.created_by);
+          if (inv.created_by) {
+            userIds.add(inv.created_by);
+            console.log(`📝 Inventaire ${inv.id} créé par: ${inv.created_by}`);
+          }
           if (inv.completed_by) userIds.add(inv.completed_by);
         });
+
+        console.log(`👥 ${userIds.size} utilisateur(s) unique(s) à récupérer:`, Array.from(userIds));
 
         // Récupérer les profils utilisateurs seulement s'il y a des IDs
         if (userIds.size > 0) {
@@ -58,24 +62,87 @@ export const InventoryList: React.FC<InventoryListProps> = ({ user }) => {
             .select('id, email, name')
             .in('id', Array.from(userIds));
 
+          // Déclarer authUsersMap avant le bloc if/else pour qu'il soit accessible partout
+          const authUsersMap = new Map();
+          let userProfilesData = userProfiles || [];
+
           if (profilesError) {
-            console.warn('⚠️ Erreur lors de la récupération des profils utilisateurs:', profilesError);
+            console.error('❌ Erreur lors de la récupération des profils utilisateurs:', profilesError);
+            console.error('Détails de l\'erreur:', {
+              message: profilesError.message,
+              details: profilesError.details,
+              hint: profilesError.hint
+            });
+          } else {
+            console.log(`✅ ${userProfilesData.length} profil(s) utilisateur(s) récupéré(s):`, userProfilesData);
           }
 
-          // Mapper les profils aux inventaires
-          const profilesMap = new Map(
-            (userProfiles || []).map(profile => [profile.id, profile])
-          );
+          // Vérifier les IDs manquants
+          const foundIds = new Set(userProfilesData.map(p => p.id));
+          const missingIds = Array.from(userIds).filter(id => !foundIds.has(id));
+          
+          // Récupérer les informations depuis auth.users pour les profils manquants
+          if (missingIds.length > 0) {
+            console.log(`🔍 Récupération des informations depuis auth.users pour ${missingIds.length} utilisateur(s) manquant(s)...`);
+            
+            // Récupérer les informations pour chaque utilisateur manquant
+            for (const userId of missingIds) {
+              try {
+                const { data: authUserInfo, error: authError } = await supabase
+                  .rpc('get_user_info', { user_id: userId });
+                
+                if (!authError && authUserInfo && authUserInfo.length > 0) {
+                  const userInfo = authUserInfo[0];
+                  // Créer un objet compatible avec user_profiles
+                  authUsersMap.set(userId, {
+                    id: userInfo.id,
+                    email: userInfo.email,
+                    name: userInfo.name || userInfo.full_name || userInfo.email || 'Utilisateur',
+                    full_name: userInfo.full_name || userInfo.name || null
+                  });
+                  console.log(`✅ Informations récupérées depuis auth.users pour ${userId}:`, userInfo.name || userInfo.full_name);
+                } else if (authError) {
+                  console.warn(`⚠️ Erreur lors de la récupération des informations pour ${userId}:`, authError);
+                }
+              } catch (error) {
+                console.warn(`⚠️ Erreur lors de l'appel à get_user_info pour ${userId}:`, error);
+              }
+            }
+            
+            if (missingIds.length > 0 && authUsersMap.size === 0) {
+              console.warn(`⚠️ Aucune information récupérée depuis auth.users pour les IDs:`, missingIds);
+            }
+          }
 
-          const inventoriesWithUsers = data.map(inv => ({
-            ...inv,
-            created_by_user: inv.created_by ? profilesMap.get(inv.created_by) : null,
-            completed_by_user: inv.completed_by ? profilesMap.get(inv.completed_by) : null,
-          }));
+          // Mapper les profils aux inventaires (user_profiles + auth.users)
+          const profilesMap = new Map(
+            userProfilesData.map(profile => [profile.id, profile])
+          );
+          
+          // Ajouter les informations depuis auth.users
+          authUsersMap.forEach((value, key) => {
+            profilesMap.set(key, value);
+          });
+
+          const inventoriesWithUsers = data.map(inv => {
+            const createdByUser = inv.created_by ? profilesMap.get(inv.created_by) : null;
+            const completedByUser = inv.completed_by ? profilesMap.get(inv.completed_by) : null;
+            
+            if (inv.created_by && !createdByUser) {
+              console.warn(`⚠️ Aucune information utilisateur trouvée pour created_by: ${inv.created_by} (inventaire: ${inv.id})`);
+            }
+            
+            return {
+              ...inv,
+              created_by_user: createdByUser,
+              completed_by_user: completedByUser,
+            };
+          });
 
           console.log('✅ Inventaires avec profils utilisateurs:', inventoriesWithUsers);
           setInventories(inventoriesWithUsers);
         } else {
+          console.log('ℹ️ Aucun utilisateur associé aux inventaires');
           setInventories(data);
         }
       } else {
@@ -299,7 +366,18 @@ export const InventoryList: React.FC<InventoryListProps> = ({ user }) => {
                       {inventory.total_discrepancies}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(inventory as any).created_by_user?.email || 'N/A'}
+                      {(() => {
+                        const creator = (inventory as any).created_by_user;
+                        if (creator) {
+                          // Afficher le full_name si disponible, sinon name, sinon email
+                          return creator.full_name || creator.name || creator.email || inventory.created_by || 'N/A';
+                        }
+                        // Si le profil n'existe pas mais created_by est défini, afficher l'ID tronqué
+                        if (inventory.created_by) {
+                          return inventory.created_by.substring(0, 8) + '...';
+                        }
+                        return 'N/A';
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Inventory } from '../../types';
-import { Package, CheckCircle, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Package, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 
 interface InventorySummaryProps {
   inventory: Inventory;
@@ -42,115 +42,109 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Résumé de l'inventaire</h2>
-        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor()}`}>
-          {getStatusLabel()}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* Total produits */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total produits</p>
-              <p className="text-2xl font-bold text-gray-900">{inventory.total_products}</p>
-            </div>
-            <Package className="h-8 w-8 text-gray-400" />
+    <div className="bg-white rounded-lg shadow p-4 mb-4">
+      <div className="flex items-start justify-between gap-4">
+        {/* Colonne principale avec les métriques */}
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">Résumé de l'inventaire</h2>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>
+              {getStatusLabel()}
+            </span>
           </div>
-        </div>
 
-        {/* Produits comptés */}
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-blue-600">Produits comptés</p>
-              <p className="text-2xl font-bold text-blue-900">{inventory.counted_products}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            {/* Total produits */}
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-600">Total produits</p>
+                  <p className="text-xl font-bold text-gray-900">{inventory.total_products}</p>
+                </div>
+                <Package className="h-6 w-6 text-gray-400" />
+              </div>
             </div>
-            <CheckCircle className="h-8 w-8 text-blue-400" />
-          </div>
-        </div>
 
-        {/* Produits avec écarts */}
-        <div className="bg-orange-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-orange-600">Avec écarts</p>
-              <p className="text-2xl font-bold text-orange-900">{inventory.total_discrepancies}</p>
+            {/* Produits comptés */}
+            <div className="bg-blue-50 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-blue-600">Produits comptés</p>
+                  <p className="text-xl font-bold text-blue-900">{inventory.counted_products}</p>
+                </div>
+                <CheckCircle className="h-6 w-6 text-blue-400" />
+              </div>
             </div>
-            <AlertTriangle className="h-8 w-8 text-orange-400" />
-          </div>
-        </div>
 
-        {/* Progression */}
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-green-600">Progression</p>
-              <p className="text-2xl font-bold text-green-900">{progressPercentage}%</p>
+            {/* Produits avec écarts */}
+            <div className="bg-orange-50 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-orange-600">Avec écarts</p>
+                  <p className="text-xl font-bold text-orange-900">{inventory.total_discrepancies}</p>
+                </div>
+                <AlertTriangle className="h-6 w-6 text-orange-400" />
+              </div>
             </div>
-            {progressPercentage === 100 ? (
-              <CheckCircle className="h-8 w-8 text-green-400" />
-            ) : (
-              <TrendingUp className="h-8 w-8 text-green-400" />
-            )}
+
+            {/* Progression */}
+            <div className="bg-green-50 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-green-600">Progression</p>
+                  <p className="text-xl font-bold text-green-900">{progressPercentage}%</p>
+                </div>
+                {progressPercentage === 100 ? (
+                  <CheckCircle className="h-6 w-6 text-green-400" />
+                ) : (
+                  <TrendingUp className="h-6 w-6 text-green-400" />
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Barre de progression */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Avancement du comptage</span>
-          <span className="text-sm text-gray-600">
-            {inventory.counted_products} / {inventory.total_products}
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div
-            className={`h-3 rounded-full transition-all duration-300 ${
-              progressPercentage === 100 ? 'bg-green-600' : 'bg-blue-600'
-            }`}
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Informations supplémentaires */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-        <div>
-          <p className="text-sm text-gray-600">Date de l'inventaire</p>
-          <p className="text-sm font-medium text-gray-900">
-            {new Date(inventory.inventory_date).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
-        </div>
-        {inventory.completed_at && (
+          {/* Barre de progression */}
           <div>
-            <p className="text-sm text-gray-600">Date de finalisation</p>
-            <p className="text-sm font-medium text-gray-900">
-              {new Date(inventory.completed_at).toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-700">Avancement du comptage</span>
+              <span className="text-xs text-gray-600">
+                {inventory.counted_products} / {inventory.total_products}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  progressPercentage === 100 ? 'bg-green-600' : 'bg-blue-600'
+                }`}
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
           </div>
-        )}
-        {inventory.notes && (
-          <div className="md:col-span-2">
-            <p className="text-sm text-gray-600">Notes</p>
-            <p className="text-sm text-gray-900">{inventory.notes}</p>
-          </div>
-        )}
+        </div>
+
+        {/* Colonne droite avec date et notes */}
+        <div className="flex-shrink-0 w-48 space-y-3 pt-7">
+          {inventory.completed_at && (
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Date de finalisation</p>
+              <p className="text-sm font-medium text-gray-900">
+                {new Date(inventory.completed_at).toLocaleDateString('fr-FR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          )}
+          {inventory.notes && (
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Notes</p>
+              <p className="text-sm font-medium text-gray-900 uppercase">{inventory.notes}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
