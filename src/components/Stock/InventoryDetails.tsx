@@ -26,6 +26,12 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState<string>('');
+  // État local pour les statistiques de l'inventaire (mis à jour sans rechargement)
+  const [localInventoryStats, setLocalInventoryStats] = useState({
+    total_products: inventory.total_products,
+    counted_products: inventory.counted_products,
+    total_discrepancies: inventory.total_discrepancies
+  });
 
   useEffect(() => {
     fetchInventoryDetails();
@@ -39,10 +45,7 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
       const [itemsResult, productsResult] = await Promise.all([
         supabase
           .from('inventory_items')
-          .select(`
-            *,
-            counted_by_user:counted_by(id, email, full_name)
-          `)
+          .select('*')
           .eq('inventory_id', inventory.id)
           .order('created_at', { ascending: true }),
         supabase
@@ -61,6 +64,32 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
       const itemsData = itemsResult.data || [];
       const productsData = productsResult.data || [];
 
+      // Récupérer les profils utilisateurs pour les items qui ont un counted_by
+      if (itemsData.length > 0) {
+        const userIds = new Set<string>();
+        itemsData.forEach(item => {
+          if (item.counted_by) userIds.add(item.counted_by);
+        });
+
+        if (userIds.size > 0) {
+          const { data: userProfiles } = await supabase
+            .from('user_profiles')
+            .select('id, email, name')
+            .in('id', Array.from(userIds));
+
+          const profilesMap = new Map(
+            (userProfiles || []).map(profile => [profile.id, profile])
+          );
+
+          // Ajouter les profils aux items
+          itemsData.forEach(item => {
+            if (item.counted_by) {
+              (item as any).counted_by_user = profilesMap.get(item.counted_by) || null;
+            }
+          });
+        }
+      }
+
       // Créer un map des produits pour accès rapide
       const productsMap: Record<string, Product> = {};
       productsData.forEach(product => {
@@ -69,6 +98,21 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
 
       setItems(itemsData as InventoryItem[]);
       setProducts(productsMap);
+      
+      // Mettre à jour les statistiques locales basées sur les items récupérés
+      const totalProducts = itemsData.length;
+      const countedProducts = itemsData.filter(item => item.actual_quantity !== null && item.actual_quantity !== undefined).length;
+      const totalDiscrepancies = itemsData.filter(item => 
+        item.actual_quantity !== null && 
+        item.actual_quantity !== undefined && 
+        (item.actual_quantity - item.theoretical_quantity) !== 0
+      ).length;
+      
+      setLocalInventoryStats({
+        total_products: totalProducts,
+        counted_products: countedProducts,
+        total_discrepancies: totalDiscrepancies
+      });
     } catch (error) {
       console.error('Erreur lors du chargement des détails:', error);
       setError('Erreur lors du chargement des détails de l\'inventaire');
@@ -92,40 +136,63 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
 
       if (error) throw error;
 
-      // Mettre à jour l'état local
-      setItems(prevItems =>
-        prevItems.map(item =>
+      // Trouver l'item avant la mise à jour pour calculer l'écart
+      const itemBeforeUpdate = items.find(i => i.id === itemId);
+      const discrepancy = actualQuantity - (itemBeforeUpdate?.theoretical_quantity || 0);
+
+      // Mettre à jour l'état local avec le nouvel écart calculé
+      setItems(prevItems => {
+        const updatedItems = prevItems.map(item =>
           item.id === itemId
             ? {
                 ...item,
                 actual_quantity: actualQuantity,
                 notes: notes || null,
                 counted_by: user.id,
-                counted_at: new Date().toISOString()
+                counted_at: new Date().toISOString(),
+                discrepancy: discrepancy
               }
             : item
-        )
-      );
+        );
+
+        // Calculer les nouvelles statistiques localement
+        const totalProducts = updatedItems.length;
+        const countedProducts = updatedItems.filter(item => item.actual_quantity !== null && item.actual_quantity !== undefined).length;
+        const totalDiscrepancies = updatedItems.filter(item => 
+          item.actual_quantity !== null && 
+          item.actual_quantity !== undefined && 
+          (item.actual_quantity - item.theoretical_quantity) !== 0
+        ).length;
+
+        // Mettre à jour les statistiques locales
+        setLocalInventoryStats({
+          total_products: totalProducts,
+          counted_products: countedProducts,
+          total_discrepancies: totalDiscrepancies
+        });
+
+        return updatedItems;
+      });
 
       // Logger l'action
-      const item = items.find(i => i.id === itemId);
-      if (item) {
+      if (itemBeforeUpdate) {
         await logger.log('INVENTORY_ITEM_COUNTED', {
           component: 'InventoryDetails',
           inventory_id: inventory.id,
           item_id: itemId,
-          product_id: item.product_id,
-          theoretical_quantity: item.theoretical_quantity,
+          product_id: itemBeforeUpdate.product_id,
+          theoretical_quantity: itemBeforeUpdate.theoretical_quantity,
           actual_quantity: actualQuantity,
-          discrepancy: actualQuantity - item.theoretical_quantity,
+          discrepancy: discrepancy,
           notes: notes || null,
           user_id: user.id,
           user_email: user.email
         });
       }
 
-      // Rafraîchir les statistiques de l'inventaire
-      onUpdate();
+      // Ne pas appeler onUpdate() ici pour éviter le rechargement
+      // Les statistiques seront mises à jour automatiquement par le trigger DB
+      // On appellera onUpdate() seulement à la fermeture de la modale
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
       throw error;
@@ -163,13 +230,9 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
         user_email: user.email
       });
 
-      // Rafraîchir les données
+      // Rafraîchir les données et fermer la modale
       onUpdate();
-      
-      // Fermer la modale après un court délai
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      onClose();
     } catch (error: any) {
       console.error('Erreur lors de la finalisation:', error);
       setError(error.message || 'Erreur lors de la finalisation de l\'inventaire');
@@ -211,7 +274,8 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
   });
 
   const canFinalize = inventory.status !== 'completed' && 
-                      items.every(item => item.actual_quantity !== null && item.actual_quantity !== undefined);
+                      localInventoryStats.counted_products === localInventoryStats.total_products &&
+                      localInventoryStats.total_products > 0;
 
   if (loading) {
     return (
@@ -241,7 +305,11 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              // Synchroniser les données avant de fermer
+              onUpdate();
+              onClose();
+            }}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             disabled={finalizing}
           >
@@ -258,7 +326,12 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
           )}
 
           {/* Résumé */}
-          <InventorySummary inventory={inventory} />
+          <InventorySummary inventory={{
+            ...inventory,
+            total_products: localInventoryStats.total_products,
+            counted_products: localInventoryStats.counted_products,
+            total_discrepancies: localInventoryStats.total_discrepancies
+          }} />
 
           {/* Filtres et recherche */}
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
@@ -377,7 +450,11 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={() => {
+                // Synchroniser les données avant de fermer
+                onUpdate();
+                onClose();
+              }}
               disabled={finalizing}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >

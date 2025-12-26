@@ -26,21 +26,65 @@ export const InventoryList: React.FC<InventoryListProps> = ({ user }) => {
   const fetchInventories = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Chargement des inventaires...');
+      
+      // Récupérer les inventaires sans jointure pour éviter les problèmes
+      // Les jointures avec auth.users ne fonctionnent pas directement
       const { data, error } = await supabase
         .from('inventories')
-        .select(`
-          *,
-          created_by_user:created_by(id, email, full_name),
-          completed_by_user:completed_by(id, email, full_name)
-        `)
+        .select('*')
         .order('inventory_date', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur lors de la récupération des inventaires:', error);
+        throw error;
+      }
 
-      setInventories(data || []);
+      console.log(`✅ ${data?.length || 0} inventaire(s) récupéré(s)`, data);
+
+      // Si des données sont retournées, récupérer les profils utilisateurs séparément
+      if (data && data.length > 0) {
+        const userIds = new Set<string>();
+        data.forEach(inv => {
+          if (inv.created_by) userIds.add(inv.created_by);
+          if (inv.completed_by) userIds.add(inv.completed_by);
+        });
+
+        // Récupérer les profils utilisateurs seulement s'il y a des IDs
+        if (userIds.size > 0) {
+          const { data: userProfiles, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select('id, email, name')
+            .in('id', Array.from(userIds));
+
+          if (profilesError) {
+            console.warn('⚠️ Erreur lors de la récupération des profils utilisateurs:', profilesError);
+          }
+
+          // Mapper les profils aux inventaires
+          const profilesMap = new Map(
+            (userProfiles || []).map(profile => [profile.id, profile])
+          );
+
+          const inventoriesWithUsers = data.map(inv => ({
+            ...inv,
+            created_by_user: inv.created_by ? profilesMap.get(inv.created_by) : null,
+            completed_by_user: inv.completed_by ? profilesMap.get(inv.completed_by) : null,
+          }));
+
+          console.log('✅ Inventaires avec profils utilisateurs:', inventoriesWithUsers);
+          setInventories(inventoriesWithUsers);
+        } else {
+          setInventories(data);
+        }
+      } else {
+        console.log('ℹ️ Aucun inventaire trouvé dans la base de données');
+        setInventories([]);
+      }
     } catch (error) {
-      console.error('Erreur lors du chargement des inventaires:', error);
+      console.error('❌ Erreur lors du chargement des inventaires:', error);
+      setInventories([]);
     } finally {
       setLoading(false);
     }
