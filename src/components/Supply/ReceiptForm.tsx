@@ -498,7 +498,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                               SKU: {item.product_sku}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {t('supply.maxQuantity')}: {maxQuantity}
+                              {t('supply.remainingQuantity')}: {maxQuantity}
                             </div>
                           </td>
                           
@@ -507,7 +507,6 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                             <input
                               type="number"
                               min="1"
-                              max={maxQuantity}
                               value={item.quantity_received}
                               onChange={(e) => updateReceiptItem(index, 'quantity_received', parseInt(e.target.value))}
                               onFocus={(e) => e.target.select()}

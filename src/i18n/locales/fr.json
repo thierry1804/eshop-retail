@@ -386,6 +386,9 @@
     "saveError": "Erreur lors de l'enregistrement",
     "viewDetails": "Voir détails",
     "saving": "Enregistrement...",
+    "disableProduct": "Désactiver le produit",
+    "enableProduct": "Activer le produit",
+    "toggleStatusError": "Erreur lors de la modification du statut du produit",
     "status": {
       "active": "Actif",
       "inactive": "Inactif",
@@ -772,6 +775,7 @@
     "itemsToReceive": "Articles à recevoir",
     "noItemsToReceive": "Aucun article à recevoir",
     "maxQuantity": "Quantité max",
+    "remainingQuantity": "Qté restante",
     "batchNumber": "Numéro de lot",
     "expiryDate": "Date d'expiration",
     "receiptDate": "Date de réception",

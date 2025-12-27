@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge, ClipboardCheck } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge, ClipboardCheck, Power, PowerOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
@@ -20,7 +20,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('active');
   const [sortBy, setSortBy] = useState<string>('name');
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -464,6 +464,35 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  const toggleProductStatus = async (product: Product) => {
+    try {
+      const newStatus = product.status === 'active' ? 'inactive' : 'active';
+      
+      const { error } = await supabase
+        .from('products')
+        .update({ 
+          status: newStatus,
+          updated_by: user.id
+        })
+        .eq('id', product.id);
+
+      if (error) {
+        console.error('Erreur lors de la mise à jour du statut:', error);
+        throw error;
+      }
+
+      // Mettre à jour l'état local
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === product.id ? { ...p, status: newStatus } : p
+        )
+      );
+    } catch (error) {
+      console.error('Erreur lors de la désactivation du produit:', error);
+      alert(t('stock.toggleStatusError'));
+    }
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -758,6 +787,21 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                   </span>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => toggleProductStatus(product)}
+                      className={`transition-colors p-1 rounded hover:bg-gray-50 ${
+                        product.status === 'active' 
+                          ? 'text-orange-600 hover:text-orange-900' 
+                          : 'text-green-600 hover:text-green-900'
+                      }`}
+                      title={product.status === 'active' ? t('stock.disableProduct') : t('stock.enableProduct')}
+                    >
+                      {product.status === 'active' ? (
+                        <PowerOff className="h-5 w-5" />
+                      ) : (
+                        <Power className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button
                       onClick={() => setSelectedProduct(product)}
                       className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
                       title={t('stock.viewDetails')}
@@ -952,6 +996,21 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => toggleProductStatus(product)}
+                          className={`transition-colors p-1 rounded hover:bg-gray-50 ${
+                            product.status === 'active' 
+                              ? 'text-orange-600 hover:text-orange-900' 
+                              : 'text-green-600 hover:text-green-900'
+                          }`}
+                          title={product.status === 'active' ? t('stock.disableProduct') : t('stock.enableProduct')}
+                        >
+                          {product.status === 'active' ? (
+                            <PowerOff className="h-5 w-5" />
+                          ) : (
+                            <Power className="h-5 w-5" />
+                          )}
+                        </button>
                         <button
                           onClick={() => setSelectedProduct(product)}
                           className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
