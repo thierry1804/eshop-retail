@@ -309,7 +309,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
         .select(`
           product_id,
           movement_type,
-          quantity
+          quantity,
+          reference_type,
+          reference_id
         `)
         .not('product_id', 'is', null);
 
@@ -325,6 +327,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           product_id: string;
           movement_type: 'in' | 'out' | 'adjustment' | 'transfer';
           quantity: number;
+          reference_type?: 'purchase' | 'sale' | 'adjustment' | 'transfer' | 'return' | null;
+          reference_id?: string | null;
         };
 
         for (const movement of data as MovementData[]) {
@@ -333,13 +337,31 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             quantitiesMap[productId] = { quantityIn: 0, quantityOut: 0 };
           }
 
+          const quantity = movement.quantity || 0;
+
           // Les entrées sont les mouvements de type 'in'
           if (movement.movement_type === 'in') {
-            quantitiesMap[productId].quantityIn += movement.quantity || 0;
+            quantitiesMap[productId].quantityIn += quantity;
           }
           // Les sorties sont les mouvements de type 'out'
           else if (movement.movement_type === 'out') {
-            quantitiesMap[productId].quantityOut += movement.quantity || 0;
+            quantitiesMap[productId].quantityOut += quantity;
+          }
+          // Les ajustements : positifs comptent comme entrées, négatifs comme sorties
+          else if (movement.movement_type === 'adjustment') {
+            if (quantity > 0) {
+              quantitiesMap[productId].quantityIn += quantity;
+            } else if (quantity < 0) {
+              quantitiesMap[productId].quantityOut += Math.abs(quantity);
+            }
+          }
+          // Les transferts : si reference_type = 'transfer' et reference_id existe, c'est une sortie, sinon une entrée
+          else if (movement.movement_type === 'transfer') {
+            if (movement.reference_type === 'transfer' && movement.reference_id) {
+              quantitiesMap[productId].quantityOut += quantity;
+            } else {
+              quantitiesMap[productId].quantityIn += quantity;
+            }
           }
         }
       }
@@ -468,8 +490,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     try {
       const newStatus = product.status === 'active' ? 'inactive' : 'active';
       
-      const { error } = await supabase
-        .from('products')
+      // @ts-ignore - Types Supabase non générés pour la table products
+      const { error } = await (supabase.from('products') as any)
         .update({ 
           status: newStatus,
           updated_by: user.id
