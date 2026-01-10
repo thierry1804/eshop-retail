@@ -592,26 +592,27 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                         )}
                         {/* Bouton/Statut livraison */}
                         {sale.delivery ? (
-                          // Afficher le statut de la livraison existante
+                          // Afficher l'icône avec la couleur du statut
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              sale.delivery.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              sale.delivery.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
-                              sale.delivery.status === 'in_transit' ? 'bg-purple-100 text-purple-800' :
-                              sale.delivery.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              sale.delivery.status === 'failed' ? 'bg-red-100 text-red-800' :
-                              sale.delivery.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
-                              'bg-gray-100 text-gray-800'
+                            className={`inline-flex items-center justify-center p-1.5 rounded-full ${
+                              sale.delivery.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                              sale.delivery.status === 'preparing' ? 'bg-blue-100 text-blue-600' :
+                              sale.delivery.status === 'in_transit' ? 'bg-purple-100 text-purple-600' :
+                              sale.delivery.status === 'delivered' ? 'bg-green-100 text-green-600' :
+                              sale.delivery.status === 'failed' ? 'bg-red-100 text-red-600' :
+                              sale.delivery.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
+                              'bg-gray-100 text-gray-600'
                             }`}
-                            title={`Livraison: ${sale.delivery.delivery_number}`}
+                            title={`${sale.delivery.delivery_number} - ${
+                              sale.delivery.status === 'pending' ? 'En attente' :
+                              sale.delivery.status === 'preparing' ? 'Préparation' :
+                              sale.delivery.status === 'in_transit' ? 'En transit' :
+                              sale.delivery.status === 'delivered' ? 'Livré' :
+                              sale.delivery.status === 'failed' ? 'Échec' :
+                              sale.delivery.status === 'cancelled' ? 'Annulé' : sale.delivery.status
+                            }`}
                           >
-                            <Truck size={14} className="mr-1" />
-                            {sale.delivery.status === 'pending' ? 'En attente' :
-                             sale.delivery.status === 'preparing' ? 'Préparation' :
-                             sale.delivery.status === 'in_transit' ? 'En transit' :
-                             sale.delivery.status === 'delivered' ? 'Livré' :
-                             sale.delivery.status === 'failed' ? 'Échec' :
-                             sale.delivery.status === 'cancelled' ? 'Annulé' : sale.delivery.status}
+                            <Truck size={18} />
                           </span>
                         ) : (
                           // Afficher le bouton pour créer une livraison
