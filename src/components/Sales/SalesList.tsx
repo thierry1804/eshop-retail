@@ -123,6 +123,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         return;
       }
 
+      // Récupérer toutes les livraisons
+      const { data: deliveriesData, error: deliveriesError } = await supabase
+        .from('deliveries')
+        .select('*');
+
+      if (deliveriesError) {
+        console.error('Erreur lors de la récupération des livraisons:', deliveriesError.message);
+      }
+
       // Créer un map des clients par ID
       const clientsMap = new Map(clientsData?.map((client: any) => [client.id, client]) || []);
 
@@ -135,7 +144,16 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         paymentsMap.get(payment.sale_id).push(payment);
       });
 
-      // Associer les clients et paiements aux ventes
+      // Créer un map des livraisons par sale_id (garder la plus récente)
+      const deliveriesMap = new Map();
+      deliveriesData?.forEach((delivery: any) => {
+        const existing = deliveriesMap.get(delivery.sale_id);
+        if (!existing || new Date(delivery.created_at) > new Date(existing.created_at)) {
+          deliveriesMap.set(delivery.sale_id, delivery);
+        }
+      });
+
+      // Associer les clients, paiements et livraisons aux ventes
       const salesWithClients = salesData?.map((sale: any) => {
         const payments = paymentsMap.get(sale.id) || [];
         const totalPayments = payments.reduce((sum: number, payment: any) => sum + payment.amount, 0);
@@ -144,7 +162,8 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
           ...sale,
           client: clientsMap.get(sale.client_id) || null,
           payments: payments,
-          total_payments: totalPayments
+          total_payments: totalPayments,
+          delivery: deliveriesMap.get(sale.id) || null
         };
       }) || [];
 
@@ -571,13 +590,39 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                             <RotateCcw size={18} />
                           </button>
                         )}
-                        <button
-                          onClick={() => handleCreateDelivery(sale)}
-                          className="text-orange-600 hover:text-orange-800 transition-colors"
-                          title={t('sales.actions.createDelivery')}
-                        >
-                          <Truck size={18} />
-                        </button>
+                        {/* Bouton/Statut livraison */}
+                        {sale.delivery ? (
+                          // Afficher le statut de la livraison existante
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              sale.delivery.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              sale.delivery.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                              sale.delivery.status === 'in_transit' ? 'bg-purple-100 text-purple-800' :
+                              sale.delivery.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                              sale.delivery.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              sale.delivery.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}
+                            title={`Livraison: ${sale.delivery.delivery_number}`}
+                          >
+                            <Truck size={14} className="mr-1" />
+                            {sale.delivery.status === 'pending' ? 'En attente' :
+                             sale.delivery.status === 'preparing' ? 'Préparation' :
+                             sale.delivery.status === 'in_transit' ? 'En transit' :
+                             sale.delivery.status === 'delivered' ? 'Livré' :
+                             sale.delivery.status === 'failed' ? 'Échec' :
+                             sale.delivery.status === 'cancelled' ? 'Annulé' : sale.delivery.status}
+                          </span>
+                        ) : (
+                          // Afficher le bouton pour créer une livraison
+                          <button
+                            onClick={() => handleCreateDelivery(sale)}
+                            className="text-orange-600 hover:text-orange-800 transition-colors"
+                            title={t('sales.actions.createDelivery')}
+                          >
+                            <Truck size={18} />
+                          </button>
+                        )}
                         {user.role === 'admin' && (
                           <button
                             onClick={() => {

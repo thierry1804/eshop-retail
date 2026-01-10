@@ -34,6 +34,7 @@ export interface Sale {
   client?: Client;
   payments?: Payment[];
   total_payments?: number;
+  delivery?: Delivery;
 }
 
 export interface Payment {
