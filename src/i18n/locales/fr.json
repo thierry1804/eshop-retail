@@ -156,7 +156,7 @@
     "totalAmount": "Montant total",
     "noSales": "Aucune vente enregistrée",
     "noSalesFound": "Aucune vente trouvée pour ces critères",
-    "searchPlaceholder": "Rechercher par client, téléphone ou description...",
+    "searchPlaceholder": "Rechercher par client, téléphone, description ou produit...",
     "searchSales": "Rechercher des ventes...",
     "descriptionPlaceholder": "Description de la vente",
     "amountPlaceholder": "0.00",

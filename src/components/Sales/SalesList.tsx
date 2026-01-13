@@ -59,16 +59,28 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
 
   useEffect(() => {
     let filtered = sales;
+    const hasSearchTerm = searchTerm.trim().length > 0;
     
-    // Si il y a un terme de recherche, filtrer
-    if (searchTerm.trim()) {
-      filtered = filtered.filter(sale =>
-        sale.client && (
-          `${sale.client.first_name} ${sale.client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          sale.client.phone.includes(searchTerm) ||
-          sale.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
+    // Si il y a un terme de recherche, filtrer (client, téléphone, description ou produit)
+    if (hasSearchTerm) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(sale => {
+        // Recherche par client
+        const clientMatch = sale.client && (
+          `${sale.client.first_name} ${sale.client.last_name}`.toLowerCase().includes(lowerSearchTerm) ||
+          sale.client.phone.includes(searchTerm)
+        );
+        
+        // Recherche par description
+        const descriptionMatch = sale.description.toLowerCase().includes(lowerSearchTerm);
+        
+        // Recherche par nom de produit dans les articles de vente
+        const productMatch = sale.items?.some(item => 
+          item.product_name?.toLowerCase().includes(lowerSearchTerm)
+        );
+        
+        return clientMatch || descriptionMatch || productMatch;
+      });
     }
 
     // Si il y a un filtre de statut, filtrer
@@ -76,8 +88,9 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
       filtered = filtered.filter(sale => sale.status === statusFilter);
     }
 
-    // Si il y a un filtre de date, filtrer
-    if (dateFilter) {
+    // Si il y a un filtre de date ET pas de terme de recherche, filtrer par date
+    // Quand on recherche, on ignore le filtre de date pour permettre la recherche sur toutes les dates
+    if (dateFilter && !hasSearchTerm) {
       filtered = filtered.filter(sale => {
         const saleDate = new Date(sale.created_at).toISOString().split('T')[0];
         return saleDate === dateFilter;
@@ -132,6 +145,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         console.error('Erreur lors de la récupération des livraisons:', deliveriesError.message);
       }
 
+      // Récupérer tous les articles de vente (sale_items)
+      const { data: saleItemsData, error: saleItemsError } = await supabase
+        .from('sale_items')
+        .select('*');
+
+      if (saleItemsError) {
+        console.error('Erreur lors de la récupération des articles de vente:', saleItemsError.message);
+      }
+
       // Créer un map des clients par ID
       const clientsMap = new Map(clientsData?.map((client: any) => [client.id, client]) || []);
 
@@ -153,7 +175,16 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         }
       });
 
-      // Associer les clients, paiements et livraisons aux ventes
+      // Créer un map des articles de vente par sale_id
+      const saleItemsMap = new Map();
+      saleItemsData?.forEach((item: any) => {
+        if (!saleItemsMap.has(item.sale_id)) {
+          saleItemsMap.set(item.sale_id, []);
+        }
+        saleItemsMap.get(item.sale_id).push(item);
+      });
+
+      // Associer les clients, paiements, livraisons et articles aux ventes
       const salesWithClients = salesData?.map((sale: any) => {
         const payments = paymentsMap.get(sale.id) || [];
         const totalPayments = payments.reduce((sum: number, payment: any) => sum + payment.amount, 0);
@@ -163,7 +194,8 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
           client: clientsMap.get(sale.client_id) || null,
           payments: payments,
           total_payments: totalPayments,
-          delivery: deliveriesMap.get(sale.id) || null
+          delivery: deliveriesMap.get(sale.id) || null,
+          items: saleItemsMap.get(sale.id) || []
         };
       }) || [];
 

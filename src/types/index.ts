@@ -21,6 +21,16 @@ export interface Client {
   created_by: string;
 }
 
+export interface SaleItem {
+  id: string;
+  sale_id: string;
+  article_id?: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 export interface Sale {
   id: string;
   client_id: string;
@@ -35,6 +45,7 @@ export interface Sale {
   payments?: Payment[];
   total_payments?: number;
   delivery?: Delivery;
+  items?: SaleItem[];
 }
 
 export interface Payment {
