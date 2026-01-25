@@ -41,6 +41,8 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
   const [mostUsedCategories, setMostUsedCategories] = useState<Category[]>([]);
   const [mostUsedSuppliers, setMostUsedSuppliers] = useState<Supplier[]>([]);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
   
   const categoryInputRef = useRef<HTMLInputElement>(null);
   const supplierInputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +255,94 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
 
   const getSupplierName = (id: string) => {
     return suppliers.find(s => s.id === id)?.name || '';
+  };
+
+  // Créer une nouvelle catégorie
+  const handleCreateCategory = async (name: string) => {
+    if (!name.trim()) {
+      setError('Le nom de la catégorie est requis');
+      return;
+    }
+
+    setCreatingCategory(true);
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name: name.trim(),
+          modules: ['expenses']
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          setError('Une catégorie avec ce nom existe déjà');
+        } else {
+          setError('Erreur lors de la création de la catégorie : ' + error.message);
+        }
+        setCreatingCategory(false);
+        return;
+      }
+
+      // Ajouter la nouvelle catégorie à la liste
+      setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      // Sélectionner la nouvelle catégorie
+      setFormData(prev => ({ ...prev, category_id: data.id }));
+      setCategorySearch('');
+      setShowCategoryDropdown(false);
+      categoryInputRef.current?.blur();
+    } catch (err) {
+      console.error('Erreur lors de la création de la catégorie:', err);
+      setError('Erreur lors de la création de la catégorie');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  // Créer un nouveau fournisseur
+  const handleCreateSupplier = async (name: string) => {
+    if (!name.trim()) {
+      setError('Le nom du fournisseur est requis');
+      return;
+    }
+
+    setCreatingSupplier(true);
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .insert({
+          name: name.trim(),
+          modules: ['expenses']
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          setError('Un fournisseur avec ce nom existe déjà');
+        } else {
+          setError('Erreur lors de la création du fournisseur : ' + error.message);
+        }
+        setCreatingSupplier(false);
+        return;
+      }
+
+      // Ajouter le nouveau fournisseur à la liste
+      setSuppliers(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      // Sélectionner le nouveau fournisseur
+      setFormData(prev => ({ ...prev, supplier_id: data.id }));
+      setSupplierSearch('');
+      setShowSupplierDropdown(false);
+      supplierInputRef.current?.blur();
+    } catch (err) {
+      console.error('Erreur lors de la création du fournisseur:', err);
+      setError('Erreur lors de la création du fournisseur');
+    } finally {
+      setCreatingSupplier(false);
+    }
   };
 
   const validateForm = () => {
@@ -502,6 +592,12 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                       setCategorySearch('');
                     }
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && categorySearch.trim() && filteredCategories.length === 0) {
+                      e.preventDefault();
+                      handleCreateCategory(categorySearch);
+                    }
+                  }}
                   placeholder="Rechercher une catégorie"
                   disabled={expense?.locked}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
@@ -552,7 +648,24 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                       </div>
                     )}
                     {categorySearch && filteredCategories.length === 0 && (
-                      <div className="p-2 text-xs text-gray-500 text-center">Aucune catégorie trouvée</div>
+                      <div className="p-1.5">
+                        <div className="p-2 text-xs text-gray-500 text-center mb-2">
+                          Aucune catégorie trouvée
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (categorySearch.trim()) {
+                              handleCreateCategory(categorySearch);
+                            }
+                          }}
+                          disabled={creatingCategory || !categorySearch.trim()}
+                          className="w-full text-left px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded transition-colors text-sm font-medium text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          <span>+</span>
+                          {creatingCategory ? 'Création...' : `Créer "${categorySearch}"`}
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -584,6 +697,12 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                     // Si un fournisseur est déjà sélectionné, permettre de le modifier
                     if (formData.supplier_id) {
                       setSupplierSearch('');
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && supplierSearch.trim() && filteredSuppliers.length === 0) {
+                      e.preventDefault();
+                      handleCreateSupplier(supplierSearch);
                     }
                   }}
                   placeholder="Rechercher un fournisseur"
@@ -636,7 +755,24 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                       </div>
                     )}
                     {supplierSearch && filteredSuppliers.length === 0 && (
-                      <div className="p-2 text-xs text-gray-500 text-center">Aucun fournisseur trouvé</div>
+                      <div className="p-1.5">
+                        <div className="p-2 text-xs text-gray-500 text-center mb-2">
+                          Aucun fournisseur trouvé
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (supplierSearch.trim()) {
+                              handleCreateSupplier(supplierSearch);
+                            }
+                          }}
+                          disabled={creatingSupplier || !supplierSearch.trim()}
+                          className="w-full text-left px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded transition-colors text-sm font-medium text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          <span>+</span>
+                          {creatingSupplier ? 'Création...' : `Créer "${supplierSearch}"`}
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

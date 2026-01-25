@@ -275,7 +275,7 @@ const ExpensesList: React.FC = () => {
       }
 
       // Rafraîchir la liste
-      await fetchExpenses();
+      await fetchAllData();
     } catch (err) {
       console.error('Erreur inattendue lors de la suppression:', err);
       setError('Erreur inattendue lors de la suppression de la dépense.');
@@ -287,7 +287,7 @@ const ExpensesList: React.FC = () => {
   const handleFormSave = () => {
     setShowForm(false);
     setEditingExpense(null);
-    fetchExpenses();
+    fetchAllData();
   };
 
   const handleFormCancel = () => {
@@ -334,7 +334,7 @@ const ExpensesList: React.FC = () => {
             {error}
           </div>
           <button
-            onClick={fetchExpenses}
+            onClick={fetchAllData}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             {t('expenses.error.retry')}
@@ -374,7 +374,7 @@ const ExpensesList: React.FC = () => {
             </div>
           </div>
         </div>
-        <DeletedExpensesList onRestore={fetchExpenses} />
+        <DeletedExpensesList onRestore={fetchAllData} />
       </div>
     );
   }
