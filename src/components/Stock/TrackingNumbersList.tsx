@@ -49,6 +49,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     ieWeightKg: number | null;
     currentWeightKg: number | null;
     weightChanged: boolean;
+    ieVolumeCbm: number | null;
+    currentVolumeM3: number | null;
+    volumeChanged: boolean;
   }
   const [ieSyncPreview, setIeSyncPreview] = useState<IeSyncItem[] | null>(null);
   const [ieSyncApplying, setIeSyncApplying] = useState(false);
@@ -284,7 +287,14 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     const length = data.length || 0;
     const width = data.width || 0;
     const height = data.height || 0;
-    const volumeM3 = length && width && height ? (length * width * height) / 1000000 : 0;
+    const hasDimensions = !!(length && width && height);
+    // Priorité : dimensions saisies > volume stocké (provenant de l'API)
+    const volumeM3 = hasDimensions
+      ? (length * width * height) / 1000000
+      : (data.volume_m3 || 0);
+    const volumeSource: 'dimensions' | 'api' | 'none' = hasDimensions
+      ? 'dimensions'
+      : data.volume_m3 ? 'api' : 'none';
     const ratePerM3 = data.rate_per_m3 || 0;
     const costByVolume = volumeM3 && ratePerM3 ? volumeM3 * ratePerM3 : 0;
     const weightKg = data.weight_kg || 0;
@@ -293,8 +303,8 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     const totalCostUSD = Math.max(costByVolume, costByWeight);
     const exchangeRate = data.exchange_rate_mga || 0;
     const totalCostMGA = exchangeRate && totalCostUSD ? totalCostUSD * exchangeRate : 0;
-    
-    return { volumeM3, totalCostUSD, totalCostMGA };
+
+    return { volumeM3, volumeSource, totalCostUSD, totalCostMGA };
   };
 
   const handleFieldChange = (id: string, field: string, value: string) => {
@@ -542,7 +552,16 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         ieWeightKg > 0 &&
         (!dbTn.weight_kg || dbTn.weight_kg === 0);
 
-      if (statusChanged || weightChanged) {
+      // Volume (CBM = m³) : remplir seulement si pas de dimensions ni de volume en DB
+      const ieVolumeCbm = ieRow.volumeCbmValue;
+      const hasDimensionsInDb = !!(dbTn.length && dbTn.width && dbTn.height);
+      const volumeChanged =
+        ieVolumeCbm !== null &&
+        ieVolumeCbm > 0 &&
+        !hasDimensionsInDb &&
+        (!dbTn.volume_m3 || dbTn.volume_m3 === 0);
+
+      if (statusChanged || weightChanged || volumeChanged) {
         items.push({
           dbId: dbTn.id,
           trackingNumber: dbTn.tracking_number,
@@ -553,6 +572,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
           ieWeightKg,
           currentWeightKg: dbTn.weight_kg ?? null,
           weightChanged,
+          ieVolumeCbm,
+          currentVolumeM3: dbTn.volume_m3 ?? null,
+          volumeChanged,
         });
       }
     }
@@ -569,6 +591,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         const patch: Record<string, unknown> = { updated_by: user.id };
         if (item.statusChanged && item.mappedStatus) patch.status = item.mappedStatus;
         if (item.weightChanged && item.ieWeightKg) patch.weight_kg = item.ieWeightKg;
+        if (item.volumeChanged && item.ieVolumeCbm) patch.volume_m3 = item.ieVolumeCbm;
         return supabase.from('tracking_numbers').update(patch).eq('id', item.dbId);
       })
     );
@@ -783,7 +806,14 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {calculated.volumeM3 > 0 ? `${calculated.volumeM3.toFixed(6)} m³` : '-'}
+                        {calculated.volumeM3 > 0 ? (
+                          <span className="flex items-center gap-1">
+                            {calculated.volumeM3.toFixed(6)} m³
+                            {calculated.volumeSource === 'api' && (
+                              <span className="text-xs font-medium text-blue-500 bg-blue-50 px-1 rounded" title="Volume fourni par l'API Importation Express">IE</span>
+                            )}
+                          </span>
+                        ) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
@@ -1022,6 +1052,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} actuel</th>
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} →</th>
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.weight')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.volume')} →</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -1040,6 +1071,11 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                               <td className="px-2 py-1.5">
                                 {item.weightChanged && item.ieWeightKg ? (
                                   <span className="text-blue-700 font-medium">{item.ieWeightKg} kg</span>
+                                ) : '—'}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                {item.volumeChanged && item.ieVolumeCbm ? (
+                                  <span className="text-blue-700 font-medium">{item.ieVolumeCbm} m³</span>
                                 ) : '—'}
                               </td>
                             </tr>
