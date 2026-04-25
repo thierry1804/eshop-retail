@@ -545,21 +545,21 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         mappedStatus !== dbTn.status &&
         isStatusProgression(dbTn.status, mappedStatus);
 
-      // Poids : remplir seulement si vide en DB
+      // Poids : mettre à jour si la valeur API diffère de la DB
       const ieWeightKg = ieRow.weightKgValue;
       const weightChanged =
         ieWeightKg !== null &&
         ieWeightKg > 0 &&
-        (!dbTn.weight_kg || dbTn.weight_kg === 0);
+        ieWeightKg !== dbTn.weight_kg;
 
-      // Volume (CBM = m³) : remplir seulement si pas de dimensions ni de volume en DB
+      // Volume (CBM = m³) : mettre à jour si la valeur API diffère, sauf si dimensions saisies en DB
       const ieVolumeCbm = ieRow.volumeCbmValue;
       const hasDimensionsInDb = !!(dbTn.length && dbTn.width && dbTn.height);
       const volumeChanged =
         ieVolumeCbm !== null &&
         ieVolumeCbm > 0 &&
         !hasDimensionsInDb &&
-        (!dbTn.volume_m3 || dbTn.volume_m3 === 0);
+        ieVolumeCbm !== dbTn.volume_m3;
 
       if (statusChanged || weightChanged || volumeChanged) {
         items.push({
