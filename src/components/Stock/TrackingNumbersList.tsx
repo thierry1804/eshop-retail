@@ -19,6 +19,58 @@ import {
 const IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL =
   'https://api.importation-express.com/public/tracking?customerId=3239&phoneNumber=0384271168';
 
+/** Poids (kg) et volume (m³) tels qu’ils seront après le patch IE (même règles qu’en apply). */
+function getPostSyncVolumeM3AndKg(
+  dbTn: TrackingNumber,
+  opts: {
+    weightChanged: boolean;
+    volumeChanged: boolean;
+    ieWeightKg: number | null;
+    ieVolumeCbm: number | null;
+  }
+): { volM3: number; weightKg: number } {
+  const weightKg =
+    opts.weightChanged && opts.ieWeightKg != null && opts.ieWeightKg > 0
+      ? opts.ieWeightKg
+      : dbTn.weight_kg || 0;
+  if (opts.volumeChanged && opts.ieVolumeCbm != null && opts.ieVolumeCbm > 0) {
+    const sideCm = Math.round(Math.cbrt(opts.ieVolumeCbm) * 100 * 100) / 100;
+    return { volM3: (sideCm * sideCm * sideCm) / 1_000_000, weightKg };
+  }
+  const l = dbTn.length || 0;
+  const w = dbTn.width || 0;
+  const h = dbTn.height || 0;
+  if (l && w && h) {
+    return { volM3: (l * w * h) / 1_000_000, weightKg };
+  }
+  return { volM3: dbTn.volume_m3 || 0, weightKg };
+}
+
+/**
+ * Renseigne rate_per_m3 / rate_per_kg existants pour que max(coût vol, coût poids) = targetUsd
+ * (identique à la règle d’affichage du montant).
+ */
+function deriveRatesForMaxUsd(
+  targetUsd: number,
+  volM3: number,
+  weightKg: number
+): { ratePerM3: number | null; ratePerKg: number | null } {
+  if (targetUsd <= 0) return { ratePerM3: null, ratePerKg: null };
+  if (volM3 > 0 && weightKg > 0) {
+    return {
+      ratePerM3: Math.round((targetUsd / volM3) * 100) / 100,
+      ratePerKg: Math.round((targetUsd / weightKg) * 100) / 100
+    };
+  }
+  if (volM3 > 0) {
+    return { ratePerM3: Math.round((targetUsd / volM3) * 100) / 100, ratePerKg: null };
+  }
+  if (weightKg > 0) {
+    return { ratePerM3: null, ratePerKg: Math.round((targetUsd / weightKg) * 100) / 100 };
+  }
+  return { ratePerM3: null, ratePerKg: null };
+}
+
 interface TrackingNumbersListProps {
   user: User;
 }
@@ -52,8 +104,14 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     ieVolumeCbm: number | null;
     currentVolumeM3: number | null;
     volumeChanged: boolean;
+    /** estimateAr (MGA) — sert à remplir rate_per_m3 / rate_per_kg si vides + taux connu */
+    ieEstimateAr: number | null;
+    amountChanged: boolean;
   }
   const [ieSyncPreview, setIeSyncPreview] = useState<IeSyncItem[] | null>(null);
+  /** Même sémantique que l’aperçu en cours (pour bannière d’avertissement) */
+  const [ieSyncLastPreviewForce, setIeSyncLastPreviewForce] = useState(false);
+  const [ieSyncForce, setIeSyncForce] = useState(false);
   const [ieSyncApplying, setIeSyncApplying] = useState(false);
   const [ieSyncDone, setIeSyncDone] = useState<{ updated: number; errors: number } | null>(null);
 
@@ -530,7 +588,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     await downloadIeApiRowsAsExcel(ieApiRows, labels, `importation-express-${stamp}`);
   };
 
-  const buildSyncPreview = (): IeSyncItem[] => {
+  const buildSyncPreview = (force: boolean): IeSyncItem[] => {
     const dbByTn = new Map(trackingNumbers.map(tn => [tn.tracking_number, tn]));
     const items: IeSyncItem[] = [];
 
@@ -539,29 +597,59 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
       if (!dbTn) continue;
 
       const mappedStatus = mapIeStatusToDbStatus(ieRow.currentStatus);
-      // Seulement avancer le statut, jamais régresser
-      const statusChanged =
-        mappedStatus !== null &&
-        mappedStatus !== dbTn.status &&
-        isStatusProgression(dbTn.status, mappedStatus);
+      // Mode normal : seulement avancer le statut, jamais régresser
+      // Mode forcer : appliquer tout statut mappable dès qu’il diffère (y compris régression)
+      const statusChanged = force
+        ? mappedStatus !== null && mappedStatus !== dbTn.status
+        : mappedStatus !== null &&
+          mappedStatus !== dbTn.status &&
+          isStatusProgression(dbTn.status, mappedStatus);
 
-      // Poids : mettre à jour si la valeur API diffère de la DB
+      // Poids : forcer = toujours depuis l’API ; sinon = si l’API diffère de la DB
       const ieWeightKg = ieRow.weightKgValue;
-      const weightChanged =
-        ieWeightKg !== null &&
-        ieWeightKg > 0 &&
-        ieWeightKg !== dbTn.weight_kg;
+      const weightChanged = force
+        ? ieWeightKg !== null && ieWeightKg > 0
+        : ieWeightKg !== null &&
+          ieWeightKg > 0 &&
+          ieWeightKg !== dbTn.weight_kg;
 
-      // Volume (CBM = m³) : mettre à jour si la valeur API diffère, sauf si dimensions saisies en DB
+      // Volume (CBM = m³) : forcer = cube IE ; sinon = si diffère, sauf dimensions saisies en DB
       const ieVolumeCbm = ieRow.volumeCbmValue;
       const hasDimensionsInDb = !!(dbTn.length && dbTn.width && dbTn.height);
-      const volumeChanged =
-        ieVolumeCbm !== null &&
-        ieVolumeCbm > 0 &&
-        !hasDimensionsInDb &&
-        ieVolumeCbm !== dbTn.volume_m3;
+      const volumeChanged = force
+        ? ieVolumeCbm !== null && ieVolumeCbm > 0
+        : ieVolumeCbm !== null &&
+          ieVolumeCbm > 0 &&
+          !hasDimensionsInDb &&
+          ieVolumeCbm !== dbTn.volume_m3;
 
-      if (statusChanged || weightChanged || volumeChanged) {
+      const { volM3, weightKg } = getPostSyncVolumeM3AndKg(dbTn, {
+        weightChanged,
+        volumeChanged,
+        ieWeightKg,
+        ieVolumeCbm
+      });
+      const hasUserRates = !!(dbTn.rate_per_m3 || dbTn.rate_per_kg);
+      const r3 = dbTn.rate_per_m3 || 0;
+      const rk = dbTn.rate_per_kg || 0;
+      const maxUsdFromDbRates = Math.max(volM3 * r3, weightKg * rk);
+      const ex = dbTn.exchange_rate_mga;
+      const est = ieRow.estimateAr;
+      const amountChanged = force
+        ? est != null &&
+          est > 0 &&
+          ex != null &&
+          ex > 0 &&
+          (volM3 > 0 || weightKg > 0)
+        : est != null &&
+          est > 0 &&
+          ex != null &&
+          ex > 0 &&
+          !hasUserRates &&
+          maxUsdFromDbRates <= 0 &&
+          (volM3 > 0 || weightKg > 0);
+
+      if (statusChanged || weightChanged || volumeChanged || amountChanged) {
         items.push({
           dbId: dbTn.id,
           trackingNumber: dbTn.tracking_number,
@@ -575,6 +663,8 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
           ieVolumeCbm,
           currentVolumeM3: dbTn.volume_m3 ?? null,
           volumeChanged,
+          ieEstimateAr: est,
+          amountChanged
         });
       }
     }
@@ -591,7 +681,32 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         const patch: Record<string, unknown> = { updated_by: user.id };
         if (item.statusChanged && item.mappedStatus) patch.status = item.mappedStatus;
         if (item.weightChanged && item.ieWeightKg) patch.weight_kg = item.ieWeightKg;
-        if (item.volumeChanged && item.ieVolumeCbm) patch.volume_m3 = item.ieVolumeCbm;
+        if (item.volumeChanged && item.ieVolumeCbm) {
+          // volume_m3 est une colonne générée (L×W×H) : on simule un cube équivalent
+          const sideCm = Math.round(Math.cbrt(item.ieVolumeCbm) * 100 * 100) / 100;
+          patch.length = sideCm;
+          patch.width = sideCm;
+          patch.height = sideCm;
+        }
+        if (item.amountChanged && item.ieEstimateAr != null && item.ieEstimateAr > 0) {
+          const row = trackingNumbers.find(tn => tn.id === item.dbId);
+          if (row && row.exchange_rate_mga && row.exchange_rate_mga > 0) {
+            const targetUsd = item.ieEstimateAr / row.exchange_rate_mga;
+            const { volM3, weightKg } = getPostSyncVolumeM3AndKg(row, {
+              weightChanged: item.weightChanged,
+              volumeChanged: item.volumeChanged,
+              ieWeightKg: item.ieWeightKg,
+              ieVolumeCbm: item.ieVolumeCbm
+            });
+            const { ratePerM3, ratePerKg } = deriveRatesForMaxUsd(
+              targetUsd,
+              volM3,
+              weightKg
+            );
+            if (ratePerM3 != null) patch.rate_per_m3 = ratePerM3;
+            if (ratePerKg != null) patch.rate_per_kg = ratePerKg;
+          }
+        }
         return supabase.from('tracking_numbers').update(patch).eq('id', item.dbId);
       })
     );
@@ -966,12 +1081,22 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
             <h2 id="ie-api-modal-title" className="text-lg font-semibold text-gray-900 pr-2">
               {t('tracking.ieApiModalTitle')}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-2 text-sm text-gray-700 select-none">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300"
+                  checked={ieSyncForce}
+                  onChange={e => setIeSyncForce(e.target.checked)}
+                />
+                {t('tracking.ieSyncForceLabel')}
+              </label>
               <button
                 type="button"
                 onClick={() => {
                   setIeSyncDone(null);
-                  setIeSyncPreview(buildSyncPreview());
+                  setIeSyncLastPreviewForce(ieSyncForce);
+                  setIeSyncPreview(buildSyncPreview(ieSyncForce));
                 }}
                 disabled={ieApiRows.length === 0 || ieApiLoading || ieSyncApplying}
                 className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1024,6 +1149,11 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
             {/* Aperçu du sync */}
             {ieSyncPreview !== null && (
               <div className="mb-4 border border-blue-200 rounded-lg bg-blue-50 p-3">
+                {ieSyncLastPreviewForce && (
+                  <p className="text-xs text-amber-900 bg-amber-100 border border-amber-200 rounded px-2 py-1.5 mb-2">
+                    {t('tracking.ieSyncForceBanner')}
+                  </p>
+                )}
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-blue-900 text-sm">
                     {t('tracking.ieSyncPreviewTitle')}
@@ -1053,6 +1183,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} →</th>
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.weight')} →</th>
                             <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.volume')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">
+                              {t('tracking.ieSyncColRatesFromEstimate')}
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -1076,6 +1209,16 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                               <td className="px-2 py-1.5">
                                 {item.volumeChanged && item.ieVolumeCbm ? (
                                   <span className="text-blue-700 font-medium">{item.ieVolumeCbm} m³</span>
+                                ) : '—'}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                {item.amountChanged && item.ieEstimateAr != null && item.ieEstimateAr > 0 ? (
+                                  <span
+                                    className="text-blue-700 font-medium"
+                                    title={t('tracking.ieSyncColRatesFromEstimateTitle')}
+                                  >
+                                    {t('tracking.ieSyncRatesAppliedHint')}
+                                  </span>
                                 ) : '—'}
                               </td>
                             </tr>
