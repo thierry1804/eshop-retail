@@ -22,10 +22,13 @@ import { logger } from './lib/logger';
 import { OfflineIndicator } from './components/Offline/OfflineIndicator';
 import { syncManager } from './lib/offline/sync-manager';
 import { useSidebar } from './contexts/SidebarContext';
+import { getPageFromPathname, getPathnameForPage } from './lib/appRoutes';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState(() =>
+    typeof window !== 'undefined' ? getPageFromPathname(window.location.pathname) : 'dashboard'
+  );
   const [pageParams, setPageParams] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -33,6 +36,23 @@ function App() {
 
   // Flag pour éviter les initialisations multiples
   const hasInitializedRef = useRef(false);
+
+  // Synchroniser l’URL (barre d’adresse) avec la page courante
+  useEffect(() => {
+    if (loading || !user) return;
+    const next = getPathnameForPage(currentPage, pageParams);
+    if (window.location.pathname !== next) {
+      window.history.pushState({ page: currentPage }, '', next);
+    }
+  }, [currentPage, pageParams, user, loading]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setCurrentPage(getPageFromPathname(window.location.pathname));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Écouter les événements de navigation personnalisés
   useEffect(() => {

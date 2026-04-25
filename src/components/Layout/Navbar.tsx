@@ -35,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       'deliveries': 'inventory',
       'tracking': 'inventory',
       'expenses': 'finance',
+      'referentials': 'admin',
       'logs': 'admin'
     };
     return pageToSection[currentPage] || 'sales';

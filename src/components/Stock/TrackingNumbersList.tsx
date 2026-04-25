@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import {
+  parseIeApiTrackingPayload,
+  downloadIeApiRowsAsExcel,
+  IE_API_TABLE_COLUMN_ORDER,
+  type IeApiTableColumnKey,
+  type IeApiTrackingTableRow
+} from '../../lib/importationExpressPublicTracking';
 import { TrackingNumber, User } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { 
   PackageSearch, Search, Trash2, 
-  Ruler, Weight, DollarSign, TrendingUp,
-  X, CheckCircle, Clock, Truck, RefreshCw, Save
+  X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download
 } from 'lucide-react';
+
+const IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL =
+  'https://api.importation-express.com/public/tracking?customerId=3239&phoneNumber=0384271168';
 
 interface TrackingNumbersListProps {
   user: User;
@@ -20,6 +29,12 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingRows, setEditingRows] = useState<Map<string, Partial<TrackingNumber>>>(new Map());
   const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
+  const [ieApiModalOpen, setIeApiModalOpen] = useState(false);
+  const [ieApiRows, setIeApiRows] = useState<IeApiTrackingTableRow[]>([]);
+  const [ieApiMatchCount, setIeApiMatchCount] = useState<number | null>(null);
+  const [ieApiRawText, setIeApiRawText] = useState<string | null>(null);
+  const [ieApiLoading, setIeApiLoading] = useState(false);
+  const [ieApiError, setIeApiError] = useState<string | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Flag pour éviter les chargements multiples au montage
@@ -31,6 +46,8 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
       hasInitializedRef.current = true;
       syncAndFetchTrackingNumbers();
     }
+    // syncAndFetchTrackingNumbers est voulu uniquement au montage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // OPTIMISÉ: Fonction légère pour rafraîchir seulement (utilisée après save/delete)
@@ -61,10 +78,13 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
       });
 
       // Mapper avec le comptage
-      const mapped = (trackingData || []).map((item: any) => ({
-        ...item,
-        orderCount: trackingCountMap.get(item.tracking_number) || 1
-      }));
+      const mapped = (trackingData || []).map((item) => {
+        const row = item as TrackingNumber;
+        return {
+          ...row,
+          orderCount: trackingCountMap.get(row.tracking_number) || 1
+        };
+      });
 
       setTrackingNumbers(mapped);
     } catch (error) {
@@ -117,7 +137,12 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
       });
 
       // Identifier les nouveaux tracking numbers à créer
-      const newTrackingNumbers: Array<any> = [];
+      const newTrackingNumbers: Array<{
+        purchase_order_id: string;
+        tracking_number: string;
+        status: 'pending';
+        created_by: string;
+      }> = [];
       for (const [trackingNumber, orders] of ordersByTracking.entries()) {
         if (!existingTrackingNumbers.has(trackingNumber)) {
           // Prendre la première commande comme référence
@@ -144,7 +169,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
       // Calculer les statuts et préparer les mises à jour
       const statusUpdates: Array<{ id: string; trackingNumber: string }> = [];
-      const trackingWithCounts: Array<any> = [];
+      const trackingWithCounts: TrackingNumber[] = [];
 
       for (const tracking of existingTracking || []) {
         const orders = ordersByTracking.get(tracking.tracking_number) || [];
@@ -170,9 +195,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
         const orders = ordersByTracking.get(newTN.tracking_number) || [];
         trackingWithCounts.push({
           ...newTN,
-          id: newTN.tracking_number, // ID temporaire
+          id: newTN.tracking_number,
           orderCount: orders.length || 1
-        });
+        } as TrackingNumber);
       }
 
       // 4️⃣ REQUÊTES 4+ (optionnelles): Mettre à jour les statuts si nécessaire
@@ -253,7 +278,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     return { volumeM3, totalCostUSD, totalCostMGA };
   };
 
-  const handleFieldChange = (id: string, field: string, value: any) => {
+  const handleFieldChange = (id: string, field: string, value: string) => {
     setEditingRows(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(id) || {};
@@ -351,7 +376,18 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     setSavingRows(prev => new Set(prev).add(tn.id));
 
     try {
-      const updateData: any = {};
+      const updateData: {
+        length?: number | null;
+        width?: number | null;
+        height?: number | null;
+        weight_kg?: number | null;
+        rate_per_m3?: number | null;
+        rate_per_kg?: number | null;
+        exchange_rate_mga?: number | null;
+        status?: TrackingNumber['status'];
+        notes?: string | null;
+        updated_by: string;
+      } = { updated_by: user.id };
       if (editedData.length !== undefined) updateData.length = editedData.length ? Number(editedData.length) : null;
       if (editedData.width !== undefined) updateData.width = editedData.width ? Number(editedData.width) : null;
       if (editedData.height !== undefined) updateData.height = editedData.height ? Number(editedData.height) : null;
@@ -403,16 +439,79 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     return sum + (values.totalCostMGA || 0);
   }, 0);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const getIeColumnLabels = () => ({
+    trackingNumber: t('tracking.ieApiCol.trackingNumber'),
+    currentStatus: t('tracking.ieApiCol.currentStatus'),
+    lastUpdated: t('tracking.ieApiCol.lastUpdated'),
+    customerRef: t('tracking.ieApiCol.customerRef'),
+    shippingMark: t('tracking.ieApiCol.shippingMark'),
+    transportId: t('tracking.ieApiCol.transportId'),
+    weightKg: t('tracking.ieApiCol.weightKg'),
+    volumeCbm: t('tracking.ieApiCol.volumeCbm'),
+    amountEstimate: t('tracking.ieApiCol.amountEstimate'),
+    pickupAmount: t('tracking.ieApiCol.pickupAmount'),
+    shipmentRef: t('tracking.ieApiCol.shipmentRef'),
+    receivedAt: t('tracking.ieApiCol.receivedAt'),
+    departedAt: t('tracking.ieApiCol.departedAt'),
+    arrivedAt: t('tracking.ieApiCol.arrivedAt'),
+    readyForPickupAt: t('tracking.ieApiCol.readyForPickupAt'),
+    origin: t('tracking.ieApiCol.origin'),
+    destination: t('tracking.ieApiCol.destination')
+  }) satisfies Record<IeApiTableColumnKey, string>;
+
+  const openImportationExpressApiModal = async () => {
+    setIeApiModalOpen(true);
+    setIeApiLoading(true);
+    setIeApiError(null);
+    setIeApiRows([]);
+    setIeApiMatchCount(null);
+    setIeApiRawText(null);
+    try {
+      const res = await fetch(IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL, {
+        headers: { Accept: 'application/json' }
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        setIeApiError(t('tracking.ieApiHttpError', { status: res.status }));
+        setIeApiRawText(text);
+        return;
+      }
+      try {
+        const data = JSON.parse(text) as unknown;
+        const { matchCount, rows } = parseIeApiTrackingPayload(data);
+        setIeApiMatchCount(matchCount);
+        setIeApiRows(rows);
+      } catch {
+        setIeApiError(t('tracking.ieApiInvalidJson'));
+        setIeApiRawText(text);
+      }
+    } catch (e) {
+      setIeApiError(
+        e instanceof Error ? e.message : t('tracking.ieApiLoadError')
+      );
+    } finally {
+      setIeApiLoading(false);
+    }
+  };
+
+  const handleExportIeApiExcel = async () => {
+    if (ieApiRows.length === 0) return;
+    const labels = getIeColumnLabels();
+    const stamp = new Date().toISOString().slice(0, 10);
+    await downloadIeApiRowsAsExcel(ieApiRows, labels, `importation-express-${stamp}`);
+  };
+
+  const ieApiTableColumnLabels = getIeColumnLabels();
 
   return (
+    <>
     <div className="space-y-4 sm:space-y-6">
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <>
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
@@ -423,6 +522,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
             {t('tracking.subtitle')}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={syncAndFetchTrackingNumbers}
           disabled={loading}
@@ -432,6 +532,16 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           {t('tracking.syncTracking')}
         </button>
+        <button
+          type="button"
+          onClick={openImportationExpressApiModal}
+          className="bg-white border border-gray-300 text-gray-800 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm sm:text-base"
+          title={t('tracking.viewIeApiTitle')}
+        >
+          <Braces className="h-4 w-4" />
+          {t('tracking.viewIeApi')}
+        </button>
+        </div>
       </div>
 
       {/* Statistiques */}
@@ -546,9 +656,9 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                         <div className="text-sm font-medium text-gray-900">
                           {tn.tracking_number}
                         </div>
-                        {(tn as any).orderCount > 1 && (
+                        {(tn.orderCount ?? 0) > 1 && (
                           <div className="text-xs text-blue-600 mt-1">
-                            {(tn as any).orderCount} {t('tracking.ordersCount')}
+                            {tn.orderCount} {t('tracking.ordersCount')}
                           </div>
                         )}
                       </td>
@@ -648,17 +758,21 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                         {calculated.totalCostMGA.toLocaleString('fr-FR')} MGA
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap sticky z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`} style={{ right: '100px' }}>
+                        <div className="flex items-center gap-1.5">
+                          {getStatusIcon(displayData.status)}
                         <select
                           value={displayData.status}
                           onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
                           onFocus={handleInputFocus}
                           className="text-sm border border-gray-300 rounded px-2 py-1"
+                          title={getStatusLabel(displayData.status)}
                         >
                           <option value="pending">{t('tracking.status.pending')}</option>
                           <option value="in_transit">{t('tracking.status.in_transit')}</option>
                           <option value="arrived">{t('tracking.status.arrived')}</option>
                           <option value="received">{t('tracking.status.received')}</option>
                         </select>
+                        </div>
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`}>
                         <div className="flex items-center justify-end gap-2">
@@ -718,8 +832,107 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
           </table>
         </div>
       </div>
-
+        </>
+      )}
     </div>
+
+    {ieApiModalOpen && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50"
+        onClick={() => setIeApiModalOpen(false)}
+        role="presentation"
+      >
+        <div
+          className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[92vh] flex flex-col"
+          onClick={e => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ie-api-modal-title"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+            <h2 id="ie-api-modal-title" className="text-lg font-semibold text-gray-900 pr-2">
+              {t('tracking.ieApiModalTitle')}
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleExportIeApiExcel()}
+                disabled={ieApiRows.length === 0 || ieApiLoading}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t('tracking.ieApiExport')}
+              >
+                <Download className="h-4 w-4" />
+                {t('tracking.ieApiExport')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIeApiModalOpen(false)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                title={t('app.close')}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          <p className="px-4 py-2 text-xs text-gray-500 font-mono break-all border-b border-gray-100">
+            {IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL}
+          </p>
+          <div className="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+            {ieApiMatchCount !== null && !ieApiLoading && (
+              <span>{t('tracking.ieApiCountLabel', { count: ieApiMatchCount })}</span>
+            )}
+          </div>
+          <div className="flex-1 overflow-auto p-2 sm:p-4 min-h-[200px]">
+            {ieApiLoading && (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+              </div>
+            )}
+            {!ieApiLoading && ieApiError && (
+              <p className="text-red-600 text-sm mb-2">{ieApiError}</p>
+            )}
+            {!ieApiLoading && ieApiRawText && (
+              <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap break-words max-h-40 overflow-auto border border-gray-200 rounded p-2 bg-gray-50 mb-3">
+                {ieApiRawText}
+              </pre>
+            )}
+            {!ieApiLoading && ieApiRows.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        {IE_API_TABLE_COLUMN_ORDER.map(key => (
+                          <th
+                            key={key}
+                            className="px-2 py-2 text-left font-medium text-gray-600 whitespace-nowrap"
+                          >
+                            {ieApiTableColumnLabels[key]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {ieApiRows.map((row, idx) => (
+                        <tr key={`${row.trackingNumber}-${idx}`} className="hover:bg-gray-50/80">
+                          {IE_API_TABLE_COLUMN_ORDER.map(key => (
+                            <td key={key} className="px-2 py-1.5 text-gray-900 max-w-[14rem] truncate align-top" title={row[key]}>
+                              {row[key] || '—'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+            )}
+            {!ieApiLoading && !ieApiError && ieApiRows.length === 0 && !ieApiRawText && (
+              <p className="text-sm text-gray-500 py-4">{t('tracking.ieApiNoShipments')}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 
