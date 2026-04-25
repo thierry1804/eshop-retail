@@ -140,6 +140,65 @@ export function mapIeApiResultToRow(item: unknown): IeApiTrackingTableRow {
   };
 }
 
+const DB_STATUS_ORDER: Record<string, number> = {
+  pending: 0,
+  in_transit: 1,
+  arrived: 2,
+  received: 3,
+};
+
+/**
+ * Tente de convertir le statut texte libre de l'API IE en statut DB.
+ * Retourne null si le statut n'est pas reconnu (→ ne pas modifier la DB).
+ */
+export function mapIeStatusToDbStatus(
+  ieStatus: string
+): 'pending' | 'in_transit' | 'arrived' | 'received' | null {
+  const s = ieStatus.toLowerCase().replace(/_/g, ' ').trim();
+
+  if (
+    s.includes('picked up') || s.includes('retiré') ||
+    s.includes('delivered') || s.includes('livré') ||
+    s.includes('completed') || s.includes('terminé') ||
+    (s.includes('reçu') && (s.includes('client') || s.includes('destinataire')))
+  ) return 'received';
+
+  if (
+    s.includes('ready for pickup') || s.includes('prêt') ||
+    s.includes('arrived') || s.includes('arrivé') ||
+    s.includes('at destination') || s.includes('à destination') ||
+    s.includes('disponible')
+  ) return 'arrived';
+
+  if (
+    s.includes('in transit') || s.includes('en transit') ||
+    s.includes('departed') || s.includes('parti') ||
+    s.includes('shipped') || s.includes('expédié') ||
+    s.includes('en route') || s.includes('en cours d') ||
+    s.includes('chargé') || s.includes('loaded')
+  ) return 'in_transit';
+
+  if (
+    s.includes('pending') || s.includes('en attente') ||
+    s.includes('processing') || s.includes('warehouse') ||
+    s.includes('entrepôt') || s.includes('reçu à l') ||
+    s.includes('at warehouse') || s.includes('at origin')
+  ) return 'pending';
+
+  return null;
+}
+
+/**
+ * Retourne true si newStatus est une progression par rapport à currentStatus
+ * (on n'applique que les avancées, jamais les régressions automatiques).
+ */
+export function isStatusProgression(
+  currentStatus: string,
+  newStatus: string
+): boolean {
+  return (DB_STATUS_ORDER[newStatus] ?? -1) > (DB_STATUS_ORDER[currentStatus] ?? -1);
+}
+
 export function parseIeApiTrackingPayload(json: unknown): {
   matchCount: number;
   rows: IeApiTrackingTableRow[];

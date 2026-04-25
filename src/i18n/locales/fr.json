@@ -732,6 +732,13 @@
       "origin": "Origine",
       "destination": "Destination"
     },
+    "syncFromIeApi": "Sync BDD",
+    "ieSyncPreviewTitle": "Aperçu des mises à jour",
+    "ieSyncSummary": "{{count}} tracking(s) à mettre à jour",
+    "ieSyncNoChanges": "Aucune mise à jour nécessaire (statuts déjà à jour, poids déjà renseignés).",
+    "ieSyncApply": "Appliquer",
+    "ieSyncApplying": "Application…",
+    "ieSyncDone": "{{updated}} mis à jour",
     "editOnly": "La création de tracking numbers se fait automatiquement depuis les commandes",
     "ordersCount": "commandes",
     "status": {

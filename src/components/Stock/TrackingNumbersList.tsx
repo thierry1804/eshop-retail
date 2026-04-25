@@ -3,15 +3,17 @@ import { supabase } from '../../lib/supabase';
 import {
   parseIeApiTrackingPayload,
   downloadIeApiRowsAsExcel,
+  mapIeStatusToDbStatus,
+  isStatusProgression,
   IE_API_TABLE_COLUMN_ORDER,
   type IeApiTableColumnKey,
   type IeApiTrackingTableRow
 } from '../../lib/importationExpressPublicTracking';
 import { TrackingNumber, User } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { 
-  PackageSearch, Search, Trash2, 
-  X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download
+import {
+  PackageSearch, Search, Trash2,
+  X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download, Database
 } from 'lucide-react';
 
 const IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL =
@@ -35,6 +37,23 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
   const [ieApiRawText, setIeApiRawText] = useState<string | null>(null);
   const [ieApiLoading, setIeApiLoading] = useState(false);
   const [ieApiError, setIeApiError] = useState<string | null>(null);
+
+  // Sync BDD depuis IE API
+  interface IeSyncItem {
+    dbId: string;
+    trackingNumber: string;
+    ieStatus: string;
+    mappedStatus: 'pending' | 'in_transit' | 'arrived' | 'received' | null;
+    currentDbStatus: TrackingNumber['status'];
+    statusChanged: boolean;
+    ieWeightKg: number | null;
+    currentWeightKg: number | null;
+    weightChanged: boolean;
+  }
+  const [ieSyncPreview, setIeSyncPreview] = useState<IeSyncItem[] | null>(null);
+  const [ieSyncApplying, setIeSyncApplying] = useState(false);
+  const [ieSyncDone, setIeSyncDone] = useState<{ updated: number; errors: number } | null>(null);
+
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Flag pour éviter les chargements multiples au montage
@@ -501,6 +520,70 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     await downloadIeApiRowsAsExcel(ieApiRows, labels, `importation-express-${stamp}`);
   };
 
+  const buildSyncPreview = (): IeSyncItem[] => {
+    const dbByTn = new Map(trackingNumbers.map(tn => [tn.tracking_number, tn]));
+    const items: IeSyncItem[] = [];
+
+    for (const ieRow of ieApiRows) {
+      const dbTn = dbByTn.get(ieRow.trackingNumber);
+      if (!dbTn) continue;
+
+      const mappedStatus = mapIeStatusToDbStatus(ieRow.currentStatus);
+      // Seulement avancer le statut, jamais régresser
+      const statusChanged =
+        mappedStatus !== null &&
+        mappedStatus !== dbTn.status &&
+        isStatusProgression(dbTn.status, mappedStatus);
+
+      // Poids : remplir seulement si vide en DB
+      const ieWeightKg = ieRow.weightKgValue;
+      const weightChanged =
+        ieWeightKg !== null &&
+        ieWeightKg > 0 &&
+        (!dbTn.weight_kg || dbTn.weight_kg === 0);
+
+      if (statusChanged || weightChanged) {
+        items.push({
+          dbId: dbTn.id,
+          trackingNumber: dbTn.tracking_number,
+          ieStatus: ieRow.currentStatus,
+          mappedStatus,
+          currentDbStatus: dbTn.status,
+          statusChanged,
+          ieWeightKg,
+          currentWeightKg: dbTn.weight_kg ?? null,
+          weightChanged,
+        });
+      }
+    }
+    return items;
+  };
+
+  const applySyncFromIeApi = async (preview: IeSyncItem[]) => {
+    setIeSyncApplying(true);
+    let updated = 0;
+    let errors = 0;
+
+    const results = await Promise.allSettled(
+      preview.map(item => {
+        const patch: Record<string, unknown> = { updated_by: user.id };
+        if (item.statusChanged && item.mappedStatus) patch.status = item.mappedStatus;
+        if (item.weightChanged && item.ieWeightKg) patch.weight_kg = item.ieWeightKg;
+        return supabase.from('tracking_numbers').update(patch).eq('id', item.dbId);
+      })
+    );
+
+    results.forEach(r => {
+      if (r.status === 'fulfilled' && !r.value.error) updated++;
+      else errors++;
+    });
+
+    setIeSyncApplying(false);
+    setIeSyncPreview(null);
+    setIeSyncDone({ updated, errors });
+    await refreshTrackingNumbers();
+  };
+
   const ieApiTableColumnLabels = getIeColumnLabels();
 
   return (
@@ -856,6 +939,19 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => {
+                  setIeSyncDone(null);
+                  setIeSyncPreview(buildSyncPreview());
+                }}
+                disabled={ieApiRows.length === 0 || ieApiLoading || ieSyncApplying}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t('tracking.syncFromIeApi')}
+              >
+                <Database className="h-4 w-4" />
+                {t('tracking.syncFromIeApi')}
+              </button>
+              <button
+                type="button"
                 onClick={() => void handleExportIeApiExcel()}
                 disabled={ieApiRows.length === 0 || ieApiLoading}
                 className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -883,6 +979,91 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
             )}
           </div>
           <div className="flex-1 overflow-auto p-2 sm:p-4 min-h-[200px]">
+
+            {/* Résultat du sync */}
+            {ieSyncDone && (
+              <div className={`mb-3 px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${ieSyncDone.errors > 0 ? 'bg-yellow-50 text-yellow-800' : 'bg-green-50 text-green-800'}`}>
+                <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                {t('tracking.ieSyncDone', { updated: ieSyncDone.updated, errors: ieSyncDone.errors })}
+                <button className="ml-auto text-xs underline" onClick={() => setIeSyncDone(null)}>
+                  {t('app.close')}
+                </button>
+              </div>
+            )}
+
+            {/* Aperçu du sync */}
+            {ieSyncPreview !== null && (
+              <div className="mb-4 border border-blue-200 rounded-lg bg-blue-50 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-blue-900 text-sm">
+                    {t('tracking.ieSyncPreviewTitle')}
+                  </span>
+                  <button
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    onClick={() => setIeSyncPreview(null)}
+                  >
+                    {t('app.cancel')}
+                  </button>
+                </div>
+
+                {ieSyncPreview.length === 0 ? (
+                  <p className="text-sm text-blue-700">{t('tracking.ieSyncNoChanges')}</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-blue-700 mb-2">
+                      {t('tracking.ieSyncSummary', { count: ieSyncPreview.length })}
+                    </p>
+                    <div className="overflow-x-auto rounded border border-blue-200 bg-white mb-3">
+                      <table className="min-w-full text-xs divide-y divide-gray-100">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.trackingNumber')}</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.ieApiCol.currentStatus')} IE</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} actuel</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.weight')} →</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {ieSyncPreview.map(item => (
+                            <tr key={item.dbId} className="hover:bg-gray-50">
+                              <td className="px-2 py-1.5 font-mono">{item.trackingNumber}</td>
+                              <td className="px-2 py-1.5 text-gray-600 italic">{item.ieStatus || '—'}</td>
+                              <td className="px-2 py-1.5">{t(`tracking.status.${item.currentDbStatus}`)}</td>
+                              <td className="px-2 py-1.5">
+                                {item.statusChanged && item.mappedStatus ? (
+                                  <span className="text-blue-700 font-medium">
+                                    {t(`tracking.status.${item.mappedStatus}`)}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td className="px-2 py-1.5">
+                                {item.weightChanged && item.ieWeightKg ? (
+                                  <span className="text-blue-700 font-medium">{item.ieWeightKg} kg</span>
+                                ) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      onClick={() => void applySyncFromIeApi(ieSyncPreview)}
+                      disabled={ieSyncApplying}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {ieSyncApplying ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      ) : (
+                        <Database className="h-4 w-4" />
+                      )}
+                      {ieSyncApplying ? t('tracking.ieSyncApplying') : t('tracking.ieSyncApply')}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             {ieApiLoading && (
               <div className="flex justify-center py-12">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
