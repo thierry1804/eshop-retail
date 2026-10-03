@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
-import { Video, Play, Square, MessageSquare, AlertCircle, Search, X } from 'lucide-react';
+import { devLog, devWarn } from '../../lib/devLog';
+import { Video, Play, Square, MessageSquare, AlertCircle, X } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { tiktokApi } from '../../lib/tiktokApi';
 import { TikTokMessage } from '../../types';
@@ -63,9 +65,9 @@ export const TikTokLiveSales: React.FC = () => {
   // Cela garantit qu'on ne manque aucun message, même ceux qui arrivent très tôt
   useEffect(() => {
     if (!unsubscribeRef.current) {
-      console.log('📝 TikTokLiveSales: Enregistrement du handler de messages au montage');
+      devLog('📝 TikTokLiveSales: Enregistrement du handler de messages au montage');
       unsubscribeRef.current = tiktokApi.onMessage((message: TikTokMessage) => {
-        console.log('📨 TikTokLiveSales: Message reçu via handler:', message);
+        devLog('📨 TikTokLiveSales: Message reçu via handler:', message);
         handleMessage(message);
       });
     }
@@ -82,15 +84,15 @@ export const TikTokLiveSales: React.FC = () => {
       hasCheckedServer.current = true;
 
       try {
-        console.log('🔍 TikTokLiveSales: Vérification du statut du serveur...');
+        devLog('🔍 TikTokLiveSales: Vérification du statut du serveur...');
         const activeConnections = await tiktokApi.getActiveConnections();
-        console.log('🔍 TikTokLiveSales: Connexions actives trouvées:', activeConnections);
+        devLog('🔍 TikTokLiveSales: Connexions actives trouvées:', activeConnections);
         
         // S'assurer que le handler est bien enregistré (au cas où le premier useEffect n'a pas fonctionné)
         if (!unsubscribeRef.current) {
-          console.log('📝 TikTokLiveSales: Enregistrement du handler de messages (fallback)');
+          devLog('📝 TikTokLiveSales: Enregistrement du handler de messages (fallback)');
           unsubscribeRef.current = tiktokApi.onMessage((message: TikTokMessage) => {
-            console.log('📨 TikTokLiveSales: Message reçu via handler (fallback):', message);
+            devLog('📨 TikTokLiveSales: Message reçu via handler (fallback):', message);
             handleMessage(message);
           });
         }
@@ -98,24 +100,24 @@ export const TikTokLiveSales: React.FC = () => {
         if (activeConnections.length > 0) {
           // Si une connexion est active, utiliser le premier uniqueId trouvé
           const activeUniqueId = activeConnections[0];
-          console.log('✅ TikTokLiveSales: Serveur déjà actif, démarrage de l\'écoute pour', activeUniqueId);
+          devLog('✅ TikTokLiveSales: Serveur déjà actif, démarrage de l\'écoute pour', activeUniqueId);
           setUniqueId(activeUniqueId);
           
           // TOUJOURS appeler startListening pour s'assurer qu'on reçoit les messages
           // Le backend peut nécessiter que chaque client démarre l'écoute pour recevoir les messages
           try {
             await tiktokApi.startListening(activeUniqueId);
-            console.log('✅ TikTokLiveSales: Écoute démarrée avec succès pour', activeUniqueId);
+            devLog('✅ TikTokLiveSales: Écoute démarrée avec succès pour', activeUniqueId);
             setIsListening(true);
             
             // Attendre un peu pour que le WebSocket se connecte
             setTimeout(() => {
               if (tiktokApi.isConnected()) {
-                console.log('✅ TikTokLiveSales: WebSocket confirmé connecté');
+                devLog('✅ TikTokLiveSales: WebSocket confirmé connecté');
                 isConnectedRef.current = true;
                 setIsConnected(true);
               } else {
-                console.warn('⚠️ TikTokLiveSales: WebSocket pas encore connecté après startListening');
+                devWarn('⚠️ TikTokLiveSales: WebSocket pas encore connecté après startListening');
               }
             }, 1000);
           } catch (error) {
@@ -124,7 +126,7 @@ export const TikTokLiveSales: React.FC = () => {
             setIsListening(true);
           }
         } else {
-          console.log('ℹ️ TikTokLiveSales: Aucune connexion active détectée, connexion directe au WebSocket');
+          devLog('ℹ️ TikTokLiveSales: Aucune connexion active détectée, connexion directe au WebSocket');
           // Se connecter au WebSocket même sans connexion active détectée
           // Le serveur peut être actif même si l'endpoint /api/tiktok/active ne fonctionne pas
           setIsListening(true);
@@ -132,14 +134,14 @@ export const TikTokLiveSales: React.FC = () => {
         
         // Vérifier immédiatement si le WebSocket est déjà connecté
         if (tiktokApi.isConnected()) {
-          console.log('✅ TikTokLiveSales: WebSocket déjà connecté au chargement');
+          devLog('✅ TikTokLiveSales: WebSocket déjà connecté au chargement');
           isConnectedRef.current = true;
           setIsConnected(true);
         } else {
           // Vérifier périodiquement si le WebSocket est connecté
           const checkConnection = setInterval(() => {
             if (tiktokApi.isConnected()) {
-              console.log('✅ TikTokLiveSales: WebSocket connecté (vérification périodique)');
+              devLog('✅ TikTokLiveSales: WebSocket connecté (vérification périodique)');
               isConnectedRef.current = true;
               setIsConnected(true);
               setIsListening(true);
@@ -154,9 +156,9 @@ export const TikTokLiveSales: React.FC = () => {
               isConnectedRef.current = true;
               setIsConnected(true);
               setIsListening(true);
-              console.log('✅ TikTokLiveSales: WebSocket finalement connecté');
+              devLog('✅ TikTokLiveSales: WebSocket finalement connecté');
             } else {
-              console.warn('⚠️ TikTokLiveSales: WebSocket non connecté après 10 secondes');
+              devWarn('⚠️ TikTokLiveSales: WebSocket non connecté après 10 secondes');
             }
           }, 10000);
         }
@@ -188,7 +190,7 @@ export const TikTokLiveSales: React.FC = () => {
     return () => {
       // Vérifier que c'est vraiment un démontage, pas juste un re-render
       if (!isMountedRef.current) {
-        console.log('🧹 TikTokLiveSales: Nettoyage au démontage du composant');
+        devLog('🧹 TikTokLiveSales: Nettoyage au démontage du composant');
         if (unsubscribeRef.current) {
           unsubscribeRef.current();
           unsubscribeRef.current = null;
@@ -196,7 +198,7 @@ export const TikTokLiveSales: React.FC = () => {
         // Ne pas appeler stopListening ici car cela fermerait le stream pour tous les clients
         // Le backend gère déjà les déconnexions WebSocket
       } else {
-        console.log('ℹ️ TikTokLiveSales: Re-render détecté, pas de nettoyage');
+        devLog('ℹ️ TikTokLiveSales: Re-render détecté, pas de nettoyage');
       }
     };
   }, []); // Dépendances vides = uniquement au démontage
@@ -244,7 +246,7 @@ export const TikTokLiveSales: React.FC = () => {
       const checkConnection = () => {
         const connected = tiktokApi.isConnected();
         if (connected) {
-          console.log('✅ TikTokLiveSales: WebSocket déjà connecté, mise à jour de l\'état');
+          devLog('✅ TikTokLiveSales: WebSocket déjà connecté, mise à jour de l\'état');
           isConnectedRef.current = true;
           setIsConnected(true);
           return true;
@@ -269,7 +271,7 @@ export const TikTokLiveSales: React.FC = () => {
           if (checkConnection() || attempts >= maxAttempts) {
             clearInterval(interval);
             if (attempts >= maxAttempts && !tiktokApi.isConnected()) {
-              console.warn('⚠️ WebSocket non connecté après 10 secondes');
+              devWarn('⚠️ WebSocket non connecté après 10 secondes');
             }
           }
         }, 500);
@@ -304,16 +306,16 @@ export const TikTokLiveSales: React.FC = () => {
 
   // Gérer les messages reçus
   const handleMessage = (message: TikTokMessage) => {
-    console.log('📥 TikTokLiveSales: Message reçu:', message);
+    devLog('📥 TikTokLiveSales: Message reçu:', message);
     switch (message.type) {
       case 'chat':
-        console.log('💬 Message de type chat:', message.data);
+        devLog('💬 Message de type chat:', message.data);
         // Si on reçoit un message de chat, c'est que le WebSocket est connecté
         // TOUJOURS mettre à jour pour s'assurer que l'état est synchronisé
         // Utiliser une fonction de mise à jour pour éviter les problèmes de closure
         setIsConnected((prevConnected) => {
           if (!prevConnected) {
-            console.log('✅ TikTokLiveSales: Connexion détectée via message de chat');
+            devLog('✅ TikTokLiveSales: Connexion détectée via message de chat');
             isConnectedRef.current = true;
             return true;
           }
@@ -334,10 +336,10 @@ export const TikTokLiveSales: React.FC = () => {
             displayTime: formatTimestamp(message.data?.timestamp),
             avatarUrl: message.data?.avatarUrl || message.data?.profilePicture || message.data?.avatar,
           };
-          console.log('✅ Ajout du message à la liste:', newMessage);
+          devLog('✅ Ajout du message à la liste:', newMessage);
           setMessages(prev => [...prev, newMessage]);
         } else {
-          console.warn('⚠️ Message chat invalide - aucune donnée utile:', message.data);
+          devWarn('⚠️ Message chat invalide - aucune donnée utile:', message.data);
         }
         break;
 
@@ -345,7 +347,7 @@ export const TikTokLiveSales: React.FC = () => {
         if (message.data) {
           // Détecter si c'est un message de connexion établie
           if (message.data.comment === 'Connexion établie' || message.data.comment?.includes('Connexion')) {
-            console.log('✅ TikTokLiveSales: Connexion WebSocket établie détectée');
+            devLog('✅ TikTokLiveSales: Connexion WebSocket établie détectée');
             isConnectedRef.current = true;
             setIsConnected(true);
           }
@@ -356,7 +358,7 @@ export const TikTokLiveSales: React.FC = () => {
           const likes = message.data.likes;
           
           if (viewerCount !== undefined || likes !== undefined) {
-            console.log('📊 TikTokLiveSales: Mise à jour des stats:', { viewerCount, likes });
+            devLog('📊 TikTokLiveSales: Mise à jour des stats:', { viewerCount, likes });
             setStats({
               viewers: viewerCount,
               likes: likes,
@@ -378,7 +380,7 @@ export const TikTokLiveSales: React.FC = () => {
         // Ne pas afficher l'erreur si c'est juste une erreur temporaire du backend
         // Le WebSocket peut continuer à fonctionner
         if (errorMessage.includes('Erreur inconnue') || errorMessage.includes('timeout')) {
-          console.warn('⚠️ TikTokLiveSales: Erreur temporaire ignorée, connexion maintenue');
+          devWarn('⚠️ TikTokLiveSales: Erreur temporaire ignorée, connexion maintenue');
           // Ne pas définir l'erreur pour ne pas perturber l'utilisateur
         } else {
           setError(errorMessage);
@@ -466,7 +468,7 @@ export const TikTokLiveSales: React.FC = () => {
         return null;
       }
 
-      console.log('✅ Client créé automatiquement:', data);
+      devLog('✅ Client créé automatiquement:', data);
       return data as Client;
     } catch (error) {
       console.error('Erreur lors de la création du client:', error);
@@ -483,7 +485,7 @@ export const TikTokLiveSales: React.FC = () => {
     
     // Si le client n'existe pas, le créer automatiquement
     if (!client) {
-      console.log('📝 Client non trouvé, création automatique...');
+      devLog('📝 Client non trouvé, création automatique...');
       client = await createClientFromTikTokMessage(message);
     }
     
@@ -513,20 +515,20 @@ export const TikTokLiveSales: React.FC = () => {
   return (
     <div className="p-3 sm:p-4 md:p-6 flex flex-col h-screen min-h-0 overflow-hidden">
       <div className="mb-4 sm:mb-6 flex-shrink-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Video className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+        <h1 className="text-xl sm:text-2xl font-bold app-text flex items-center gap-2">
+          <Video className="h-5 w-5 sm:h-6 sm:w-6 app-text-link" />
           {t('sales.tiktokLive.title', 'Ventes Live TikTok')}
         </h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">
+        <p className="text-sm sm:text-base app-text-muted mt-1">
           {t('sales.tiktokLive.subtitle', 'Écoutez les messages TikTok en direct et créez des ventes rapidement')}
         </p>
       </div>
 
       {/* Contrôles */}
-      <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mb-4 sm:mb-6 flex-shrink-0">
+      <div className="app-surface p-3 sm:p-4 md:p-6 mb-4 sm:mb-6 flex-shrink-0">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="app-label mb-2">
               {t('sales.tiktokLive.uniqueId', 'UniqueId TikTok')}
             </label>
             <input
@@ -535,7 +537,7 @@ export const TikTokLiveSales: React.FC = () => {
               onChange={(e) => setUniqueId(e.target.value)}
               disabled={isListening}
               placeholder="shentyandrianirina"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border app-border rounded-md  disabled:app-bg-muted disabled:cursor-not-allowed"
             />
           </div>
           <div className="flex gap-2">
@@ -543,7 +545,7 @@ export const TikTokLiveSales: React.FC = () => {
               <button
                 onClick={handleStart}
                 disabled={!uniqueId.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="app-btn app-btn-primary"
               >
                 <Play className="h-4 w-4" />
                 {t('sales.tiktokLive.start', 'Démarrer l\'écoute')}
@@ -551,7 +553,7 @@ export const TikTokLiveSales: React.FC = () => {
             ) : (
               <button
                 onClick={handleStop}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="app-btn app-btn-danger"
               >
                 <Square className="h-4 w-4" />
                 {t('sales.tiktokLive.stop', 'Arrêter l\'écoute')}
@@ -564,10 +566,10 @@ export const TikTokLiveSales: React.FC = () => {
         <div className="mt-4 flex items-center gap-2">
           <div
             className={`h-3 w-3 rounded-full ${
-              isConnected ? 'bg-green-500' : isListening ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'
+              isConnected ? 'bg-green-500' : isListening ? 'bg-yellow-500 animate-pulse' : 'bg-[var(--app-border)]'
             }`}
           />
-          <span className="text-sm text-gray-600">
+          <span className="text-sm app-text-muted">
             {isConnected
               ? t('sales.tiktokLive.connected', 'Connecté')
               : isListening
@@ -580,12 +582,12 @@ export const TikTokLiveSales: React.FC = () => {
         {(stats.viewers || stats.likes) && (
           <div className="mt-4 flex gap-4 text-sm">
             {stats.viewers && (
-              <div className="text-gray-600">
+              <div className="app-text-muted">
                 <span className="font-medium">Viewers:</span> {stats.viewers}
               </div>
             )}
             {stats.likes && (
-              <div className="text-gray-600">
+              <div className="app-text-muted">
                 <span className="font-medium">Likes:</span> {stats.likes}
               </div>
             )}
@@ -594,7 +596,7 @@ export const TikTokLiveSales: React.FC = () => {
 
         {/* Erreur */}
         {error && (
-          <div className="mt-4 flex items-center gap-2 text-red-600 text-sm">
+          <div className="mt-4 flex items-center gap-2 app-text-danger text-sm">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </div>
@@ -602,14 +604,14 @@ export const TikTokLiveSales: React.FC = () => {
       </div>
 
       {/* Liste des messages */}
-      <div className="bg-white rounded-lg shadow flex flex-col flex-1 min-h-0">
-        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+      <div className="app-surface flex flex-col flex-1 min-h-0">
+        <div className="p-4 border-b border app-divider flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold app-text flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 app-text-link" />
               {t('sales.tiktokLive.messages', 'Messages en direct')}
               {filteredMessages.length > 0 && (
-                <span className="text-sm font-normal text-gray-500">
+                <span className="text-sm font-normal app-text-muted">
                   ({filteredMessages.length}{messageFilter && filteredMessages.length !== messages.length ? ` / ${messages.length}` : ''})
                 </span>
               )}
@@ -617,18 +619,17 @@ export const TikTokLiveSales: React.FC = () => {
           </div>
           {/* Filtre de recherche */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
+            <SearchField
               value={messageFilter}
-              onChange={(e) => setMessageFilter(e.target.value)}
+              onChange={setMessageFilter}
               placeholder="Filtrer les messages (ex: jp, prix, etc.)"
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full"
+              inputClassName="text-sm pr-10"
             />
             {messageFilter && (
               <button
                 onClick={() => setMessageFilter('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 app-text-muted hover:app-text-muted"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -637,13 +638,13 @@ export const TikTokLiveSales: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {filteredMessages.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">
+            <div className="text-center app-text-muted py-12">
               {messageFilter ? (
                 <div>
                   <p>Aucun message ne correspond au filtre "{messageFilter}"</p>
                   <button
                     onClick={() => setMessageFilter('')}
-                    className="mt-2 text-blue-600 hover:text-blue-700 text-sm underline"
+                    className="mt-2 app-text-link hover:opacity-80 text-sm underline"
                   >
                     Effacer le filtre
                   </button>
@@ -660,7 +661,7 @@ export const TikTokLiveSales: React.FC = () => {
                 <div
                   key={message.id}
                   onClick={() => handleMessageClick(message)}
-                  className="p-3 border border-gray-200 rounded-md hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-colors"
+                  className="p-3 border app-border rounded-md hover:bg-[var(--app-surface-muted)] hover:border-[var(--app-primary)] cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 flex gap-3">
@@ -670,7 +671,7 @@ export const TikTokLiveSales: React.FC = () => {
                           <img
                             src={message.avatarUrl}
                             alt={message.nickname}
-                            className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                            className="w-10 h-10 rounded-full object-cover border app-border"
                             onError={(e) => {
                               // Si l'image ne charge pas, masquer l'image et afficher le placeholder
                               const target = e.target as HTMLImageElement;
@@ -683,24 +684,25 @@ export const TikTokLiveSales: React.FC = () => {
                           />
                         ) : null}
                         <div
-                          className={`avatar-placeholder w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm ${
+                          className={`avatar-placeholder w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm border border-[var(--app-border)] ${
                             message.avatarUrl ? 'hidden' : 'flex'
                           }`}
+                          style={{ backgroundColor: 'var(--app-surface-muted)', color: 'var(--app-ink)' }}
                         >
                           {message.nickname.charAt(0).toUpperCase()}
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-gray-900">
+                          <span className="font-semibold app-text">
                             {message.nickname}
                           </span>
-                          <span className="text-xs text-gray-500">@{message.uniqueId}</span>
+                          <span className="text-xs app-text-muted">@{message.uniqueId}</span>
                         </div>
-                        <p className="text-gray-700 break-words">{message.comment}</p>
+                        <p className="app-text-muted break-words">{message.comment}</p>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                    <span className="text-xs app-text-muted whitespace-nowrap flex-shrink-0">
                       {message.displayTime}
                     </span>
                   </div>
@@ -716,9 +718,9 @@ export const TikTokLiveSales: React.FC = () => {
       {showSaleForm && (
         <Suspense fallback={
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 shadow-xl">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Chargement du formulaire...</p>
+            <div className="app-surface p-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)] mx-auto"></div>
+              <p className="mt-4 app-text-muted">Chargement du formulaire...</p>
             </div>
           </div>
         }>

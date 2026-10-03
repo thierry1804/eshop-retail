@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck, RotateCcw } from 'lucide-react';
+import { Plus, Edit, CreditCard, Calendar as CalendarIcon, Truck, RotateCcw, RefreshCw } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { SaleForm } from './SaleForm';
 import { PaymentForm } from '../Payments/PaymentForm';
@@ -9,7 +10,8 @@ import { DeliveryForm } from '../Delivery/DeliveryForm';
 import { ReturnItemsModal } from './ReturnItemsModal';
 import { supabase } from '../../lib/supabase';
 import { Sale, User } from '../../types';
-import { formatDateToLocalString } from '../../lib/dateUtils';
+import { formatDateToLocalString, formatDateDisplay, formatDateTimeDisplay } from '../../lib/dateUtils';
+import { DataTable, dtTh, dtThRight, dtTd, dtTdMuted, dtTdWrap } from '../ui/DataTable';
 
 interface SalesListProps {
   user: User;
@@ -230,15 +232,15 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
   const getStatusDisplay = (status: string) => {
     switch (status) {
       case 'paid':
-        return { label: t('sales.status.paid'), className: 'text-green-600 bg-green-100' };
+        return { label: t('sales.status.paid'), className: 'app-badge app-badge-success' };
       case 'ongoing':
-        return { label: t('sales.status.ongoing'), className: 'text-yellow-600 bg-yellow-100' };
+        return { label: t('sales.status.ongoing'), className: 'app-badge bg-yellow-100 text-yellow-800' };
       case 'returned':
-        return { label: t('sales.status.returned'), className: 'text-red-600 bg-red-100' };
+        return { label: t('sales.status.returned'), className: 'app-badge app-badge-danger' };
       case 'partially_returned':
-        return { label: t('sales.status.partially_returned'), className: 'text-orange-600 bg-orange-100' };
+        return { label: t('sales.status.partially_returned'), className: 'app-badge bg-orange-100 text-orange-800' };
       default:
-        return { label: t('sales.status.unknown'), className: 'text-gray-600 bg-gray-100' };
+        return { label: t('sales.status.unknown'), className: 'app-badge' };
     }
   };
 
@@ -253,73 +255,61 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">{t('sales.loading')}</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
-      <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('sales.title')}</h1>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowCalendar(!showCalendar)}
-            className={`flex items-center space-x-2 px-2 sm:px-3 py-2 rounded-md transition-colors text-sm sm:text-base ${showCalendar
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-600 text-white hover:bg-gray-700'
-              }`}
-          >
-            <CalendarIcon size={18} className="sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">{showCalendar ? t('sales.calendar.hideCalendar') : t('sales.calendar.showCalendar')}</span>
-          </button>
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="app-page-title">{t('sales.title')}</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setShowCalendar(!showCalendar)}
+              className={`app-btn app-btn-sm whitespace-nowrap ${showCalendar ? 'app-btn-primary' : 'app-btn-secondary'}`}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{showCalendar ? t('sales.calendar.hideCalendar') : t('sales.calendar.showCalendar')}</span>
+            </button>
 
-          <button
-            onClick={fetchSales}
-            className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm sm:text-base"
-          >
-            <span>🔄</span>
-            <span className="hidden sm:inline">{t('app.refresh')}</span>
-          </button>
+            <button
+              onClick={fetchSales}
+              className="app-btn app-btn-secondary app-btn-sm whitespace-nowrap"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t('app.refresh')}</span>
+            </button>
 
-          <button
-            onClick={() => {
-              setSelectedSale(null);
-              setShowForm(true);
-            }}
-            className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-          >
-            <Plus size={18} className="sm:w-5 sm:h-5" />
-            <span>{t('sales.newSale')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder={t('sales.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-            />
+            <button
+              onClick={() => {
+                setSelectedSale(null);
+                setShowForm(true);
+              }}
+              className="app-btn app-btn-primary app-btn-sm whitespace-nowrap"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{t('sales.newSale')}</span>
+            </button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={t('sales.searchPlaceholder')}
+            inputClassName="text-xs py-1.5"
+          />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+            className="app-input text-xs py-1.5 w-auto min-w-[10rem]"
           >
             <option value="all">{t('sales.filters.allStatuses')}</option>
             <option value="ongoing">{t('sales.status.ongoing')}</option>
@@ -332,15 +322,16 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
             onChange={setDateFilter}
             salesByDate={salesByDate}
             placeholder={t('sales.filters.dateFilter')}
-            className="flex-1 sm:flex-none min-w-[150px]"
+            className="w-auto"
           />
           <button
+            type="button"
             onClick={() => {
               setSearchTerm('');
               setStatusFilter('all');
               setDateFilter(new Date().toISOString().split('T')[0]);
             }}
-            className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+            className="app-btn app-btn-secondary app-btn-sm whitespace-nowrap"
           >
             {t('sales.filters.clearFilters')}
           </button>
@@ -349,7 +340,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
 
       {/* Calendrier des ventes */}
       {showCalendar && (
-        <div className="mb-6">
+        <div className="mb-2">
           <Calendar
             dataByDate={salesByDate}
             onDateClick={handleCalendarDateClick}
@@ -359,31 +350,23 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
       )}
 
       {/* Status Display */}
-      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-md p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-600 font-medium">{t('sales.summary.totalSales')}:</span>
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
-                {sales.length}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-600 font-medium">{t('sales.summary.displayed')}:</span>
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
-                {filteredSales.length}
-              </span>
-            </div>
+      <div className="hidden md:flex app-surface px-3 py-2 items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 app-text-muted">
+            <span>
+              {t('sales.summary.totalSales')}: <span className="font-semibold app-text">{sales.length}</span>
+            </span>
+            <span>
+              {t('sales.summary.displayed')}: <span className="font-semibold app-text">{filteredSales.length}</span>
+            </span>
           </div>
-          <div className="text-sm text-blue-600">
-            {t('common.lastUpdate')}: {new Date().toLocaleTimeString()}
+          <div className="shrink-0 app-text-muted">
+            {t('common.lastUpdate')}: {formatDateTimeDisplay(new Date())}
           </div>
-        </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="mb-2 bg-red-50 border border-red-200 rounded-md p-3">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -391,8 +374,8 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{t('sales.error.title')}</h3>
-              <div className="mt-2 text-sm text-red-700">
+              <h3 className="text-sm font-medium app-text-danger">{t('sales.error.title')}</h3>
+              <div className="mt-2 text-sm app-text-danger">
                 <p>{error}</p>
                 <button
                   onClick={() => {
@@ -416,19 +399,19 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
         {filteredSales.map((sale) => {
           const statusDisplay = getStatusDisplay(sale.status);
           return (
-            <div key={sale.id} className="bg-white rounded-lg shadow-md p-4">
+            <div key={sale.id} className="app-list-card">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-600 font-medium text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))] flex items-center justify-center flex-shrink-0">
+                    <span className="app-text-link font-medium text-sm">
                       {sale.client ? `${sale.client.first_name?.[0] || ''}${sale.client.last_name?.[0] || ''}` : 'NC'}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                    <div className="text-sm font-medium app-text truncate">
                       {sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}` : t('sales.client.notFound')}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
+                    <div className="text-xs app-text-muted truncate">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 ml-2">
@@ -438,7 +421,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                         setSelectedSale(sale);
                         setShowPaymentForm(true);
                       }}
-                      className="text-green-600 hover:text-green-800 transition-colors p-1"
+                      className="app-text-success hover:app-text-success transition-colors p-1"
                       title={t('sales.actions.addPayment')}
                     >
                       <CreditCard size={18} />
@@ -447,7 +430,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                   {sale.status !== 'returned' && sale.status !== 'partially_returned' && (
                     <button
                       onClick={() => handleReturnSale(sale)}
-                      className="text-red-600 hover:text-red-800 transition-colors p-1"
+                      className="app-text-danger hover:app-text-danger transition-colors p-1"
                       title={t('sales.actions.return')}
                     >
                       <RotateCcw size={18} />
@@ -466,44 +449,45 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                         setSelectedSale(sale);
                         setShowForm(true);
                       }}
-                      className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
+                      className="app-icon-btn"
                       title={t('common.edit')}
+                      aria-label={t('common.edit')}
                     >
                       <Edit size={18} />
                     </button>
                   )}
                 </div>
               </div>
-              <div className="space-y-2 text-xs">
-                <div className="text-gray-900 line-clamp-2">{sale.description}</div>
-                <div className="space-y-1 pt-2 border-t border-gray-100">
+              <div className="space-y-2 text-xs pt-2 border-t app-divider">
+                <div className="app-text line-clamp-2">{sale.description}</div>
+                <div className="space-y-1 pt-2 border-t app-divider">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t('sales.amounts.total')}:</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(sale.total_amount)}</span>
+                    <span className="app-text-muted">{t('sales.amounts.total')}:</span>
+                    <span className="font-medium app-text">{formatCurrency(sale.total_amount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t('sales.amounts.deposit')}:</span>
-                    <span className="text-gray-500">{formatCurrency(sale.deposit)}</span>
+                    <span className="app-text-muted">{t('sales.amounts.deposit')}:</span>
+                    <span className="app-text-muted">{formatCurrency(sale.deposit)}</span>
                   </div>
                   {sale.total_payments && sale.total_payments > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-blue-600">Paiements:</span>
-                      <span className="text-blue-600">{formatCurrency(sale.total_payments)}</span>
+                      <span className="app-text-link">Paiements:</span>
+                      <span className="app-text-link">{formatCurrency(sale.total_payments)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">{t('sales.amounts.remaining')}:</span>
-                    <span className={`font-medium ${sale.remaining_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <span className="app-text-muted">{t('sales.amounts.remaining')}:</span>
+                    <span className={`font-medium ${sale.remaining_balance > 0 ? 'app-text-danger' : 'app-text-success'}`}>
                       {formatCurrency(sale.remaining_balance)}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusDisplay.className}`}>
+                <div className="flex items-center justify-between pt-2 border-t app-divider">
+                  <span className={`${statusDisplay.className}`}>
                     {statusDisplay.label}
                   </span>
-                  <span className="text-gray-500">
-                    {new Date(sale.created_at).toLocaleDateString('fr-FR')}
+                  <span className="app-text-muted">
+                    {formatDateDisplay(sale.created_at)}
                   </span>
                 </div>
               </div>
@@ -511,11 +495,11 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
           );
         })}
         {filteredSales.length === 0 && (
-          <div className="text-center py-8 bg-white rounded-lg shadow-md">
-            <p className="text-gray-500">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm || statusFilter !== 'all' ? t('sales.noSalesFound') : t('sales.noSales')}
             </p>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="app-empty-text mt-2">
               {t('sales.summary.totalSales')}: {sales.length} | {t('sales.summary.filteredSales')}: {filteredSales.length}
             </p>
           </div>
@@ -523,83 +507,70 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
       </div>
 
       {/* Sales List - Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="hidden md:block app-table-wrap">
+        <DataTable>
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('sales.table.client')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('common.description')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('sales.table.amounts')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('common.status')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('common.date')}
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('common.actions')}
-                </th>
+                <th className={dtTh}>{t('sales.table.client')}</th>
+                <th className={dtTh}>{t('common.description')}</th>
+                <th className={dtTh}>{t('sales.table.amounts')}</th>
+                <th className={dtTh}>{t('common.status')}</th>
+                <th className={dtTh}>{t('common.date')}</th>
+                <th className={dtThRight}>{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[var(--app-border)]">
               {filteredSales.map((sale) => {
                 const statusDisplay = getStatusDisplay(sale.status);
                 return (
-                  <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={sale.id} className="hover:bg-[var(--app-surface-muted)] transition-colors">
+                    <td className={dtTd}>
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-medium text-sm">
+                        <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))] flex items-center justify-center flex-shrink-0">
+                          <span className="app-text-link font-medium text-[11px]">
                             {sale.client ? `${sale.client.first_name?.[0] || ''}${sale.client.last_name?.[0] || ''}` : 'NC'}
                           </span>
                         </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                        <div className="ml-2 min-w-0">
+                          <div className="font-medium truncate">
                             {sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}` : t('sales.client.notFound')}
                           </div>
-                          <div className="text-sm text-gray-500">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
+                          <div className="app-text-muted truncate">{sale.client?.phone || t('sales.client.phoneNotAvailable')}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">
+                    <td className={dtTdWrap}>
+                      <div className="max-w-xs truncate">
                         {sale.description}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">
+                    <td className={dtTdWrap}>
+                      <div>
+                        <div className="font-medium app-text">
                           {t('sales.amounts.total')}: {formatCurrency(sale.total_amount)}
                         </div>
-                        <div className="text-gray-500">
+                        <div className="app-text-muted">
                           {t('sales.amounts.deposit')}: {formatCurrency(sale.deposit)}
                         </div>
                         {sale.total_payments && sale.total_payments > 0 && (
-                          <div className="text-blue-600">
+                          <div className="app-text-link">
                             Paiements: {formatCurrency(sale.total_payments)}
                           </div>
                         )}
-                        <div className={`font-medium ${sale.remaining_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        <div className={`font-medium ${sale.remaining_balance > 0 ? 'app-text-danger' : 'app-text-success'}`}>
                           {t('sales.amounts.remaining')}: {formatCurrency(sale.remaining_balance)}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusDisplay.className}`}>
+                    <td className={dtTd}>
+                      <span className={`${statusDisplay.className}`}>
                         {statusDisplay.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(sale.created_at).toLocaleDateString('fr-FR')}
+                    <td className={dtTdMuted}>
+                      {formatDateDisplay(sale.created_at)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className={`${dtTd} text-right font-medium`}>
                       <div className="flex items-center justify-end space-x-2">
                         {sale.status === 'ongoing' && (
                           <button
@@ -607,19 +578,19 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                               setSelectedSale(sale);
                               setShowPaymentForm(true);
                             }}
-                            className="text-green-600 hover:text-green-800 transition-colors"
+                            className="app-text-success hover:app-text-success transition-colors"
                             title={t('sales.actions.addPayment')}
                           >
-                            <CreditCard size={18} />
+                            <CreditCard size={14} />
                           </button>
                         )}
                         {sale.status !== 'returned' && sale.status !== 'partially_returned' && (
                           <button
                             onClick={() => handleReturnSale(sale)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
+                            className="app-text-danger hover:app-text-danger transition-colors"
                             title={t('sales.actions.return')}
                           >
-                            <RotateCcw size={18} />
+                            <RotateCcw size={14} />
                           </button>
                         )}
                         {/* Bouton/Statut livraison */}
@@ -628,12 +599,12 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                           <span
                             className={`inline-flex items-center justify-center p-1.5 rounded-full ${
                               sale.delivery.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                              sale.delivery.status === 'preparing' ? 'bg-blue-100 text-blue-600' :
+                              sale.delivery.status === 'preparing' ? 'app-badge app-badge-info' :
                               sale.delivery.status === 'in_transit' ? 'bg-purple-100 text-purple-600' :
-                              sale.delivery.status === 'delivered' ? 'bg-green-100 text-green-600' :
-                              sale.delivery.status === 'failed' ? 'bg-red-100 text-red-600' :
-                              sale.delivery.status === 'cancelled' ? 'bg-gray-100 text-gray-600' :
-                              'bg-gray-100 text-gray-600'
+                              sale.delivery.status === 'delivered' ? 'app-badge app-badge-success' :
+                              sale.delivery.status === 'failed' ? 'app-badge app-badge-danger' :
+                              sale.delivery.status === 'cancelled' ? 'app-badge' :
+                              'app-badge'
                             }`}
                             title={`${sale.delivery.delivery_number} - ${
                               sale.delivery.status === 'pending' ? 'En attente' :
@@ -644,7 +615,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                               sale.delivery.status === 'cancelled' ? 'Annulé' : sale.delivery.status
                             }`}
                           >
-                            <Truck size={18} />
+                            <Truck size={14} />
                           </span>
                         ) : (
                           // Afficher le bouton pour créer une livraison
@@ -653,7 +624,7 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                             className="text-orange-600 hover:text-orange-800 transition-colors"
                             title={t('sales.actions.createDelivery')}
                           >
-                            <Truck size={18} />
+                            <Truck size={14} />
                           </button>
                         )}
                         {user.role === 'admin' && (
@@ -662,11 +633,12 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                               setSelectedSale(sale);
                               setShowForm(true);
                             }}
-                            className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                            title={t('common.edit')}
-                          >
-                            <Edit size={18} />
-                          </button>
+                              className="app-icon-btn"
+                              title={t('common.edit')}
+                              aria-label={t('common.edit')}
+                            >
+                              <Edit size={14} />
+                            </button>
                         )}
                       </div>
                     </td>
@@ -674,15 +646,14 @@ export const SalesList: React.FC<SalesListProps> = ({ user }) => {
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
 
         {filteredSales.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm || statusFilter !== 'all' ? t('sales.noSalesFound') : t('sales.noSales')}
             </p>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs app-text-muted mt-2">
               {t('sales.summary.totalSales')}: {sales.length} | {t('sales.summary.filteredSales')}: {filteredSales.length}
             </p>
           </div>

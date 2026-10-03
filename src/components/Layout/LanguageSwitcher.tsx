@@ -14,32 +14,51 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ collapsed = 
   };
 
   const currentLanguage = i18n.language;
+  const label = currentLanguage === 'zh' ? '中文' : 'FR';
 
   return (
-    <div className={`relative group ${collapsed ? 'w-full' : ''}`}>
+    <div className="relative group flex-shrink-0">
       <button
-        className={`flex items-center ${collapsed ? 'justify-center w-full' : 'space-x-2'} px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors`}
+        type="button"
+        className={`app-sidebar-nav-item flex items-center rounded-md transition-colors ${
+          collapsed ? 'justify-center w-8 h-8' : 'gap-1 px-2 py-1.5'
+        } text-xs font-medium`}
         title={t('language.switchLanguage')}
       >
-        <Globe size={16} />
-        {!collapsed && <span>{currentLanguage === 'zh' ? '中文' : 'FR'}</span>}
+        <Globe size={14} />
+        {!collapsed && <span>{label}</span>}
       </button>
-      
-      <div className={`absolute ${collapsed ? 'left-0' : 'right-0'} mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}>
+
+      <div
+        className={`absolute bottom-full mb-1 ${
+          collapsed ? 'left-0' : 'right-0'
+        } w-36 rounded-md border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-150 z-50`}
+        style={{
+          backgroundColor: 'var(--app-surface)',
+          borderColor: 'var(--app-border)',
+          boxShadow: 'var(--app-shadow-panel)'
+        }}
+      >
         <div className="py-1">
           <button
+            type="button"
             onClick={() => changeLanguage('fr')}
-            className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-              currentLanguage === 'fr' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-            }`}
+            className="block w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--app-surface-muted)]"
+            style={{
+              color: currentLanguage === 'fr' ? 'var(--app-primary-deep)' : 'var(--app-ink)',
+              fontWeight: currentLanguage === 'fr' ? 600 : 400
+            }}
           >
             {t('language.french')}
           </button>
           <button
+            type="button"
             onClick={() => changeLanguage('zh')}
-            className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors ${
-              currentLanguage === 'zh' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-            }`}
+            className="block w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--app-surface-muted)]"
+            style={{
+              color: currentLanguage === 'zh' ? 'var(--app-primary-deep)' : 'var(--app-ink)',
+              fontWeight: currentLanguage === 'zh' ? 600 : 400
+            }}
           >
             {t('language.chinese')}
           </button>

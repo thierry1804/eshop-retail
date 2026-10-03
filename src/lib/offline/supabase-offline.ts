@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { devLog, devWarn } from '../devLog';
 import { 
   addToQueue, 
   getCachedData, 
@@ -17,12 +18,12 @@ export class SupabaseOffline {
     // Écouter les changements de connexion
     window.addEventListener('online', () => {
       this.isOnline = true;
-      console.log('🌐 Mode online activé');
+      devLog('🌐 Mode online activé');
     });
 
     window.addEventListener('offline', () => {
       this.isOnline = false;
-      console.log('📴 Mode offline activé');
+      devLog('📴 Mode offline activé');
     });
   }
 
@@ -64,7 +65,7 @@ export class SupabaseOffline {
 
         return { data, error };
       } catch (error) {
-        console.warn(`⚠️ Erreur réseau, utilisation du cache pour ${table}`);
+        devWarn(`⚠️ Erreur réseau, utilisation du cache pour ${table}`);
         // En cas d'erreur réseau, essayer le cache
         return this.selectFromCache<T>(table);
       }
@@ -77,7 +78,7 @@ export class SupabaseOffline {
   private async selectFromCache<T>(table: string): Promise<{ data: T[] | null; error: any }> {
     try {
       const cachedData = await getAllCachedData(table);
-      console.log(`📦 Utilisation du cache pour ${table}: ${cachedData.length} enregistrements`);
+      devLog(`📦 Utilisation du cache pour ${table}: ${cachedData.length} enregistrements`);
       return { data: cachedData as T[], error: null };
     } catch (error) {
       console.error(`❌ Erreur lors de la lecture du cache pour ${table}:`, error);
@@ -104,7 +105,7 @@ export class SupabaseOffline {
 
         return { data: result, error };
       } catch (error) {
-        console.warn(`⚠️ Erreur réseau lors de l'insertion, ajout à la queue`);
+        devWarn(`⚠️ Erreur réseau lors de l'insertion, ajout à la queue`);
         // En cas d'erreur, ajouter à la queue
         return this.insertToQueue(table, data);
       }
@@ -123,7 +124,7 @@ export class SupabaseOffline {
       await addToQueue('insert', table, data);
       await cacheData(table, tempId, dataWithTempId);
 
-      console.log(`📝 Action d'insertion ajoutée à la queue pour ${table}`);
+      devLog(`📝 Action d'insertion ajoutée à la queue pour ${table}`);
       return { data: dataWithTempId as T, error: null };
     } catch (error) {
       console.error(`❌ Erreur lors de l'ajout à la queue:`, error);
@@ -152,7 +153,7 @@ export class SupabaseOffline {
 
         return { data: result, error };
       } catch (error) {
-        console.warn(`⚠️ Erreur réseau lors de la mise à jour, ajout à la queue`);
+        devWarn(`⚠️ Erreur réseau lors de la mise à jour, ajout à la queue`);
         return this.updateToQueue(table, id, data);
       }
     } else {
@@ -170,7 +171,7 @@ export class SupabaseOffline {
       await addToQueue('update', table, { id, ...data });
       await cacheData(table, id.toString(), updatedData);
 
-      console.log(`📝 Action de mise à jour ajoutée à la queue pour ${table}:${id}`);
+      devLog(`📝 Action de mise à jour ajoutée à la queue pour ${table}:${id}`);
       return { data: updatedData as T, error: null };
     } catch (error) {
       console.error(`❌ Erreur lors de l'ajout à la queue:`, error);
@@ -196,7 +197,7 @@ export class SupabaseOffline {
 
         return { error };
       } catch (error) {
-        console.warn(`⚠️ Erreur réseau lors de la suppression, ajout à la queue`);
+        devWarn(`⚠️ Erreur réseau lors de la suppression, ajout à la queue`);
         return this.deleteToQueue(table, id);
       }
     } else {
@@ -208,7 +209,7 @@ export class SupabaseOffline {
   private async deleteToQueue(table: string, id: string | number): Promise<{ error: any }> {
     try {
       await addToQueue('delete', table, { id });
-      console.log(`📝 Action de suppression ajoutée à la queue pour ${table}:${id}`);
+      devLog(`📝 Action de suppression ajoutée à la queue pour ${table}:${id}`);
       return { error: null };
     } catch (error) {
       console.error(`❌ Erreur lors de l'ajout à la queue:`, error);

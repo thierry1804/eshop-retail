@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { devLog, devWarn } from './devLog';
 
 export interface LogEntry {
   id?: string;
@@ -20,6 +21,8 @@ class Logger {
   private batchSize = 10;
   private flushInterval = 30000; // 30 secondes
   private flushTimer: NodeJS.Timeout | null = null;
+  private cachedIp: string | null = null;
+  private ipFetchPromise: Promise<string> | null = null;
 
   private constructor() {
     this.startBatchFlush();
@@ -55,7 +58,7 @@ class Logger {
         // Remettre les logs en queue en cas d'erreur
         this.logs.unshift(...logsToFlush);
       } else {
-        console.log(`✅ Logger: ${logsToFlush.length} logs envoyés avec succès`);
+        devLog(`✅ Logger: ${logsToFlush.length} logs envoyés avec succès`);
       }
     } catch (error) {
       console.error('❌ Logger: Erreur critique lors du flush:', error);
@@ -69,7 +72,7 @@ class Logger {
       const user = session?.user;
 
       if (!user) {
-        console.warn('⚠️ Logger: Aucun utilisateur connecté, log ignoré');
+        devWarn('⚠️ Logger: Aucun utilisateur connecté, log ignoré');
         return;
       }
 
@@ -94,7 +97,7 @@ class Logger {
 
       // Ajouter à la queue locale
       this.logs.push(logEntry);
-      console.log('📝 Logger:', action, details);
+      devLog('📝 Logger:', action, details);
 
       // Flush immédiat si on atteint la taille de batch
       if (this.logs.length >= this.batchSize) {
@@ -106,13 +109,23 @@ class Logger {
   }
 
   private async getClientIP(): Promise<string> {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch {
-      return 'unknown';
-    }
+    if (this.cachedIp) return this.cachedIp;
+    if (this.ipFetchPromise) return this.ipFetchPromise;
+
+    this.ipFetchPromise = (async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        this.cachedIp = data.ip || 'unknown';
+      } catch {
+        this.cachedIp = 'unknown';
+      } finally {
+        this.ipFetchPromise = null;
+      }
+      return this.cachedIp!;
+    })();
+
+    return this.ipFetchPromise;
   }
 
   // Méthodes spécialisées pour différents types d'actions

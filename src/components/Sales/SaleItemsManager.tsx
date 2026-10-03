@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
-import { Plus, X, Package, Search, AlertCircle, ChevronDown } from 'lucide-react';
+import { Plus, X, Package, AlertCircle, ChevronDown } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { generateIncrementalSKU } from '../../lib/skuGenerator';
 
 interface SaleItem {
@@ -313,102 +314,93 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
     <div className="space-y-4">
       {/* En-tête */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-medium app-text flex items-center gap-2">
           <Package className="h-5 w-5" />
           Articles de la vente
         </h3>
-        <span className="text-sm text-gray-500">
+        <span className="text-sm app-text-muted">
           Total: {isNaN(totalAmount) ? '0' : totalAmount.toLocaleString()} MGA
         </span>
       </div>
 
       {/* Formulaire de création de produit (modal) */}
       {showNewProductForm && (
-        <div className="bg-blue-50 p-3 rounded border border-blue-200 space-y-3 mb-4">
+        <div className="app-bg-muted p-3 rounded border app-border space-y-3 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">Créer un nouveau produit</span>
+              <AlertCircle className="h-4 w-4 app-text-link" />
+              <span className="text-sm font-medium app-text-link">Créer un nouveau produit</span>
             </div>
             <button
               type="button"
               onClick={() => setShowNewProductForm(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="app-text-muted hover:app-text-muted"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
           
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Nom du produit *
-              </label>
+              <label className="app-label">Nom du produit *</label>
               <input
                 type="text"
                 placeholder="Nom du produit"
                 value={newProductData.name}
                 onChange={(e) => setNewProductData({ ...newProductData, name: e.target.value })}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="app-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                SKU (généré automatiquement)
-              </label>
+              <label className="app-label">SKU (auto)</label>
               <input
                 type="text"
                 placeholder="SKU généré automatiquement"
                 value={generatedSKU}
                 readOnly
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded bg-gray-50 text-gray-600"
+                className="app-input"
+                style={{ backgroundColor: 'var(--app-surface-muted)', color: 'var(--app-ink-muted)' }}
               />
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Unité
-              </label>
+              <label className="app-label">Unité</label>
               <input
                 type="text"
-                placeholder="pièce, kg, etc."
+                placeholder="pièce, kg…"
                 value={newProductData.unit}
                 onChange={(e) => setNewProductData({ ...newProductData, unit: e.target.value })}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="app-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Stock actuel
-              </label>
+              <label className="app-label">Stock actuel</label>
               <input
                 type="number"
                 placeholder="1"
                 value={newProductData.current_stock}
                 onChange={(e) => setNewProductData({ ...newProductData, current_stock: Number(e.target.value) })}
                 onFocus={handleNumberInputFocus}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="app-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Stock minimum
-              </label>
+              <label className="app-label">Stock minimum</label>
               <input
                 type="number"
                 placeholder="0"
                 value={newProductData.min_stock_level}
                 onChange={(e) => setNewProductData({ ...newProductData, min_stock_level: Number(e.target.value) })}
                 onFocus={handleNumberInputFocus}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="app-input"
               />
             </div>
           </div>
           
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium app-text-muted mb-1">
               Description (optionnel)
             </label>
             <textarea
@@ -416,7 +408,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
               value={newProductData.description}
               onChange={(e) => setNewProductData({ ...newProductData, description: e.target.value })}
               rows={2}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="app-input text-sm py-1 px-2"
             />
           </div>
           
@@ -424,7 +416,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
             <button
               type="button"
               onClick={() => setShowNewProductForm(false)}
-              className="px-3 py-1 text-xs border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary app-btn-sm"
             >
               Annuler
             </button>
@@ -432,7 +424,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
               type="button"
               onClick={createNewProduct}
               disabled={creatingProduct}
-              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="app-btn app-btn-primary app-btn-sm disabled:opacity-50"
             >
               {creatingProduct ? 'Création...' : 'Créer le produit'}
             </button>
@@ -440,83 +432,254 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
         </div>
       )}
 
-      {/* Tableau des articles */}
-      <div className="space-y-3">
+      {/* Articles — mobile : cartes ; desktop : tableau */}
+      <div className="space-y-3" ref={productSearchRef}>
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-700">Articles de la vente</h4>
-          <button
-            type="button"
-            onClick={() => setShowNewProductForm(!showNewProductForm)}
-            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hidden"
-          >
-            <Plus className="h-4 w-4" />
-            Nouveau produit
-          </button>
+          <h4 className="text-sm font-medium" style={{ color: 'var(--app-ink)' }}>Articles</h4>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-200 rounded-lg">
-            <thead className="bg-gray-50">
+
+        {/* Mobile: formulaire d'ajout + liste */}
+        <div className="md:hidden space-y-3">
+          <div className="app-surface p-3 space-y-3">
+            <div className="relative">
+              <SearchField
+                value={searchTerm}
+                onChange={(value) => {
+                  setSearchTerm(value);
+                  setShowProductDropdown(true);
+                }}
+                onFocus={() => setShowProductDropdown(true)}
+                placeholder="Rechercher un produit…"
+                className="w-full"
+              />
+              {showProductDropdown && (
+                <div
+                  className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto app-surface md:hidden"
+                  style={{ boxShadow: 'var(--app-shadow-panel)' }}
+                >
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => handleProductSelect(product)}
+                        className="w-full px-3 py-3 text-left border-b last:border-b-0 min-h-[44px]"
+                        style={{ borderColor: 'var(--app-border)' }}
+                      >
+                        <div className="text-sm font-medium" style={{ color: 'var(--app-ink)' }}>{product.name}</div>
+                        <div className="text-xs" style={{ color: 'var(--app-ink-muted)' }}>
+                          SKU: {product.sku} · Stock: {product.current_stock}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-3 space-y-2">
+                      <div className="text-xs" style={{ color: 'var(--app-ink-muted)' }}>
+                        {searchTerm.trim() ? 'Aucun produit trouvé' : 'Aucun produit'}
+                      </div>
+                      {searchTerm.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewProductData((prev) => ({ ...prev, name: searchTerm }));
+                            setShowNewProductForm(true);
+                            setShowProductDropdown(false);
+                          }}
+                          className="app-btn app-btn-secondary app-btn-sm w-full"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Créer « {searchTerm} »
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="app-label">Qté</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={currentItem.quantity || 1}
+                  onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                  onFocus={handleNumberInputFocus}
+                  className="app-input"
+                />
+              </div>
+              <div>
+                <label className="app-label">Prix unit.</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={currentItem.unit_price || 0}
+                  onChange={(e) => handleUnitPriceChange(Number(e.target.value))}
+                  onFocus={handleNumberInputFocus}
+                  className="app-input"
+                />
+              </div>
+            </div>
+
+            {selectedProductPrices.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedProductPrices.map((price, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handlePriceSelect(price.price)}
+                    className={`app-btn app-btn-sm ${
+                      currentItem.unit_price === price.price ? 'app-btn-primary' : 'app-btn-secondary'
+                    }`}
+                  >
+                    {price.price_type}: {price.price.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-sm">
+              <span style={{ color: 'var(--app-ink-muted)' }}>Total ligne</span>
+              <span className="font-semibold" style={{ color: 'var(--app-ink)' }}>
+                {(currentItem.total_price || 0).toLocaleString()} MGA
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={addItem}
+              className="app-btn app-btn-success w-full min-h-[44px]"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter l’article
+            </button>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="app-empty py-6">
+              <p className="app-empty-text">Aucun article ajouté</p>
+            </div>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} className="app-list-card flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate" style={{ color: 'var(--app-ink)' }}>
+                    {item.product_name}
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--app-ink-muted)' }}>
+                    {item.quantity} × {(item.unit_price || 0).toLocaleString()} MGA
+                  </div>
+                  <div className="text-sm font-semibold mt-1" style={{ color: 'var(--app-ink)' }}>
+                    {(item.total_price || 0).toLocaleString()} MGA
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeItem(item.id)}
+                  className="app-icon-btn app-icon-btn-danger flex-shrink-0"
+                  aria-label="Supprimer l’article"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))
+          )}
+
+          <div className="app-surface p-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--app-ink-muted)' }}>Total</span>
+              <span className="font-semibold">{(isNaN(totalAmount) ? 0 : totalAmount).toLocaleString()} MGA</span>
+            </div>
+            <div>
+              <label className="app-label" htmlFor="sale-deposit-mobile">Acompte</label>
+              <input
+                id="sale-deposit-mobile"
+                type="number"
+                min="0"
+                max={totalAmount}
+                step="100"
+                value={deposit}
+                onChange={(e) => onDepositChange(Number(e.target.value))}
+                onFocus={handleNumberInputFocus}
+                className="app-input"
+              />
+            </div>
+            <div className="flex justify-between text-sm font-semibold">
+              <span>Reste</span>
+              <span style={{ color: 'var(--app-danger)' }}>
+                {(isNaN(remainingBalance) ? 0 : remainingBalance).toLocaleString()} MGA
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="app-table-striped w-full border app-border rounded-lg">
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                   Article
                 </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-center text-xs font-medium app-text-muted uppercase tracking-wider">
                   Qté
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-xs font-medium app-text-muted uppercase tracking-wider">
                   PU
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-xs font-medium app-text-muted uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-center text-xs font-medium app-text-muted uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[var(--app-border)]">
               {/* Ligne d'ajout d'article */}
-              <tr className="bg-blue-50 border-2 border-blue-200">
+              <tr className="app-bg-muted border-2 app-border">
                 <td className="px-3 py-2">
-                  <div className="relative" ref={productSearchRef}>
-                    <Search className="absolute left-2 top-2 h-3 w-3 text-gray-400" />
-                    <input
-                      type="text"
+                  <div className="relative">
+                    <SearchField
                       value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
+                      onChange={(value) => {
+                        setSearchTerm(value);
                         setShowProductDropdown(true);
                       }}
                       onFocus={() => setShowProductDropdown(true)}
                       placeholder="Rechercher un produit..."
-                      className="w-full pl-7 pr-6 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full"
+                      inputClassName="text-sm py-1 pr-6"
                     />
                     <button
                       type="button"
                       onClick={() => setShowProductDropdown(!showProductDropdown)}
-                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 app-icon-btn"
+                      aria-label="Liste des produits"
                     >
-                      <ChevronDown className="h-3 w-3" />
+                      <ChevronDown className="h-3.5 w-3.5" />
                     </button>
                     {showProductDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+                      <div className="app-dropdown absolute z-10 w-full mt-1 max-h-40 overflow-y-auto hidden md:block">
                         {filteredProducts.length > 0 ? (
                           filteredProducts.map((product) => (
                             <button
                               key={product.id}
                               type="button"
                               onClick={() => handleProductSelect(product)}
-                              className="w-full px-2 py-1 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none border-b border-gray-100 last:border-b-0 text-xs"
+                              className="app-dropdown-item text-xs"
                             >
-                              <div className="font-medium text-gray-900">{product.name}</div>
-                              <div className="text-xs text-gray-500">SKU: {product.sku} | Stock: {product.current_stock}</div>
+                              <div className="font-medium app-text">{product.name}</div>
+                              <div className="text-xs app-text-muted">SKU: {product.sku} | Stock: {product.current_stock}</div>
                             </button>
                           ))
                         ) : (
                           <div className="px-2 py-1">
                             {searchTerm.trim() ? (
                               <div className="space-y-1">
-                                <div className="text-gray-500 text-xs">Aucun produit trouvé</div>
+                                <div className="app-text-muted text-xs">Aucun produit trouvé</div>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -524,14 +687,14 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                                     setShowNewProductForm(true);
                                     setShowProductDropdown(false);
                                   }}
-                                  className="w-full flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded border border-blue-200"
+                                  className="w-full flex items-center gap-1 px-2 py-1 text-xs app-bg-muted app-text-link hover:bg-[var(--app-surface-muted)] rounded border app-border"
                                 >
                                   <Plus className="h-3 w-3" />
                                   Créer "{searchTerm}"
                                 </button>
                               </div>
                             ) : (
-                              <div className="text-gray-500 text-xs">Aucun produit disponible</div>
+                              <div className="app-text-muted text-xs">Aucun produit disponible</div>
                             )}
                           </div>
                         )}
@@ -546,7 +709,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                     value={currentItem.quantity || 1}
                     onChange={(e) => handleQuantityChange(Number(e.target.value))}
                     onFocus={handleNumberInputFocus}
-                    className="w-16 px-1 py-1 text-sm border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="app-input w-16 text-sm py-1 px-1 text-center"
                   />
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -558,7 +721,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                       value={currentItem.unit_price || 0}
                       onChange={(e) => handleUnitPriceChange(Number(e.target.value))}
                       onFocus={handleNumberInputFocus}
-                      className="w-20 px-1 py-1 text-sm border border-gray-300 rounded text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="app-input w-20 text-sm py-1 px-1 text-right"
                       placeholder="0"
                     />
                     {selectedProductPrices.length > 0 && (
@@ -570,8 +733,8 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                             onClick={() => handlePriceSelect(price.price)}
                             className={`px-1 py-0.5 text-xs rounded border ${
                               currentItem.unit_price === price.price
-                                ? 'bg-blue-100 border-blue-300 text-blue-800'
-                                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                ? 'app-badge app-badge-info'
+                                : 'app-bg-muted border app-divider app-text-muted hover:bg-[var(--app-surface-muted)]'
                             }`}
                           >
                             {price.price_type}: {price.price.toLocaleString()}
@@ -582,7 +745,7 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium app-text">
                     {currentItem.total_price || 0}
                   </span>
                 </td>
@@ -590,7 +753,8 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                   <button
                     type="button"
                     onClick={addItem}
-                    className="flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                    className="app-btn app-btn-success app-btn-sm"
+                    aria-label="Ajouter l'article"
                     title="Ajouter l'article"
                   >
                     <Plus className="h-4 w-4" />
@@ -601,27 +765,27 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
               {/* Articles existants */}
               {items.length > 0 ? (
                 items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-[var(--app-surface-muted)]">
                     <td className="px-3 py-2">
                       <div className="flex flex-col">
-                        <div className="text-sm font-medium text-gray-900">{item.product_name}</div>
+                        <div className="text-sm font-medium app-text">{item.product_name}</div>
                         {item.isNewProduct && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 mt-1 bg-blue-100 text-blue-800 text-xs rounded w-fit">
+                          <span className="inline-flex items-center px-1.5 py-0.5 mt-1 app-badge app-badge-info w-fit">
                             Nouveau
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className="text-sm text-gray-900">{item.quantity}</span>
+                      <span className="text-sm app-text">{item.quantity}</span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="text-sm text-gray-900">
+                      <span className="text-sm app-text">
                         {isNaN(item.unit_price) ? '0' : item.unit_price.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium app-text">
                         {isNaN(item.total_price) ? '0' : item.total_price.toLocaleString()}
                       </span>
                     </td>
@@ -629,17 +793,18 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50 transition-colors"
+                        className="app-icon-btn app-icon-btn-danger"
+                        aria-label="Supprimer l'article"
                         title="Supprimer l'article"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-gray-500 text-sm">
+                  <td colSpan={5} className="px-3 py-4 text-center app-text-muted text-sm">
                     Aucun article ajouté
                   </td>
                 </tr>
@@ -648,24 +813,24 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
               {/* Ligne de séparation */}
               <tr>
                 <td colSpan={5} className="px-3 py-1">
-                  <hr className="border-gray-300" />
+                  <hr className="border app-border" />
                 </td>
               </tr>
               
               {/* Ligne Total */}
-              <tr className="bg-gray-50">
-                <td colSpan={3} className="px-3 py-2 text-right font-medium text-gray-900">
+              <tr className="app-bg-muted">
+                <td colSpan={3} className="px-3 py-2 text-right font-medium app-text">
                   Total:
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-gray-900">
+                <td className="px-3 py-2 text-right font-bold app-text">
                   {isNaN(totalAmount) ? '0' : totalAmount.toLocaleString()} MGA
                 </td>
                 <td className="px-3 py-2"></td>
               </tr>
               
               {/* Ligne Acompte */}
-              <tr className="bg-gray-50">
-                <td colSpan={3} className="px-3 py-2 text-right font-medium text-gray-900">
+              <tr className="app-bg-muted">
+                <td colSpan={3} className="px-3 py-2 text-right font-medium app-text">
                   Acompte:
                 </td>
                 <td className="px-3 py-2 text-right">
@@ -677,18 +842,18 @@ export const SaleItemsManager: React.FC<SaleItemsManagerProps> = ({ items, onIte
                     value={deposit}
                     onChange={(e) => onDepositChange(Number(e.target.value))}
                     onFocus={handleNumberInputFocus}
-                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-right"
+                    className="app-input w-24 text-sm py-1 px-2 text-right"
                   />
                 </td>
                 <td className="px-3 py-2"></td>
               </tr>
               
               {/* Ligne Reste */}
-              <tr className="bg-gray-50">
-                <td colSpan={3} className="px-3 py-2 text-right font-medium text-gray-900">
+              <tr className="app-bg-muted">
+                <td colSpan={3} className="px-3 py-2 text-right font-medium app-text">
                   Reste:
                 </td>
-                <td className="px-3 py-2 text-right font-bold text-red-600">
+                <td className="px-3 py-2 text-right font-bold app-text-danger">
                   {isNaN(remainingBalance) ? '0' : remainingBalance.toLocaleString()} MGA
                 </td>
                 <td className="px-3 py-2"></td>

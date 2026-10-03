@@ -3,6 +3,8 @@
  * Structure documentée sur un échantillon de réponse JSON.
  */
 
+import { formatDateTimeDisplay } from './dateUtils';
+
 /** Clés de colonnes affichées (table + export) — sans champs internes. */
 export const IE_API_TABLE_COLUMN_ORDER = [
   'trackingNumber',
@@ -70,7 +72,7 @@ function formatIsoToFr(iso: unknown): { display: string; iso: string | null } {
   if (typeof iso !== 'string' || !iso) return { display: '', iso: null };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { display: iso, iso: null };
-  return { display: d.toLocaleString('fr-FR'), iso: d.toISOString() };
+  return { display: formatDateTimeDisplay(d), iso: d.toISOString() };
 }
 
 function frFormatNumber(

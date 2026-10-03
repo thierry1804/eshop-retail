@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
 import { Calendar, Truck, MapPin, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { formatDateToLocalString } from '../../lib/dateUtils';
+import { formatDateToLocalString, formatDateDisplay } from '../../lib/dateUtils';
 
 interface DeliveryReportProps {
   user: User;
@@ -110,13 +110,13 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
       case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'in_progress':
-        return <Truck className="h-5 w-5 text-blue-500" />;
+        return <Truck className="h-5 w-5 app-text-link" />;
       case 'pending':
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'cancelled':
         return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-gray-500" />;
+        return <AlertTriangle className="h-5 w-5 app-text-muted" />;
     }
   };
 
@@ -138,15 +138,15 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'app-badge app-badge-success';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
+        return 'app-badge app-badge-info';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'app-badge bg-yellow-100 text-yellow-800';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'app-badge app-badge-danger';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'app-badge';
     }
   };
 
@@ -166,17 +166,17 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('deliveries.deliveryReport')}</h1>
-          <p className="text-gray-600 mt-1">Analyse et statistiques des livraisons</p>
+          <h1 className="text-2xl font-bold app-text">{t('deliveries.deliveryReport')}</h1>
+          <p className="app-text-muted mt-1">Analyse et statistiques des livraisons</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-gray-500" />
+            <Calendar className="h-5 w-5 app-text-muted" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="border app-border rounded-md px-3 py-2 "
             />
           </div>
         </div>
@@ -184,49 +184,49 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
 
       {/* Statistiques principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="app-surface p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Truck className="h-6 w-6 text-blue-600" />
+            <div className="p-2 rounded-lg bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))]">
+              <Truck className="h-6 w-6 app-text-link" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total des livraisons</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-sm font-medium app-text-muted">Total des livraisons</p>
+              <p className="text-2xl font-bold app-text">{stats.total}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="app-surface p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="p-2 rounded-lg bg-[color-mix(in_srgb,var(--app-success)_12%,var(--app-surface))]">
+              <CheckCircle className="h-6 w-6 app-text-success" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Taux de réussite</p>
-              <p className="text-2xl font-bold text-green-600">{getCompletionRate()}%</p>
+              <p className="text-sm font-medium app-text-muted">Taux de réussite</p>
+              <p className="text-2xl font-bold app-text-success">{getCompletionRate()}%</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="app-surface p-6">
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
               <TrendingUp className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Revenus générés</p>
+              <p className="text-sm font-medium app-text-muted">Revenus générés</p>
               <p className="text-2xl font-bold text-purple-600">{formatCurrency(stats.totalRevenue)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
+        <div className="app-surface p-6">
           <div className="flex items-center">
             <div className="p-2 bg-orange-100 rounded-lg">
               <Clock className="h-6 w-6 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Temps moyen</p>
+              <p className="text-sm font-medium app-text-muted">Temps moyen</p>
               <p className="text-2xl font-bold text-orange-600">{stats.averageDeliveryTime} min</p>
             </div>
           </div>
@@ -235,48 +235,48 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
 
       {/* Répartition par statut */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Répartition par statut</h3>
+        <div className="app-surface p-6">
+          <h3 className="text-lg font-medium app-text mb-4">Répartition par statut</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                <span className="text-sm text-gray-600">Terminées</span>
+                <span className="text-sm app-text-muted">Terminées</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{stats.completed}</span>
+              <span className="text-sm font-medium app-text">{stats.completed}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <Truck className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-sm text-gray-600">En cours</span>
+                <Truck className="h-5 w-5 app-text-link mr-2" />
+                <span className="text-sm app-text-muted">En cours</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{stats.inProgress}</span>
+              <span className="text-sm font-medium app-text">{stats.inProgress}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Clock className="h-5 w-5 text-yellow-500 mr-2" />
-                <span className="text-sm text-gray-600">En attente</span>
+                <span className="text-sm app-text-muted">En attente</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{stats.pending}</span>
+              <span className="text-sm font-medium app-text">{stats.pending}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <XCircle className="h-5 w-5 text-red-500 mr-2" />
-                <span className="text-sm text-gray-600">Annulées</span>
+                <span className="text-sm app-text-muted">Annulées</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{stats.cancelled}</span>
+              <span className="text-sm font-medium app-text">{stats.cancelled}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Graphique de répartition</h3>
+        <div className="app-surface p-6">
+          <h3 className="text-lg font-medium app-text mb-4">Graphique de répartition</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span>Terminées</span>
               <span>{getCompletionRate()}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full app-bg-muted rounded-full h-2">
               <div 
                 className="bg-green-500 h-2 rounded-full" 
                 style={{ width: `${getCompletionRate()}%` }}
@@ -287,9 +287,9 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
               <span>En cours</span>
               <span>{stats.total > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full app-bg-muted rounded-full h-2">
               <div 
-                className="bg-blue-500 h-2 rounded-full" 
+                className="h-2 rounded-full bg-[var(--app-primary)]" 
                 style={{ width: `${stats.total > 0 ? (stats.inProgress / stats.total) * 100 : 0}%` }}
               ></div>
             </div>
@@ -298,7 +298,7 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
               <span>En attente</span>
               <span>{stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full app-bg-muted rounded-full h-2">
               <div 
                 className="bg-yellow-500 h-2 rounded-full" 
                 style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}
@@ -309,83 +309,78 @@ export const DeliveryReport: React.FC<DeliveryReportProps> = ({ user }) => {
       </div>
 
       {/* Détail des livraisons */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Détail des livraisons du {new Date(selectedDate).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+      <div className="app-surface">
+        <div className="px-6 py-4 border-b border app-divider">
+          <h3 className="text-lg font-medium app-text">
+            Détail des livraisons du {formatDateDisplay(selectedDate)}
           </h3>
         </div>
         
         {loading ? (
           <div className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-500">Chargement du rapport...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)] mx-auto"></div>
+            <p className="mt-2 app-text-muted">Chargement du rapport...</p>
           </div>
         ) : deliveries.length === 0 ? (
           <div className="p-6 text-center">
-            <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Aucune livraison pour cette date</p>
+            <Truck className="h-12 w-12 app-text-muted mx-auto mb-4" />
+            <p className="app-text-muted">Aucune livraison pour cette date</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="app-table-striped min-w-full divide-y divide-[var(--app-border)]">
+              <thead className="app-bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                     Client
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                     Vente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                     Statut
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                     Adresse
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium app-text-muted uppercase tracking-wider">
                     Montant
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-[var(--app-border)]">
                 {deliveries.map((delivery) => (
-                  <tr key={delivery.id} className="hover:bg-gray-50">
+                  <tr key={delivery.id} className="hover:bg-[var(--app-surface-muted)]">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium app-text">
                           {delivery.clients?.first_name} {delivery.clients?.last_name}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm app-text-muted">
                           {delivery.clients?.phone}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm app-text">
                         {delivery.sales?.description || 'Aucune vente associée'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {getStatusIcon(delivery.status)}
-                        <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
+                        <span className={`ml-2 ${getStatusColor(delivery.status)}`}>
                           {getStatusText(delivery.status)}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-500">
+                      <div className="flex items-center text-sm app-text-muted">
                         <MapPin className="h-4 w-4 mr-1" />
                         {delivery.delivery_address || 'Non spécifiée'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm app-text">
                       {delivery.sales ? formatCurrency(delivery.sales.total_amount) : '-'}
                     </td>
                   </tr>

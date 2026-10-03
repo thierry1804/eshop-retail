@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { devLog } from '../../lib/devLog';
 import { Euro, TrendingUp, Users, AlertCircle, CreditCard, Target, Calendar, Filter } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { StatCard } from './StatCard';
@@ -7,6 +8,7 @@ import { DashboardStats, Client, ClientWithSales } from '../../types';
 import { formatCompactNumber } from '../../lib/formatUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { debounce } from '../../lib/requestThrottle';
+import { formatDateDisplay, formatDateTimeDisplay } from '../../lib/dateUtils';
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -40,7 +42,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     // Ne s'exécuter qu'une seule fois au montage
     if (!hasInitializedRef.current) {
-      console.log('📊 Dashboard: Initialisation du tableau de bord');
+      devLog('📊 Dashboard: Initialisation du tableau de bord');
       hasInitializedRef.current = true;
       initializeDateFilter();
     }
@@ -60,7 +62,7 @@ export const Dashboard: React.FC = () => {
         .single();
 
       if (error || !lastSale) {
-        console.log('📊 Dashboard: Aucune vente trouvée, utilisation du filtre par défaut');
+        devLog('📊 Dashboard: Aucune vente trouvée, utilisation du filtre par défaut');
         // Pas de changement de filtre, le filtre par défaut est 'today'
         // Terminer l'initialisation et charger les données
         isInitializingRef.current = false;
@@ -94,14 +96,14 @@ export const Dashboard: React.FC = () => {
 
       // Déclencher manuellement le chargement des données
       // Appeler directement sans debounce pour un chargement immédiat
-      console.log('📊 Dashboard: Chargement initial des données...');
+      devLog('📊 Dashboard: Chargement initial des données...');
       await fetchDashboardData();
       await fetchChartData();
 
       // Marquer que les données ont été chargées
       // À partir de maintenant, l'useEffect peut prendre le relais
       hasLoadedDataRef.current = true;
-      console.log('📊 Dashboard: Initialisation terminée, useEffect activé');
+      devLog('📊 Dashboard: Initialisation terminée, useEffect activé');
     } catch (error) {
       console.error('❌ Dashboard: Erreur lors de l\'initialisation du filtre de date:', error);
       isInitializingRef.current = false;
@@ -129,18 +131,18 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     // Ne JAMAIS charger pendant l'initialisation
     if (isInitializingRef.current) {
-      console.log('📊 Dashboard: En cours d\'initialisation, skip du rechargement');
+      devLog('📊 Dashboard: En cours d\'initialisation, skip du rechargement');
       return;
     }
 
     // Ne charger QUE si on a déjà fait le premier chargement
     // Cela évite que l'useEffect charge les données avant que initializeDateFilter() n'ait terminé
     if (!hasLoadedDataRef.current) {
-      console.log('📊 Dashboard: Données pas encore chargées, skip du rechargement');
+      devLog('📊 Dashboard: Données pas encore chargées, skip du rechargement');
       return;
     }
 
-    console.log('📊 Dashboard: Filtre de date changé, rechargement des données (debounced)');
+    devLog('📊 Dashboard: Filtre de date changé, rechargement des données (debounced)');
     debouncedFetchDashboardDataRef.current?.();
     debouncedFetchChartDataRef.current?.();
   }, [dateFilter, customDateRange]);
@@ -234,12 +236,12 @@ export const Dashboard: React.FC = () => {
   };
 
   const fetchDashboardData = async () => {
-    console.log('📊 Dashboard: Début de la récupération des données');
+    devLog('📊 Dashboard: Début de la récupération des données');
     const startTime = performance.now();
     const { fromDate, toDate } = getDateRange();
     
     try {
-      console.log('📊 Dashboard: Récupération des statistiques de ventes...');
+      devLog('📊 Dashboard: Récupération des statistiques de ventes...');
       let salesQuery = supabase
         .from('sales')
         .select('total_amount, deposit, remaining_balance, status, created_at')
@@ -256,10 +258,10 @@ export const Dashboard: React.FC = () => {
       if (salesError) {
         console.error('❌ Dashboard: Erreur récupération ventes:', salesError);
       } else {
-        console.log(`✅ Dashboard: ${sales?.length || 0} ventes récupérées`);
+        devLog(`✅ Dashboard: ${sales?.length || 0} ventes récupérées`);
       }
 
-      console.log('📊 Dashboard: Récupération des statistiques de paiements...');
+      devLog('📊 Dashboard: Récupération des statistiques de paiements...');
       let paymentsQuery = supabase
         .from('payments')
         .select('amount, created_at');
@@ -275,10 +277,10 @@ export const Dashboard: React.FC = () => {
       if (paymentsError) {
         console.error('❌ Dashboard: Erreur récupération paiements:', paymentsError);
       } else {
-        console.log(`✅ Dashboard: ${payments?.length || 0} paiements récupérés`);
+        devLog(`✅ Dashboard: ${payments?.length || 0} paiements récupérés`);
       }
 
-      console.log('📊 Dashboard: Récupération du nombre de clients...');
+      devLog('📊 Dashboard: Récupération du nombre de clients...');
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('id');
@@ -286,10 +288,10 @@ export const Dashboard: React.FC = () => {
       if (clientsError) {
         console.error('❌ Dashboard: Erreur récupération clients:', clientsError);
       } else {
-        console.log(`✅ Dashboard: ${clients?.length || 0} clients récupérés`);
+        devLog(`✅ Dashboard: ${clients?.length || 0} clients récupérés`);
       }
 
-      console.log('📊 Dashboard: Récupération des meilleurs clients...');
+      devLog('📊 Dashboard: Récupération des meilleurs clients...');
       const { data: topClientsData, error: topClientsError } = await supabase
         .from('clients')
         .select(`
@@ -301,7 +303,7 @@ export const Dashboard: React.FC = () => {
       if (topClientsError) {
         console.error('❌ Dashboard: Erreur récupération top clients:', topClientsError);
       } else {
-        console.log(`✅ Dashboard: ${topClientsData?.length || 0} top clients récupérés`);
+        devLog(`✅ Dashboard: ${topClientsData?.length || 0} top clients récupérés`);
       }
 
       if (sales && payments && clients) {
@@ -322,7 +324,7 @@ export const Dashboard: React.FC = () => {
       }
 
       if (topClientsData) {
-        console.log('📊 Dashboard: Traitement des meilleurs clients...');
+        devLog('📊 Dashboard: Traitement des meilleurs clients...');
         const processedTopClients = topClientsData
           .map(client => ({
             ...client,
@@ -332,13 +334,13 @@ export const Dashboard: React.FC = () => {
           .sort((a, b) => b.total_purchases - a.total_purchases)
           .slice(0, 5);
         setTopClients(processedTopClients);
-        console.log(`✅ Dashboard: ${processedTopClients.length} meilleurs clients traités`);
+        devLog(`✅ Dashboard: ${processedTopClients.length} meilleurs clients traités`);
       }
     } catch (error) {
       console.error('❌ Dashboard: Erreur lors de la récupération des données:', error);
     } finally {
       const endTime = performance.now();
-      console.log(`⏱️ Dashboard: Récupération des données terminée en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`⏱️ Dashboard: Récupération des données terminée en ${(endTime - startTime).toFixed(2)}ms`);
       setLoading(false);
     }
   };
@@ -493,7 +495,7 @@ export const Dashboard: React.FC = () => {
       case 'good': return 'text-green-600 bg-green-100';
       case 'average': return 'text-yellow-600 bg-yellow-100';
       case 'poor': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      default: return 'app-badge';
     }
   };
 
@@ -508,39 +510,33 @@ export const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
-        <div className="text-xs sm:text-sm text-gray-500">
-          {t('common.lastUpdate')}: {new Date().toLocaleString()}
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h1 className="app-page-title">{t('dashboard.title')}</h1>
+        <div className="text-xs app-text-muted">
+          {t('common.lastUpdate')}: {formatDateTimeDisplay(new Date())}
         </div>
       </div>
 
       {/* Filtre de date */}
-      <div className="bg-white p-3 sm:p-4 rounded-lg shadow-md border border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center space-x-2">
-            <Filter size={20} className="text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">{t('dashboard.filters.dateRange')}:</span>
+      <div className="app-toolbar">
+          <div className="flex items-center gap-1.5 text-xs app-text-muted">
+            <Filter className="h-3.5 w-3.5" />
+            <span className="font-medium app-text">{t('dashboard.filters.dateRange')}</span>
           </div>
 
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value as any)}
-            className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="app-input text-xs py-1.5 w-auto"
           >
             <option value="all">{t('dashboard.filters.allTime')}</option>
             <option value="today">{t('dashboard.filters.today')}</option>
@@ -551,29 +547,29 @@ export const Dashboard: React.FC = () => {
           </select>
 
           {dateFilter === 'custom' && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="date"
                 value={customDateRange.from}
                 onChange={(e) => setCustomDateRange(prev => ({ ...prev, from: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="app-input text-xs py-1.5 w-auto"
                 placeholder={t('dashboard.filters.fromDate')}
               />
-              <span className="hidden sm:inline text-gray-500">-</span>
+              <span className="hidden sm:inline app-text-muted">-</span>
               <input
                 type="date"
                 value={customDateRange.to}
                 onChange={(e) => setCustomDateRange(prev => ({ ...prev, to: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="app-input text-xs py-1.5 w-auto"
                 placeholder={t('dashboard.filters.toDate')}
               />
             </div>
           )}
-        </div>
+      </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         <StatCard
           title={t('dashboard.totalSales')}
           value={formatCurrency(stats.total_sales)}
@@ -619,12 +615,12 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Graphique d'évolution des ventes */}
-      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-md">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('dashboard.chart.title')}</h2>
+      <div className="app-surface p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
+          <h2 className="text-sm sm:text-base font-semibold" style={{ color: 'var(--app-ink)' }}>{t('dashboard.chart.title')}</h2>
           {chartLoading && (
-            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm app-text-muted">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--app-primary)]"></div>
               <span>Chargement...</span>
             </div>
           )}
@@ -637,14 +633,14 @@ export const Dashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                  tickFormatter={(value) => formatDateDisplay(value)}
                 />
                 <YAxis
                   tickFormatter={(value) => formatCurrency(value)}
                 />
                 <Tooltip
                   formatter={(value: number, name: string) => [formatCurrency(value), t(`dashboard.chart.${name}`)]}
-                  labelFormatter={(value) => new Date(value).toLocaleDateString('fr-FR')}
+                  labelFormatter={(value) => formatDateDisplay(value)}
                 />
                 <Legend
                   formatter={(value) => t(`dashboard.chart.${value}`)}
@@ -674,9 +670,9 @@ export const Dashboard: React.FC = () => {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-64 sm:h-80 flex items-center justify-center text-gray-500">
+          <div className="h-64 sm:h-80 flex items-center justify-center app-text-muted">
             <div className="text-center">
-              <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
+              <Calendar size={48} className="mx-auto mb-4 app-text-muted opacity-60" />
               <p className="text-base sm:text-lg font-medium">{t('dashboard.chart.noData')}</p>
             </div>
           </div>
@@ -684,24 +680,22 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Top Clients */}
-      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-md">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('dashboard.topClients')}</h2>
-        <div className="space-y-2 sm:space-y-3">
+      <div className="app-surface p-3 sm:p-4">
+        <h2 className="text-sm sm:text-base font-semibold mb-3" style={{ color: 'var(--app-ink)' }}>{t('dashboard.topClients')}</h2>
+        <div className="space-y-2">
           {topClients.map((client) => (
-            <div key={client.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 bg-gray-50 rounded-lg">
+            <div key={client.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 rounded-lg border border-[var(--app-border)]" style={{ backgroundColor: 'var(--app-surface-muted)' }}>
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Users size={20} className="text-blue-600" />
-                </div>
+                <Users size={18} className="flex-shrink-0" style={{ color: 'var(--app-ink-muted)' }} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 truncate">
+                  <p className="font-medium app-text truncate">
                     {client.first_name} {client.last_name}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-500 truncate">{client.phone}</p>
+                  <p className="text-xs sm:text-sm app-text-muted truncate">{client.phone}</p>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 sm:text-right">
-                <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                <p className="font-semibold app-text text-sm sm:text-base">
                   {formatCurrency(client.total_purchases)}
                 </p>
                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTrustRatingColor(client.trust_rating)}`}>
@@ -711,7 +705,7 @@ export const Dashboard: React.FC = () => {
             </div>
           ))}
           {topClients.length === 0 && (
-            <p className="text-gray-500 text-center py-4">{t('clients.noClients')}</p>
+            <p className="app-text-muted text-center py-4">{t('clients.noClients')}</p>
           )}
         </div>
       </div>

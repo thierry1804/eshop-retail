@@ -1,3 +1,4 @@
+import { devLog, devWarn } from './devLog';
 // Détecter automatiquement le protocole basé sur la page actuelle
 const getProtocol = () => {
   if (typeof window !== 'undefined') {
@@ -44,7 +45,7 @@ const API_BASE_URL = `${protocol}//${TIKTOK_API_HOST}`;
 const WS_URL = `${wsProtocol}//${TIKTOK_WS_HOST}`;
 
 // Logger les URLs utilisées pour le débogage
-console.log('🔧 TikTokApi: Configuration des URLs:', {
+devLog('🔧 TikTokApi: Configuration des URLs:', {
   API_BASE_URL,
   WS_URL,
   protocol,
@@ -108,7 +109,7 @@ class TikTokApiService {
       } else {
         // Si une connexion existe déjà, ne pas activer la reconnexion automatique
         // On se contente d'écouter les messages via WebSocket
-        console.log('Serveur déjà actif, connexion directe au WebSocket pour écouter les messages');
+        devLog('Serveur déjà actif, connexion directe au WebSocket pour écouter les messages');
         this.shouldReconnect = false;
       }
 
@@ -177,7 +178,7 @@ class TikTokApiService {
     } catch (error) {
       // En cas d'erreur (CORS, réseau, etc.), retourner un tableau vide
       // et laisser le code continuer (on essaiera quand même de démarrer)
-      console.warn('Impossible de récupérer les connexions actives:', error);
+      devWarn('Impossible de récupérer les connexions actives:', error);
       return [];
     }
   }
@@ -197,7 +198,7 @@ class TikTokApiService {
       this.ws = new WebSocket(WS_URL);
 
       this.ws.onopen = () => {
-        console.log('WebSocket connecté');
+        devLog('WebSocket connecté');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.notifyHandlers({
@@ -208,7 +209,7 @@ class TikTokApiService {
 
       this.ws.onmessage = (event) => {
         try {
-          console.log('📨 WebSocket message reçu (raw):', event.data, 'Type:', typeof event.data);
+          devLog('📨 WebSocket message reçu (raw):', event.data, 'Type:', typeof event.data);
           
           // Gérer différents formats de messages
           let message: TikTokMessage;
@@ -226,7 +227,7 @@ class TikTokApiService {
               // Format possible: "Message de username: comment"
               const textMatch = event.data.match(/Message de\s+([^:]+):\s*(.+)/);
               if (textMatch) {
-                console.log('📨 Message détecté au format texte:', textMatch);
+                devLog('📨 Message détecté au format texte:', textMatch);
                 this.notifyHandlers({
                   type: 'chat',
                   data: {
@@ -240,7 +241,7 @@ class TikTokApiService {
               }
               
               // Sinon, traiter comme texte brut
-              console.log('⚠️ Message non-JSON, traitement comme texte brut');
+              devLog('⚠️ Message non-JSON, traitement comme texte brut');
               this.notifyHandlers({
                 type: 'chat',
                 data: {
@@ -253,7 +254,7 @@ class TikTokApiService {
               return;
             }
           } else {
-            console.warn('⚠️ Format de message inconnu:', typeof event.data);
+            devWarn('⚠️ Format de message inconnu:', typeof event.data);
             return;
           }
           
@@ -319,22 +320,22 @@ class TikTokApiService {
               };
             }
           } else {
-            console.warn('⚠️ Message vide ou invalide:', parsed);
+            devWarn('⚠️ Message vide ou invalide:', parsed);
             return;
           }
           
-          console.log('📨 WebSocket message parsé:', message);
+          devLog('📨 WebSocket message parsé:', message);
           
           // Si on a des handlers, notifier immédiatement
           if (this.messageHandlers.size > 0) {
             this.notifyHandlers(message);
           } else {
             // Sinon, stocker dans le buffer pour traitement ultérieur
-            console.warn('⚠️ WebSocket: Aucun handler enregistré, message mis en buffer:', message);
+            devWarn('⚠️ WebSocket: Aucun handler enregistré, message mis en buffer:', message);
             this.messageBuffer.push(message);
             // Limiter la taille du buffer pour éviter les problèmes de mémoire
             if (this.messageBuffer.length > 100) {
-              console.warn('⚠️ WebSocket: Buffer plein, suppression des anciens messages');
+              devWarn('⚠️ WebSocket: Buffer plein, suppression des anciens messages');
               this.messageBuffer.shift();
             }
           }
@@ -342,7 +343,7 @@ class TikTokApiService {
           console.error('❌ Erreur lors du parsing du message WebSocket:', error, 'Raw data:', event.data);
           // Essayer de traiter comme un message texte brut
           if (typeof event.data === 'string' && event.data.trim()) {
-            console.log('⚠️ Tentative de traitement comme message texte brut');
+            devLog('⚠️ Tentative de traitement comme message texte brut');
             this.notifyHandlers({
               type: 'chat',
               data: {
@@ -366,7 +367,7 @@ class TikTokApiService {
       };
 
       this.ws.onclose = (event) => {
-        console.log('🔌 WebSocket fermé', {
+        devLog('🔌 WebSocket fermé', {
           code: event.code,
           reason: event.reason,
           wasClean: event.wasClean,
@@ -379,7 +380,7 @@ class TikTokApiService {
         // Ne pas déconnecter si c'est une fermeture normale et qu'on a encore des handlers
         // ou si on est en train d'écouter un stream
         if (event.wasClean && event.code === 1000 && this.currentUniqueId) {
-          console.log('ℹ️ WebSocket fermé proprement, mais on continue d\'écouter');
+          devLog('ℹ️ WebSocket fermé proprement, mais on continue d\'écouter');
           // Ne pas tenter de reconnexion si c'était une fermeture propre
           return;
         }
@@ -388,19 +389,19 @@ class TikTokApiService {
         // ET qu'on a encore des handlers actifs
         if (this.shouldReconnect && this.messageHandlers.size > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
-          console.log(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts} dans ${this.reconnectDelay}ms`);
+          devLog(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts} dans ${this.reconnectDelay}ms`);
           setTimeout(() => {
             if (this.messageHandlers.size > 0 && this.currentUniqueId) {
-              console.log('🔄 Reconnexion en cours...');
+              devLog('🔄 Reconnexion en cours...');
               this.connectWebSocket();
             } else {
-              console.log('⚠️ Pas de reconnexion: plus de handlers ou pas d\'uniqueId');
+              devLog('⚠️ Pas de reconnexion: plus de handlers ou pas d\'uniqueId');
             }
           }, this.reconnectDelay);
         } else if (this.messageHandlers.size > 0 && this.currentUniqueId && !this.shouldReconnect) {
           // Si on a des handlers mais qu'on n'a pas démarré la connexion nous-mêmes,
           // essayer quand même de se reconnecter (le serveur peut être toujours actif)
-          console.log('🔄 Reconnexion pour stream existant...');
+          devLog('🔄 Reconnexion pour stream existant...');
           this.reconnectAttempts = 0; // Réinitialiser les tentatives
           setTimeout(() => {
             if (this.messageHandlers.size > 0 && this.currentUniqueId) {
@@ -408,7 +409,7 @@ class TikTokApiService {
             }
           }, this.reconnectDelay);
         } else {
-          console.log('ℹ️ Pas de reconnexion:', {
+          devLog('ℹ️ Pas de reconnexion:', {
             shouldReconnect: this.shouldReconnect,
             handlers: this.messageHandlers.size,
             uniqueId: this.currentUniqueId,
@@ -452,17 +453,17 @@ class TikTokApiService {
    * S'abonner aux messages
    */
   onMessage(handler: (message: TikTokMessage) => void): () => void {
-    console.log('📝 TikTokApi: Ajout d\'un handler de messages');
+    devLog('📝 TikTokApi: Ajout d\'un handler de messages');
     this.messageHandlers.add(handler);
-    console.log('📝 TikTokApi: Nombre de handlers actifs:', this.messageHandlers.size);
+    devLog('📝 TikTokApi: Nombre de handlers actifs:', this.messageHandlers.size);
     
     // Si on a des messages en buffer, les traiter maintenant
     if (this.messageBuffer.length > 0) {
-      console.log(`📨 TikTokApi: Traitement de ${this.messageBuffer.length} message(s) en buffer`);
+      devLog(`📨 TikTokApi: Traitement de ${this.messageBuffer.length} message(s) en buffer`);
       const bufferedMessages = [...this.messageBuffer];
       this.messageBuffer = []; // Vider le buffer
       bufferedMessages.forEach((msg, index) => {
-        console.log(`📨 TikTokApi: Traitement du message bufferisé ${index + 1}/${bufferedMessages.length}`);
+        devLog(`📨 TikTokApi: Traitement du message bufferisé ${index + 1}/${bufferedMessages.length}`);
         try {
           handler(msg);
         } catch (error) {
@@ -473,29 +474,29 @@ class TikTokApiService {
     
     // Si le WebSocket n'est pas connecté et qu'on a des handlers, se connecter
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.log('📝 TikTokApi: WebSocket non connecté, connexion en cours...');
+      devLog('📝 TikTokApi: WebSocket non connecté, connexion en cours...');
       // Si on n'a pas de currentUniqueId, c'est qu'on se connecte à un stream existant
       if (!this.currentUniqueId) {
         this.shouldReconnect = false;
-        console.log('📝 TikTokApi: Pas de currentUniqueId, pas de reconnexion automatique');
+        devLog('📝 TikTokApi: Pas de currentUniqueId, pas de reconnexion automatique');
       }
       this.connectWebSocket();
     } else {
-      console.log('📝 TikTokApi: WebSocket déjà connecté, handler ajouté');
+      devLog('📝 TikTokApi: WebSocket déjà connecté, handler ajouté');
     }
 
     // Retourner une fonction de désabonnement
     return () => {
-      console.log('📝 TikTokApi: Suppression d\'un handler de messages');
+      devLog('📝 TikTokApi: Suppression d\'un handler de messages');
       this.messageHandlers.delete(handler);
-      console.log('📝 TikTokApi: Nombre de handlers restants:', this.messageHandlers.size);
+      devLog('📝 TikTokApi: Nombre de handlers restants:', this.messageHandlers.size);
       // NE PAS déconnecter automatiquement si on a encore un uniqueId actif
       // Le WebSocket doit rester ouvert tant qu'on écoute un stream
       if (this.messageHandlers.size === 0 && !this.currentUniqueId) {
-        console.log('📝 TikTokApi: Plus aucun handler ET pas d\'uniqueId actif, déconnexion du WebSocket');
+        devLog('📝 TikTokApi: Plus aucun handler ET pas d\'uniqueId actif, déconnexion du WebSocket');
         this.disconnectWebSocket();
       } else if (this.messageHandlers.size === 0) {
-        console.log('📝 TikTokApi: Plus aucun handler mais uniqueId actif, on garde le WebSocket ouvert');
+        devLog('📝 TikTokApi: Plus aucun handler mais uniqueId actif, on garde le WebSocket ouvert');
       }
     };
   }
@@ -504,15 +505,15 @@ class TikTokApiService {
    * Notifier tous les handlers
    */
   private notifyHandlers(message: TikTokMessage): void {
-    console.log('📢 TikTokApi: Notification de', this.messageHandlers.size, 'handler(s) avec message:', message);
+    devLog('📢 TikTokApi: Notification de', this.messageHandlers.size, 'handler(s) avec message:', message);
     if (this.messageHandlers.size === 0) {
-      console.warn('⚠️ TikTokApi: Aucun handler enregistré pour recevoir le message!');
+      devWarn('⚠️ TikTokApi: Aucun handler enregistré pour recevoir le message!');
     }
     let index = 0;
     this.messageHandlers.forEach((handler) => {
       try {
         index++;
-        console.log(`📢 TikTokApi: Appel du handler ${index}/${this.messageHandlers.size}`);
+        devLog(`📢 TikTokApi: Appel du handler ${index}/${this.messageHandlers.size}`);
         handler(message);
       } catch (error) {
         console.error(`❌ TikTokApi: Erreur dans le handler ${index}:`, error);

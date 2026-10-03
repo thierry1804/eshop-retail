@@ -1,20 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { devLog, devWarn } from './lib/devLog';
 import { Navbar } from './components/Layout/Navbar';
 import { LoginForm } from './components/Auth/LoginForm';
-import { Dashboard } from './components/Dashboard/Dashboard';
-import { ClientsList } from './components/Clients/ClientsList';
-import { SalesList } from './components/Sales/SalesList';
-import { TikTokLiveSales } from './components/Sales/TikTokLiveSales';
-import { PaymentsList } from './components/Payments/PaymentsList';
-import { LogsViewer } from './components/Admin/LogsViewer';
-import { ReferentialsManager } from './components/Admin/ReferentialsManager';
-import ExpensesList from './components/Expenses/ExpensesList';
-import { ProductsList } from './components/Stock/ProductsList';
-import { InventoryList } from './components/Stock/InventoryList';
-import { TrackingNumbersList } from './components/Stock/TrackingNumbersList';
-import { DeliveriesList } from './components/Delivery/DeliveriesList';
-import { PurchaseOrdersList } from './components/Supply/PurchaseOrdersList';
-import { CreatePurchaseOrderPage } from './components/Supply/CreatePurchaseOrderPage';
 import { ConfigError } from './components/Debug/ConfigError';
 import { supabase } from './lib/supabase';
 import { User } from './types';
@@ -23,6 +10,65 @@ import { OfflineIndicator } from './components/Offline/OfflineIndicator';
 import { syncManager } from './lib/offline/sync-manager';
 import { useSidebar } from './contexts/SidebarContext';
 import { getPageFromPathname, getPathnameForPage } from './lib/appRoutes';
+
+const Dashboard = lazy(() =>
+  import('./components/Dashboard/Dashboard').then((m) => ({ default: m.Dashboard }))
+);
+const ClientsList = lazy(() =>
+  import('./components/Clients/ClientsList').then((m) => ({ default: m.ClientsList }))
+);
+const SalesList = lazy(() =>
+  import('./components/Sales/SalesList').then((m) => ({ default: m.SalesList }))
+);
+const TikTokLiveSales = lazy(() =>
+  import('./components/Sales/TikTokLiveSales').then((m) => ({ default: m.TikTokLiveSales }))
+);
+const PaymentsList = lazy(() =>
+  import('./components/Payments/PaymentsList').then((m) => ({ default: m.PaymentsList }))
+);
+const LogsViewer = lazy(() =>
+  import('./components/Admin/LogsViewer').then((m) => ({ default: m.LogsViewer }))
+);
+const ReferentialsManager = lazy(() =>
+  import('./components/Admin/ReferentialsManager').then((m) => ({ default: m.ReferentialsManager }))
+);
+const ExpensesList = lazy(() => import('./components/Expenses/ExpensesList'));
+const ProductsList = lazy(() =>
+  import('./components/Stock/ProductsList').then((m) => ({ default: m.ProductsList }))
+);
+const InventoryList = lazy(() =>
+  import('./components/Stock/InventoryList').then((m) => ({ default: m.InventoryList }))
+);
+const TrackingNumbersList = lazy(() =>
+  import('./components/Stock/TrackingNumbersList').then((m) => ({ default: m.TrackingNumbersList }))
+);
+const DeliveriesList = lazy(() =>
+  import('./components/Delivery/DeliveriesList').then((m) => ({ default: m.DeliveriesList }))
+);
+const PurchaseOrdersList = lazy(() =>
+  import('./components/Supply/PurchaseOrdersList').then((m) => ({ default: m.PurchaseOrdersList }))
+);
+const CreatePurchaseOrderPage = lazy(() =>
+  import('./components/Supply/CreatePurchaseOrderPage').then((m) => ({
+    default: m.CreatePurchaseOrderPage,
+  }))
+);
+
+function PageLoadFallback() {
+  return (
+    <div className="flex justify-center py-16">
+      <div
+        className="h-10 w-10 animate-spin rounded-full border-2"
+        style={{
+          borderColor: 'color-mix(in srgb, var(--app-primary) 20%, transparent)',
+          borderBottomColor: 'var(--app-primary)',
+        }}
+        role="status"
+        aria-label="Chargement"
+      />
+    </div>
+  );
+}
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -73,12 +119,12 @@ function App() {
   useEffect(() => {
     // Ne s'exécuter qu'une seule fois
     if (hasInitializedRef.current) {
-      console.log('⚠️ App: Initialisation déjà effectuée, skip');
+      devLog('⚠️ App: Initialisation déjà effectuée, skip');
       return;
     }
     hasInitializedRef.current = true;
 
-    console.log('🚀 App: Initialisation de l\'application');
+    devLog('🚀 App: Initialisation de l\'application');
     const startTime = performance.now();
     
     try {
@@ -90,13 +136,13 @@ function App() {
       
       // Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log(`🔄 App: Événement auth détecté: ${event}`);
+        devLog(`🔄 App: Événement auth détecté: ${event}`);
         
         if (event === 'TOKEN_REFRESHED' && session) {
           // Ignorer silencieusement les rafraîchissements de token trop fréquents
           // Ne mettre à jour que si l'utilisateur n'est pas défini ou si c'est vraiment nécessaire
           if (!user) {
-            console.log('🔄 App: Token rafraîchi, mise à jour de la session (utilisateur manquant)');
+            devLog('🔄 App: Token rafraîchi, mise à jour de la session (utilisateur manquant)');
             const storedUser = localStorage.getItem('user');
             if (storedUser && session.user) {
               try {
@@ -107,7 +153,7 @@ function App() {
                   setUser(parsedUser);
                 }
               } catch (error) {
-                console.warn('⚠️ App: Erreur lors de la mise à jour du localStorage:', error);
+                devWarn('⚠️ App: Erreur lors de la mise à jour du localStorage:', error);
               }
             }
           }
@@ -116,7 +162,7 @@ function App() {
         }
         
         if (event === 'SIGNED_IN' && session) {
-          console.log('👤 App: Utilisateur connecté, récupération du profil...');
+          devLog('👤 App: Utilisateur connecté, récupération du profil...');
           await fetchUserProfile(session.user.id);
           // Synchronisation désactivée pour éviter les requêtes excessives
           // if (navigator.onLine) {
@@ -144,7 +190,7 @@ function App() {
                 ]) as any;
                 
                 if (currentSession && currentSession.user) {
-                  console.log('⚠️ App: Événement SIGNED_OUT reçu mais session toujours valide, ignoré (probable erreur 429)');
+                  devLog('⚠️ App: Événement SIGNED_OUT reçu mais session toujours valide, ignoré (probable erreur 429)');
                   // Remettre l'utilisateur si la session est toujours valide
                   const parsedUser = JSON.parse(storedUser);
                   if (parsedUser.id === currentSession.user.id) {
@@ -154,13 +200,13 @@ function App() {
                 }
               } catch (sessionError) {
                 // En cas d'erreur ou timeout, vérifier le localStorage directement
-                console.warn('⚠️ App: Erreur lors de la vérification de session, vérification du localStorage:', sessionError);
+                devWarn('⚠️ App: Erreur lors de la vérification de session, vérification du localStorage:', sessionError);
                 // Si on a un utilisateur stocké, ne pas déconnecter immédiatement
                 // Attendre un peu plus et réessayer
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 const { data: { session: retrySession } } = await supabase.auth.getSession();
                 if (retrySession && retrySession.user) {
-                  console.log('⚠️ App: Session récupérée après retry, ignoré SIGNED_OUT');
+                  devLog('⚠️ App: Session récupérée après retry, ignoré SIGNED_OUT');
                   const parsedUser = JSON.parse(storedUser);
                   if (parsedUser.id === retrySession.user.id) {
                     setUser(parsedUser);
@@ -169,12 +215,12 @@ function App() {
                 }
               }
             } catch (error) {
-              console.warn('⚠️ App: Erreur lors de la vérification de session:', error);
+              devWarn('⚠️ App: Erreur lors de la vérification de session:', error);
               // En cas d'erreur, ne pas déconnecter immédiatement, attendre un peu
               await new Promise(resolve => setTimeout(resolve, 1000));
               const { data: { session: finalSession } } = await supabase.auth.getSession();
               if (finalSession && finalSession.user) {
-                console.log('⚠️ App: Session récupérée après erreur, ignoré SIGNED_OUT');
+                devLog('⚠️ App: Session récupérée après erreur, ignoré SIGNED_OUT');
                 const parsedUser = JSON.parse(storedUser);
                 if (parsedUser.id === finalSession.user.id) {
                   setUser(parsedUser);
@@ -184,7 +230,7 @@ function App() {
             }
           }
           
-          console.log('👋 App: Utilisateur déconnecté');
+          devLog('👋 App: Utilisateur déconnecté');
           setUser(null);
           localStorage.removeItem('user');
           syncManager.stopAutoSync();
@@ -192,7 +238,7 @@ function App() {
       });
 
       const endTime = performance.now();
-      console.log(`⏱️ App: Initialisation terminée en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`⏱️ App: Initialisation terminée en ${(endTime - startTime).toFixed(2)}ms`);
 
       return () => {
         subscription.unsubscribe();
@@ -206,7 +252,7 @@ function App() {
   }, []);
 
   const checkAuth = async () => {
-    console.log('🔍 App: Vérification de l\'authentification...');
+    devLog('🔍 App: Vérification de l\'authentification...');
     const startTime = performance.now();
     
     try {
@@ -223,22 +269,22 @@ function App() {
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          console.log('🔄 App: Utilisateur trouvé dans le localStorage, vérification de la session...');
+          devLog('🔄 App: Utilisateur trouvé dans le localStorage, vérification de la session...');
 
           // Vérifier que la session est toujours valide
           const { data: { session }, error } = await supabase.auth.getSession();
 
           if (session && session.user.id === parsedUser.id) {
-            console.log('✅ App: Session valide trouvée, restauration de l\'utilisateur');
+            devLog('✅ App: Session valide trouvée, restauration de l\'utilisateur');
             setUser(parsedUser);
             setLoading(false);
             return;
           } else {
-            console.log('⚠️ App: Session expirée, nettoyage du localStorage');
+            devLog('⚠️ App: Session expirée, nettoyage du localStorage');
             localStorage.removeItem('user');
           }
         } catch (error) {
-          console.warn('⚠️ App: Erreur lors de la lecture du localStorage:', error);
+          devWarn('⚠️ App: Erreur lors de la lecture du localStorage:', error);
           localStorage.removeItem('user');
         }
       }
@@ -252,13 +298,13 @@ function App() {
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       
       if (error) {
-        console.warn('⚠️ App: Erreur lors de la récupération de session:', error);
+        devWarn('⚠️ App: Erreur lors de la récupération de session:', error);
         setLoading(false);
         return;
       }
       
       if (session) {
-        console.log('✅ App: Session trouvée, récupération du profil utilisateur...');
+        devLog('✅ App: Session trouvée, récupération du profil utilisateur...');
         // Vérifier si la session est expirée ou proche de l'expiration
         const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
         const now = Date.now();
@@ -266,38 +312,38 @@ function App() {
         
         // Si la session expire dans moins de 5 minutes, essayer de la rafraîchir
         if (timeUntilExpiry < 300000 && timeUntilExpiry > 0) {
-          console.log('🔄 App: Session expire bientôt, tentative de rafraîchissement...');
+          devLog('🔄 App: Session expire bientôt, tentative de rafraîchissement...');
           try {
             const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshedSession && !refreshError) {
-              console.log('✅ App: Session rafraîchie avec succès');
+              devLog('✅ App: Session rafraîchie avec succès');
               await fetchUserProfile(refreshedSession.user.id);
             } else {
-              console.log('⚠️ App: Impossible de rafraîchir la session, utilisation de la session actuelle');
+              devLog('⚠️ App: Impossible de rafraîchir la session, utilisation de la session actuelle');
               await fetchUserProfile(session.user.id);
             }
           } catch (refreshError) {
-            console.warn('⚠️ App: Erreur lors du rafraîchissement, utilisation de la session actuelle:', refreshError);
+            devWarn('⚠️ App: Erreur lors du rafraîchissement, utilisation de la session actuelle:', refreshError);
             await fetchUserProfile(session.user.id);
           }
         } else {
           await fetchUserProfile(session.user.id);
         }
       } else {
-        console.log('❌ App: Aucune session trouvée');
+        devLog('❌ App: Aucune session trouvée');
         setLoading(false);
       }
     } catch (error) {
-      console.warn('⚠️ App: Erreur lors de la vérification auth:', error);
+      devWarn('⚠️ App: Erreur lors de la vérification auth:', error);
       setLoading(false);
     } finally {
       const endTime = performance.now();
-      console.log(`⏱️ App: Vérification auth terminée en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`⏱️ App: Vérification auth terminée en ${(endTime - startTime).toFixed(2)}ms`);
     }
   };
 
   const fetchUserProfile = async (userId: string) => {
-    console.log('👤 App: Récupération du profil utilisateur...');
+    devLog('👤 App: Récupération du profil utilisateur...');
     const startTime = performance.now();
     
     try {
@@ -309,15 +355,15 @@ function App() {
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       const authUser = session?.user;
-      console.log('👤 App: Utilisateur connecté:', authUser?.email);
+      devLog('👤 App: Utilisateur connecté:', authUser?.email);
 
       if (error) {
-        console.warn('⚠️ App: Erreur lors de la récupération de l\'utilisateur:', error);
+        devWarn('⚠️ App: Erreur lors de la récupération de l\'utilisateur:', error);
         throw new Error('Erreur de session');
       }
 
       if (!authUser) {
-        console.warn('⚠️ App: Aucun utilisateur trouvé dans la session');
+        devWarn('⚠️ App: Aucun utilisateur trouvé dans la session');
         throw new Error('Aucune session utilisateur');
       }
 
@@ -341,7 +387,7 @@ function App() {
         created_at: new Date().toISOString(),
       };
 
-      console.log('✅ App: Profil utilisateur créé:', userProfile.name, 'Rôle:', userProfile.role);
+      devLog('✅ App: Profil utilisateur créé:', userProfile.name, 'Rôle:', userProfile.role);
 
       // Sauvegarder dans le localStorage pour la persistance
       localStorage.setItem('user', JSON.stringify(userProfile));
@@ -356,12 +402,12 @@ function App() {
       setLoading(false);
 
     } catch (error) {
-      console.warn('⚠️ App: Erreur lors de la récupération du profil:', error.message);
+      devWarn('⚠️ App: Erreur lors de la récupération du profil:', error.message);
       setLoading(false);
     }
     
     const endTime = performance.now();
-    console.log(`⏱️ App: Récupération profil terminée en ${(endTime - startTime).toFixed(2)}ms`);
+    devLog(`⏱️ App: Récupération profil terminée en ${(endTime - startTime).toFixed(2)}ms`);
   };
 
   const handleLogout = async () => {
@@ -376,7 +422,7 @@ function App() {
       setUser(null);
       setCurrentPage('dashboard');
 
-      console.log('✅ App: Déconnexion réussie');
+      devLog('✅ App: Déconnexion réussie');
     } catch (error) {
       console.error('❌ App: Erreur lors de la déconnexion:', error);
     }
@@ -476,28 +522,30 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--app-canvas)' }}>
+        <PageLoadFallback />
       </div>
     );
   }
 
   if (!user) {
     // Forcer la connexion si aucun utilisateur
-    console.log('🔐 App: Aucun utilisateur connecté, affichage du formulaire de connexion');
+    devLog('🔐 App: Aucun utilisateur connecté, affichage du formulaire de connexion');
     return <LoginForm onLogin={checkAuth} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen app-main">
       <Navbar user={user} currentPage={currentPage} onPageChange={(page) => {
         // Logger le changement de page
         logger.logNavigation(currentPage, page);
         setCurrentPage(page);
       }} onLogout={handleLogout} />
-      <main className={`transition-all duration-300 ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 pt-16 md:pt-6 pb-3 sm:pb-4 md:pb-6">
-          {renderCurrentPage()}
+      <main className={`app-main transition-all duration-200 ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-14 md:pt-4 pb-4 md:pb-6">
+          <Suspense fallback={<PageLoadFallback />}>
+            {renderCurrentPage()}
+          </Suspense>
         </div>
       </main>
       <OfflineIndicator />

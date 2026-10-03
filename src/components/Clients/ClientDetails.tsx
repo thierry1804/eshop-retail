@@ -3,6 +3,8 @@ import { X, Download, Calendar, CreditCard, TrendingUp, Phone, MapPin, Video } f
 import { supabase } from '../../lib/supabase';
 import { Client, Sale, Payment } from '../../types';
 import jsPDF from 'jspdf';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody } from '../ui/Offcanvas';
+import { formatDateDisplay, formatDateTimeDisplay } from '../../lib/dateUtils';
 
 interface ClientDetailsProps {
   client: Client;
@@ -135,9 +137,9 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
     if (client.tiktok_id || client.tiktok_nick_name) {
       const tiktokInfo = client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id;
       doc.text(`TikTok: ${tiktokInfo}`, 20, 65);
-      doc.text(`Date d'édition: ${new Date().toLocaleDateString('fr-FR')}`, 20, 75);
+      doc.text(`Date d'édition: ${formatDateDisplay(new Date())}`, 20, 75);
     } else {
-      doc.text(`Date d'édition: ${new Date().toLocaleDateString('fr-FR')}`, 20, 65);
+      doc.text(`Date d'édition: ${formatDateDisplay(new Date())}`, 20, 65);
     }
     
     // Summary
@@ -157,7 +159,7 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
         yPosition = 20;
       }
       
-      const date = new Date(activity.date).toLocaleDateString('fr-FR');
+      const date = formatDateDisplay(activity.date);
       const type = activity.type === 'sale' ? 'VENTE' : 'PAIEMENT';
       const amount = formatCurrency(Math.abs(activity.amount));
       const balance = formatCurrency(activity.balance);
@@ -174,30 +176,30 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
   const getTrustRatingDisplay = (rating: string) => {
     switch (rating) {
       case 'good':
-        return { label: '✅ Bon payeur', className: 'text-green-600 bg-green-100' };
+        return { label: '✅ Bon payeur', className: 'app-badge app-badge-success' };
       case 'average':
         return { label: '⚠️ Payeur moyen', className: 'text-yellow-600 bg-yellow-100' };
       case 'poor':
-        return { label: '❌ Mauvais payeur', className: 'text-red-600 bg-red-100' };
+        return { label: '❌ Mauvais payeur', className: 'app-badge app-badge-danger' };
       default:
-        return { label: 'Non évalué', className: 'text-gray-600 bg-gray-100' };
+        return { label: 'Non évalué', className: 'app-badge' };
     }
   };
 
   const trustDisplay = getTrustRatingDisplay(client.trust_rating);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-4 sm:p-6 border-b border-gray-200">
+    <Offcanvas onClose={onClose} width="lg">
+        <OffcanvasHeader>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
           <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-bold text-base sm:text-lg">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))] flex items-center justify-center flex-shrink-0">
+              <span className="app-text-link font-bold text-base sm:text-lg">
                 {client.first_name[0]}{client.last_name[0]}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+              <h2 className="text-lg sm:text-xl font-semibold app-text truncate">
                 {client.first_name} {client.last_name}
               </h2>
               <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${trustDisplay.className}`}>
@@ -216,59 +218,60 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              className="app-text-muted hover:app-text-muted transition-colors flex-shrink-0"
             >
               <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>
         </div>
+        </OffcanvasHeader>
 
-        <div className="p-3 sm:p-4 md:p-6">
+        <OffcanvasBody>
           {/* Client Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Phone size={18} className="text-gray-400" />
-                <span className="text-gray-900">{client.phone}</span>
+                <Phone size={18} className="app-text-muted" />
+                <span className="app-text">{client.phone}</span>
               </div>
               <div className="flex items-start space-x-2">
-                <MapPin size={18} className="text-gray-400 mt-0.5" />
-                <span className="text-gray-900">{client.address}</span>
+                <MapPin size={18} className="app-text-muted mt-0.5" />
+                <span className="app-text">{client.address}</span>
               </div>
               {(client.tiktok_id || client.tiktok_nick_name) && (
                 <div className="flex items-center space-x-2">
-                  <Video size={18} className="text-gray-400" />
-                  <span className="text-gray-900">
+                  <Video size={18} className="app-text-muted" />
+                  <span className="app-text">
                     {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
                   </span>
                 </div>
               )}
               {client.notes && (
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-700">{client.notes}</p>
+                <div className="app-bg-muted p-3 rounded-md">
+                  <p className="text-sm app-text-muted">{client.notes}</p>
                 </div>
               )}
             </div>
 
             {/* Financial Summary */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Résumé Financier</h3>
+            <div className="app-surface p-4">
+              <h3 className="text-lg font-semibold app-text mb-3">Résumé Financier</h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total des achats:</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(stats.totalPurchases)}</span>
+                  <span className="app-text-muted">Total des achats:</span>
+                  <span className="font-semibold app-text">{formatCurrency(stats.totalPurchases)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total des acomptes:</span>
-                  <span className="font-semibold text-blue-600">{formatCurrency(stats.totalDeposits)}</span>
+                  <span className="app-text-muted">Total des acomptes:</span>
+                  <span className="font-semibold app-text-link">{formatCurrency(stats.totalDeposits)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total des paiements:</span>
-                  <span className="font-semibold text-green-600">{formatCurrency(stats.totalPayments)}</span>
+                  <span className="app-text-muted">Total des paiements:</span>
+                  <span className="font-semibold app-text-success">{formatCurrency(stats.totalPayments)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
-                  <span className="text-gray-600 font-medium">Solde restant:</span>
-                  <span className={`font-bold ${stats.outstandingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  <span className="app-text-muted font-medium">Solde restant:</span>
+                  <span className={`font-bold ${stats.outstandingBalance > 0 ? 'app-text-danger' : 'app-text-success'}`}>
                     {formatCurrency(stats.outstandingBalance)}
                   </span>
                 </div>
@@ -278,45 +281,45 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
 
           {/* Activities */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Historique des Opérations</h3>
+            <h3 className="text-lg font-semibold app-text mb-4">Historique des Opérations</h3>
             
             {loading ? (
               <div className="animate-pulse space-y-3">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-16 app-bg-muted rounded"></div>
                 ))}
               </div>
             ) : activities.length > 0 ? (
               <div className="space-y-3">
                 {activities.map((activity) => (
-                  <div key={activity.id} className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                  <div key={activity.id} className="app-bg-muted p-4 rounded-lg border-l-4 border-[var(--app-primary)]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className={`p-2 rounded-full ${
-                          activity.type === 'sale' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                          activity.type === 'sale' ? 'app-badge app-badge-info' : 'app-badge app-badge-success'
                         }`}>
                           {activity.type === 'sale' ? <TrendingUp size={16} /> : <CreditCard size={16} />}
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <Calendar size={14} className="text-gray-400" />
-                            <span className="text-sm text-gray-600">
-                              {new Date(activity.date).toLocaleDateString('fr-FR')} à {new Date(activity.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            <Calendar size={14} className="app-text-muted" />
+                            <span className="text-sm app-text-muted">
+                              {formatDateTimeDisplay(activity.date)}
                             </span>
                           </div>
-                          <p className="font-medium text-gray-900">{activity.description}</p>
+                          <p className="font-medium app-text">{activity.description}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-semibold ${activity.amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        <p className={`font-semibold ${activity.amount > 0 ? 'app-text-danger' : 'app-text-success'}`}>
                           {activity.amount > 0 ? '+' : ''}{formatCurrency(activity.amount)}
                         </p>
                         {activity.type === 'sale' && activity.deposit && activity.deposit > 0 && (
-                          <p className="text-sm text-blue-600">
+                          <p className="text-sm app-text-link">
                             Acompte: {formatCurrency(activity.deposit)}
                           </p>
                         )}
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm app-text-muted">
                           Solde: {formatCurrency(activity.balance)}
                         </p>
                       </div>
@@ -326,12 +329,11 @@ export const ClientDetails: React.FC<ClientDetailsProps> = ({ client, onClose })
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">Aucune activité trouvée pour ce client</p>
+                <p className="app-text-muted">Aucune activité trouvée pour ce client</p>
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+        </OffcanvasBody>
+    </Offcanvas>
   );
 };

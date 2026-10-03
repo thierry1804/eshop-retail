@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { Client } from '../../types';
 import { logger } from '../../lib/logger';
 import { findClientByPhone } from '../../lib/clientUtils';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface ClientFormProps {
   client?: Client;
@@ -36,10 +37,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
       const { data: { user } } = await supabase.auth.getUser();
       
       if (client) {
-        // Logger l'action de mise à jour
         await logger.logCRUDAction('UPDATE', 'clients', client.id, formData);
 
-        // Update existing client
         const { error } = await supabase
           .from('clients')
           .update({
@@ -50,10 +49,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
         
         if (error) throw error;
 
-        // Logger le succès de la mise à jour
         await logger.logFormSubmit('ClientForm', formData, true);
       } else {
-        // Vérifier si un client avec ce numéro de téléphone existe déjà
         const existingClient = await findClientByPhone(formData.phone);
         
         if (existingClient) {
@@ -62,10 +59,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
           return;
         }
 
-        // Logger l'action de création
         await logger.logCRUDAction('CREATE', 'clients', 'new', formData);
 
-        // Create new client
         const { error } = await supabase
           .from('clients')
           .insert({
@@ -75,13 +70,11 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
         
         if (error) throw error;
 
-        // Logger le succès de la création
         await logger.logFormSubmit('ClientForm', formData, true);
       }
       
       onSubmit();
     } catch (error: any) {
-      // Logger l'erreur
       await logger.logError(error, 'ClientForm.handleSubmit');
       await logger.logFormSubmit('ClientForm', formData, false);
       setError(t('clients.saveError') + ': ' + error.message);
@@ -91,167 +84,176 @@ export const ClientForm: React.FC<ClientFormProps> = ({ client, onClose, onSubmi
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
-        {/* En-tête fixe */}
-        <div className="flex items-center justify-between p-3 sm:p-4 md:p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center space-x-2 min-w-0">
-            <User className="text-blue-600 flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />
-            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
+    <Offcanvas onClose={onClose} width="md">
+      <OffcanvasHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <User className="app-text-link flex-shrink-0 h-5 w-5" />
+            <h2 className="text-lg font-semibold app-text truncate">
               {client ? t('clients.editClient') : t('clients.newClient')}
             </h2>
           </div>
           <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
-          >
-            <X size={20} className="sm:w-6 sm:h-6" />
-          </button>
-        </div>
-
-        {/* Zone de contenu scrollable */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md text-xs sm:text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('clients.form.firstName')} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                  placeholder={t('clients.form.firstNamePlaceholder')}
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('clients.form.lastName')} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                  placeholder={t('clients.form.lastNamePlaceholder')}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                {t('clients.form.phone')} *
-              </label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                placeholder={t('clients.form.phonePlaceholder')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                {t('clients.form.address')} *
-              </label>
-              <textarea
-                required
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                placeholder={t('clients.form.addressPlaceholder')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                {t('clients.form.trustRating')}
-              </label>
-              <select
-                value={formData.trust_rating}
-                onChange={(e) => setFormData({ ...formData, trust_rating: e.target.value as any })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-              >
-                <option value="good">✅ {t('common.goodPayer')}</option>
-                <option value="average">⚠️ {t('common.averagePayer')}</option>
-                <option value="poor">❌ {t('common.poorPayer')}</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                {t('clients.form.notes')}
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                placeholder={t('clients.form.notesPlaceholder')}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('clients.form.tiktokId')}
-                </label>
-                <input
-                  type="text"
-                  value={formData.tiktok_id}
-                  onChange={(e) => setFormData({ ...formData, tiktok_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                  placeholder={t('clients.form.tiktokIdPlaceholder')}
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('clients.form.tiktokNickName')}
-                </label>
-                <input
-                  type="text"
-                  value={formData.tiktok_nick_name}
-                  onChange={(e) => setFormData({ ...formData, tiktok_nick_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                  placeholder={t('clients.form.tiktokNickNamePlaceholder')}
-                />
-              </div>
-            </div>
-          </form>
-        </div>
-
-        {/* Pied de page fixe avec boutons */}
-        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 p-3 sm:p-4 md:p-6 border-t border-gray-200 flex-shrink-0">
-          <button
             type="button"
             onClick={onClose}
-            className="w-full sm:flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
+            className="app-icon-btn flex-shrink-0"
+            aria-label="Fermer"
           >
-            {t('app.cancel')}
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full sm:flex-1 flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm sm:text-base"
-          >
-            <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
-            <span>{loading ? t('clients.saving') : t('app.save')}</span>
+            <X className="h-5 w-5" />
           </button>
         </div>
-      </div>
-    </div>
+      </OffcanvasHeader>
+
+      <form id="client-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="space-y-3">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="client-first_name" className="app-label">
+                {t('clients.form.firstName')} *
+              </label>
+              <input
+                id="client-first_name"
+                type="text"
+                required
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                className="app-input"
+                placeholder={t('clients.form.firstNamePlaceholder')}
+              />
+            </div>
+            <div>
+              <label htmlFor="client-last_name" className="app-label">
+                {t('clients.form.lastName')} *
+              </label>
+              <input
+                id="client-last_name"
+                type="text"
+                required
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                className="app-input"
+                placeholder={t('clients.form.lastNamePlaceholder')}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="client-phone" className="app-label">
+              {t('clients.form.phone')} *
+            </label>
+            <input
+              id="client-phone"
+              type="tel"
+              required
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="app-input"
+              placeholder={t('clients.form.phonePlaceholder')}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="client-address" className="app-label">
+              {t('clients.form.address')} *
+            </label>
+            <textarea
+              id="client-address"
+              required
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              rows={3}
+              className="app-input"
+              placeholder={t('clients.form.addressPlaceholder')}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="client-trust_rating" className="app-label">
+              {t('clients.form.trustRating')}
+            </label>
+            <select
+              id="client-trust_rating"
+              value={formData.trust_rating}
+              onChange={(e) => setFormData({ ...formData, trust_rating: e.target.value as any })}
+              className="app-input"
+            >
+              <option value="good">✅ {t('common.goodPayer')}</option>
+              <option value="average">⚠️ {t('common.averagePayer')}</option>
+              <option value="poor">❌ {t('common.poorPayer')}</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="client-notes" className="app-label">
+              {t('clients.form.notes')}
+            </label>
+            <textarea
+              id="client-notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={3}
+              className="app-input"
+              placeholder={t('clients.form.notesPlaceholder')}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="client-tiktok_id" className="app-label">
+                {t('clients.form.tiktokId')}
+              </label>
+              <input
+                id="client-tiktok_id"
+                type="text"
+                value={formData.tiktok_id}
+                onChange={(e) => setFormData({ ...formData, tiktok_id: e.target.value })}
+                className="app-input"
+                placeholder={t('clients.form.tiktokIdPlaceholder')}
+              />
+            </div>
+            <div>
+              <label htmlFor="client-tiktok_nick_name" className="app-label">
+                {t('clients.form.tiktokNickName')}
+              </label>
+              <input
+                id="client-tiktok_nick_name"
+                type="text"
+                value={formData.tiktok_nick_name}
+                onChange={(e) => setFormData({ ...formData, tiktok_nick_name: e.target.value })}
+                className="app-input"
+                placeholder={t('clients.form.tiktokNickNamePlaceholder')}
+              />
+            </div>
+          </div>
+        </OffcanvasBody>
+
+        <OffcanvasFooter>
+          <div className="app-actions flex-col-reverse sm:flex-row w-full">
+            <button
+              type="button"
+              onClick={onClose}
+              className="app-btn app-btn-secondary w-full sm:flex-1 app-btn-sm"
+            >
+              {t('app.cancel')}
+            </button>
+            <button
+              type="submit"
+              form="client-form"
+              disabled={loading}
+              className="app-btn app-btn-primary w-full sm:flex-1 app-btn-sm"
+            >
+              <Save className="h-4 w-4" />
+              <span>{loading ? t('clients.saving') : t('app.save')}</span>
+            </button>
+          </div>
+        </OffcanvasFooter>
+      </form>
+    </Offcanvas>
   );
 };

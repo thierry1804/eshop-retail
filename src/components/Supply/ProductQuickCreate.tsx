@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 import { Product, Category, User } from '../../types';
 import { X, Package, Plus, ChevronDown, ChevronUp, Upload, Image as ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -286,40 +286,30 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
     }
   };
 
-  const overlayContent = (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-[60] transition-opacity"
-        style={{ top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: 0 }}
-        onClick={onClose}
-      />
-
-      {/* Offcanvas */}
-      <div 
-        className="fixed top-0 right-0 bottom-0 w-full max-w-4xl bg-white shadow-xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col"
-        style={{ top: 0, right: 0, margin: 0, padding: 0 }}
-      >
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 border-b bg-gray-50 flex-shrink-0">
+  return (
+    <Offcanvas onClose={onClose} width="xl" ariaLabel={t('supply.createProduct')}>
+      <OffcanvasHeader>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
           <h3 className="text-lg sm:text-xl font-bold flex items-center min-w-0 flex-1">
-            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-600 flex-shrink-0" />
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 app-text-link flex-shrink-0" />
             <span className="truncate">{t('supply.createProduct')}</span>
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            className="app-icon-btn flex-shrink-0"
+            aria-label={t('app.cancel')}
           >
-            <X className="h-5 w-5 sm:h-6 sm:w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
+      </OffcanvasHeader>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          <form onSubmit={handleSubmit} id="product-form" className="space-y-6">
+      <form id="product-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="md:p-6 space-y-6">
             {/* Section: Informations de base */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide border-b pb-2">
+              <h4 className="text-sm font-semibold app-text uppercase tracking-wide border-b pb-2">
                 Informations de base
               </h4>
 
@@ -327,7 +317,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                 {/* Nom et SKU sur la même ligne */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="app-label">
                       {t('supply.productName')} *
                     </label>
                     <input
@@ -345,13 +335,13 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                           }
                         }
                       }}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="app-input"
                       placeholder="Nom du produit"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="app-label">
                       {t('supply.sku')}
                     </label>
                     <div className="relative">
@@ -359,16 +349,16 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                         type="text"
                         value={formData.sku}
                         onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="app-input"
                         placeholder="SKU (généré automatiquement)"
                       />
                       {isGeneratingSku && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--app-primary)]"></div>
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs app-text-muted mt-1">
                       {t('supply.skuAutoGenerated')}
                     </p>
                   </div>
@@ -376,13 +366,13 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
 
                 {/* Description - optionnelle */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-label">
                     {t('supply.description')}
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="app-input"
                     rows={3}
                     placeholder="Description du produit (optionnel)"
                   />
@@ -390,7 +380,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
 
                 {/* Upload d'image */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-label">
                     Photo du produit
                   </label>
                   <div className="space-y-3">
@@ -399,7 +389,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                         <img
                           src={imagePreview}
                           alt="Aperçu"
-                          className="w-full h-48 object-cover rounded-md border border-gray-300"
+                          className="w-full h-48 object-cover rounded-md border app-border"
                         />
                         <button
                           type="button"
@@ -413,13 +403,13 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                     ) : (
                       <div
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                        className="border-2 border-dashed border-[var(--app-border)] rounded-md p-6 text-center cursor-pointer hover:border-[var(--app-primary)] hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] transition-colors"
                       >
-                        <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-600 mb-1">
+                        <ImageIcon className="h-12 w-12 mx-auto app-text-muted mb-2" />
+                        <p className="text-sm app-text-muted mb-1">
                           Cliquez pour ajouter une photo
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs app-text-muted">
                           PNG, JPG jusqu'à 5MB
                         </p>
                       </div>
@@ -435,7 +425,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
+                        className="w-full app-badge px-4 py-2 rounded-md hover:bg-[var(--app-surface-muted)] flex items-center justify-center gap-2 transition-colors"
                       >
                         <Upload className="h-4 w-4" />
                         Choisir une image
@@ -450,13 +440,13 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-label">
                     {t('supply.unit')}
                   </label>
                   <select
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="app-input"
                   >
                     <option value="pièce">Pièce</option>
                     <option value="kg">Kilogramme</option>
@@ -475,7 +465,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
 
                 {/* Catégorie - obligatoire */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="app-label">
                     {t('supply.category')} *
                   </label>
                   <div className="flex gap-2">
@@ -483,7 +473,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                       required
                       value={formData.category_id}
                       onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                      className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="app-input flex-1"
                     >
                       <option value="">{t('supply.selectCategory')} *</option>
                       {categories.map(category => (
@@ -510,7 +500,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
               <button
                 type="button"
                 onClick={() => setShowAdvancedFields(!showAdvancedFields)}
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                className="flex items-center gap-2 text-sm app-text-muted hover:text-[var(--app-ink)]"
               >
                 {showAdvancedFields ? (
                   <>
@@ -526,17 +516,17 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
               </button>
 
               {showAdvancedFields && (
-                <div className="mt-4 space-y-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 space-y-4 pt-4 border-t border-[var(--app-border)]">
                   {/* Fournisseur - pré-rempli si disponible */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="app-label">
                       {t('supply.supplier')}
                     </label>
                     <div className="flex gap-2">
                       <select
                         value={formData.supplier_id}
                         onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="app-input flex-1"
                       >
                         <option value="">{t('supply.selectSupplier')}</option>
                         {suppliers.map(supplier => (
@@ -558,7 +548,7 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
 
                   {/* Stock minimum */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="app-label">
                       {t('supply.minStock')}
                     </label>
                     <input
@@ -567,53 +557,49 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
                       value={formData.min_stock_level}
                       onChange={(e) => setFormData({ ...formData, min_stock_level: parseInt(e.target.value) || 0 })}
                       onFocus={(e) => e.target.select()}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="app-input"
                     />
                   </div>
 
                   {/* Code-barres */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="app-label">
                       {t('supply.barcode')}
                     </label>
                     <input
                       type="text"
                       value={formData.barcode}
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="app-input"
                       placeholder="Code-barres (optionnel)"
                     />
                   </div>
                 </div>
               )}
             </div>
-          </form>
-        </div>
+        </OffcanvasBody>
 
-        {/* Footer avec boutons */}
-        <div className="border-t bg-white p-6 flex-shrink-0">
-          <div className="flex justify-end space-x-3">
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
-              form="product-form"
               disabled={loading || uploadingImage}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+              className="app-btn app-btn-primary"
             >
               <Plus className="h-4 w-4" />
               {loading || uploadingImage ? (uploadingImage ? 'Upload de l\'image...' : t('app.creating')) : t('supply.createProduct')}
             </button>
           </div>
-        </div>
-      </div>
+        </OffcanvasFooter>
+      </form>
 
-      {/* Modal de création rapide de catégorie */}
       {showCategoryCreate && (
         <CategoryQuickCreate
           onClose={() => setShowCategoryCreate(false)}
@@ -622,7 +608,6 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
         />
       )}
 
-      {/* Modal de création rapide de fournisseur */}
       {showSupplierCreate && (
         <SupplierQuickCreate
           onClose={() => setShowSupplierCreate(false)}
@@ -630,8 +615,6 @@ export const ProductQuickCreate: React.FC<ProductQuickCreateProps> = ({ onClose,
           user={user}
         />
       )}
-    </>
+    </Offcanvas>
   );
-
-  return createPortal(overlayContent, document.body);
 };

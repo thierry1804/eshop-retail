@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { devLog, devWarn } from '../devLog';
 import { getQueue, removeFromQueue, incrementQueueRetries, clearCache, cacheData } from './db';
 
 export interface SyncResult {
@@ -15,7 +16,7 @@ export const syncQueue = async (): Promise<SyncResult> => {
     errors: []
   };
 
-  console.log(`🔄 Sync: ${queue.length} actions en attente de synchronisation`);
+  devLog(`🔄 Sync: ${queue.length} actions en attente de synchronisation`);
 
   for (const item of queue) {
     try {
@@ -58,7 +59,7 @@ export const syncQueue = async (): Promise<SyncResult> => {
 
       await removeFromQueue(item.id);
       result.success++;
-      console.log(`✅ Sync: Action ${item.action} sur ${item.table} synchronisée`);
+      devLog(`✅ Sync: Action ${item.action} sur ${item.table} synchronisée`);
     } catch (error: any) {
       console.error(`❌ Sync: Erreur lors de la synchronisation de l'action ${item.id}:`, error);
       
@@ -69,7 +70,7 @@ export const syncQueue = async (): Promise<SyncResult> => {
       const updatedItem = await getQueue().then(q => q.find(i => i.id === item.id));
       if (updatedItem && updatedItem.retries >= 5) {
         await removeFromQueue(item.id);
-        console.warn(`⚠️ Sync: Action ${item.id} retirée après 5 tentatives`);
+        devWarn(`⚠️ Sync: Action ${item.id} retirée après 5 tentatives`);
       }
 
       result.failed++;
@@ -80,12 +81,12 @@ export const syncQueue = async (): Promise<SyncResult> => {
     }
   }
 
-  console.log(`✅ Sync: Synchronisation terminée - ${result.success} réussies, ${result.failed} échouées`);
+  devLog(`✅ Sync: Synchronisation terminée - ${result.success} réussies, ${result.failed} échouées`);
   return result;
 };
 
 export const syncTable = async (table: string): Promise<void> => {
-  console.log(`🔄 Sync: Synchronisation de la table ${table}...`);
+  devLog(`🔄 Sync: Synchronisation de la table ${table}...`);
   
   try {
     // Récupérer les données depuis Supabase
@@ -105,7 +106,7 @@ export const syncTable = async (table: string): Promise<void> => {
       await cacheData(table, item.id, item);
     }
 
-    console.log(`✅ Sync: Table ${table} synchronisée (${data?.length || 0} enregistrements)`);
+    devLog(`✅ Sync: Table ${table} synchronisée (${data?.length || 0} enregistrements)`);
   } catch (error) {
     console.error(`❌ Sync: Erreur lors de la synchronisation de ${table}:`, error);
     throw error;

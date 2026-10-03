@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, PurchaseOrderItem, ReceiptItem, User } from '../../types';
 import { X, Package, Calendar, CheckCircle, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface ReceiptFormProps {
   purchaseOrder: PurchaseOrder;
@@ -363,35 +364,37 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
 
   if (itemsLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <Offcanvas onClose={onClose} width="lg">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)]"></div>
         </div>
-      </div>
+      </Offcanvas>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 border-b">
+    <Offcanvas onClose={onClose} width="lg">
+        <OffcanvasHeader>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg sm:text-xl font-bold truncate">{t('supply.createReceipt')}</h2>
-            <p className="text-sm sm:text-base text-gray-600 truncate">{purchaseOrder.order_number}</p>
+            <h2 className="text-lg font-semibold truncate">{t('supply.createReceipt')}</h2>
+            <p className="text-xs app-text-muted truncate">{purchaseOrder.order_number}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+            className="app-text-muted hover:text-[var(--app-ink-muted)] flex-shrink-0"
           >
             <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
+        </OffcanvasHeader>
 
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 md:p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody>
           {/* Informations générales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.receiptDate')}
               </label>
               <input
@@ -399,22 +402,22 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                 required
                 value={formData.receipt_date}
                 onChange={(e) => setFormData({...formData, receipt_date: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.supplier')}
               </label>
-              <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+              <div className="text-sm app-text app-bg-muted p-3 rounded-md">
                 {purchaseOrder.supplier_name || t('supply.noSupplier')}
               </div>
             </div>
 
             {purchaseOrder.currency !== 'MGA' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="app-label">
                   {t('supply.exchangeRateMGA')} ({purchaseOrder.currency} → MGA)
                 </label>
                 <input
@@ -424,10 +427,10 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                   value={formData.exchange_rate_mga || ''}
                   onChange={(e) => setFormData({...formData, exchange_rate_mga: e.target.value ? parseFloat(e.target.value) : undefined})}
                   onFocus={(e) => e.target.select()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="app-input"
                   placeholder={`Taux de change ${purchaseOrder.currency} vers MGA`}
                 />
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs app-text-muted mt-1">
                   Taux de change {purchaseOrder.currency} vers MGA
                 </div>
               </div>
@@ -435,13 +438,13 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="app-label">
               {t('supply.notes')}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="app-input"
               rows={3}
             />
           </div>
@@ -451,33 +454,33 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
             <h3 className="text-lg font-semibold mb-4">{t('supply.itemsToReceive')}</h3>
 
             {receiptItems.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 app-text-muted">
+                <Package className="h-12 w-12 mx-auto mb-2 app-text-muted opacity-60" />
                 <p>{t('supply.noItemsToReceive')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-50">
+                <table className="app-table-striped min-w-full divide-y divide-[var(--app-border)] border app-border rounded-lg">
+                  <thead className="app-bg-muted">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left app-label uppercase tracking-wider">
                         {t('supply.product')}
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-center app-label uppercase tracking-wider">
                         {t('supply.quantityReceived')}
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left app-label uppercase tracking-wider">
                         {t('supply.unitPrice')} {purchaseOrder.currency !== 'MGA' && formData.exchange_rate_mga ? '(MGA)' : `(${purchaseOrder.currency})`}
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right app-label uppercase tracking-wider">
                         {t('supply.total')} {purchaseOrder.currency !== 'MGA' && formData.exchange_rate_mga ? '(MGA)' : `(${purchaseOrder.currency})`}
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-16">
+                      <th className="px-4 py-3 text-center app-label uppercase tracking-wider w-16">
                         {t('common.actions')}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-[var(--app-surface)] divide-y divide-[var(--app-border)]">
                     {receiptItems.map((item, index) => {
                       const orderItem = orderItems.find(oi => oi.id === item.purchase_order_item_id);
                       const maxQuantity = orderItem ? orderItem.quantity_ordered - orderItem.quantity_received : 0;
@@ -488,16 +491,16 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                       const totalInDisplayCurrency = item.quantity_received * displayUnitPrice;
                       
                       return (
-                        <tr key={item.id} className="hover:bg-gray-50">
+                        <tr key={item.id} className="hover:bg-[var(--app-surface-muted)]">
                           {/* Produit */}
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="text-sm font-semibold text-gray-900">
+                            <div className="text-sm font-semibold app-text">
                               {item.product_name}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs app-text-muted mt-1">
                               SKU: {item.product_sku}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs app-text-muted">
                               {t('supply.remainingQuantity')}: {maxQuantity}
                             </div>
                           </td>
@@ -510,7 +513,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                               value={item.quantity_received}
                               onChange={(e) => updateReceiptItem(index, 'quantity_received', parseInt(e.target.value))}
                               onFocus={(e) => e.target.select()}
-                              className="w-20 mx-auto border border-gray-300 rounded-md px-3 py-2 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="app-input w-20 mx-auto text-center"
                             />
                           </td>
                           
@@ -527,12 +530,12 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                                   const inputValue = parseFloat(e.target.value) || 0;
                                   updateReceiptItem(index, 'unit_price', inputValue);
                                 }}
-                                className={`w-full border rounded-md px-3 py-2 pr-8 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                className={`app-input pr-8 ${
                                   calculatedPrice !== null && displayPrice < calculatedPrice
                                     ? 'border-red-500 bg-red-50'
                                     : isAtCalculated
                                     ? 'border-green-500 bg-green-50'
-                                    : 'border-gray-300'
+                                    : ''
                                 }`}
                               />
                               {(() => {
@@ -551,8 +554,8 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                                   
                                   return (
                                     <div className="absolute right-2 top-1/2 -translate-y-1/2 group">
-                                      <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg">
+                                      <Info className="h-4 w-4 app-text-muted hover:text-[var(--app-ink-muted)] cursor-help" />
+                                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-2 bg-[var(--app-ink)] text-white text-xs rounded shadow-lg">
                                         {tooltipText}
                                       </div>
                                     </div>
@@ -570,7 +573,7 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
                           
                           {/* Total */}
                           <td className="px-4 py-4 whitespace-nowrap text-right">
-                            <div className="text-sm font-semibold text-gray-900">
+                            <div className="text-sm font-semibold app-text">
                               {totalInDisplayCurrency.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {purchaseOrder.currency !== 'MGA' && formData.exchange_rate_mga ? 'MGA' : purchaseOrder.currency}
                             </div>
                           </td>
@@ -605,26 +608,27 @@ export const ReceiptForm: React.FC<ReceiptFormProps> = ({ purchaseOrder, onClose
             </div>
           </div>
 
-          {/* Boutons */}
-          <div className="flex justify-end space-x-3">
+        </OffcanvasBody>
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || receiptItems.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+              className="app-btn app-btn-success"
             >
               <CheckCircle className="h-4 w-4" />
               {loading ? t('app.saving') : t('supply.createReceipt')}
             </button>
           </div>
+        </OffcanvasFooter>
         </form>
-      </div>
-    </div>
+    </Offcanvas>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { InventoryItem, Product, User } from '../../types';
 import { Package, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatDateTimeDisplay } from '../../lib/dateUtils';
 
 interface InventoryItemRowProps {
   item: InventoryItem;
@@ -98,7 +99,7 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
   const isCounted = currentQuantity !== null && !isNaN(currentQuantity);
 
   return (
-    <tr className={`hover:bg-gray-50 ${disabled ? 'opacity-50' : ''} ${isCounted ? 'bg-green-50' : ''}`}>
+    <tr className={`hover:bg-[var(--app-surface-muted)] ${disabled ? 'opacity-50' : ''} ${isCounted ? 'bg-green-50' : ''}`}>
       {/* Produit */}
       <td className="px-4 py-3">
         <div className="flex items-center">
@@ -106,16 +107,16 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
             <img
               src={product.image_url}
               alt={product.name}
-              className="h-10 w-10 object-cover rounded-md border border-gray-300 mr-3 flex-shrink-0"
+              className="h-10 w-10 object-cover rounded-md border app-border mr-3 flex-shrink-0"
             />
           ) : (
-            <div className="h-10 w-10 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center mr-3 flex-shrink-0">
-              <Package className="h-6 w-6 text-gray-400" />
+            <div className="h-10 w-10 app-bg-muted rounded-md border app-border flex items-center justify-center mr-3 flex-shrink-0">
+              <Package className="h-6 w-6 app-text-muted" />
             </div>
           )}
           <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
-            <div className="text-xs text-gray-500">
+            <div className="text-sm font-medium app-text truncate">{product.name}</div>
+            <div className="text-xs app-text-muted">
               {product.category?.name || 'Sans catégorie'} • <span className="font-mono">{product.sku}</span>
             </div>
           </div>
@@ -124,7 +125,7 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
 
       {/* Stock théorique */}
       <td className="px-4 py-3">
-        <div className="text-sm text-gray-900 font-medium">
+        <div className="text-sm app-text font-medium">
           {item.theoretical_quantity}
         </div>
       </td>
@@ -144,13 +145,13 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
                 ? discrepancy > 0
                   ? 'border-green-500 bg-green-50'
                   : 'border-red-500 bg-red-50'
-                : 'border-gray-300'
-            } ${disabled || isUpdating ? 'bg-gray-100 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500'}`}
+                : 'border-[var(--app-border)]'
+            } ${disabled || isUpdating ? 'app-bg-muted cursor-not-allowed' : 'focus:ring-2 focus:ring-[var(--app-primary)]'}`}
             placeholder="0"
           />
           {isUpdating && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--app-primary)]"></div>
             </div>
           )}
         </div>
@@ -164,7 +165,7 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
               ? 'text-green-600' 
               : discrepancy < 0 
                 ? 'text-red-600' 
-                : 'text-gray-600'
+                : 'app-text-muted'
           }`}>
             {discrepancy > 0 && <span className="mr-1">+</span>}
             {discrepancy}
@@ -182,7 +183,7 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
             )}
           </div>
         ) : (
-          <span className="text-sm text-gray-400">-</span>
+          <span className="text-sm app-text-muted">-</span>
         )}
       </td>
 
@@ -195,8 +196,8 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
           onBlur={handleNotesBlur}
           disabled={disabled || isUpdating}
           placeholder="Notes..."
-          className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm ${
-            disabled || isUpdating ? 'bg-gray-100 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-500'
+          className={`w-full px-3 py-2 border app-border rounded-md text-sm ${
+            disabled || isUpdating ? 'app-bg-muted cursor-not-allowed' : 'focus:ring-2 focus:ring-[var(--app-primary)]'
           }`}
         />
       </td>
@@ -209,13 +210,13 @@ export const InventoryItemRow: React.FC<InventoryItemRowProps> = ({
             Compté
           </span>
         ) : (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium app-badge">
             En attente
           </span>
         )}
         {lastSaved && (
-          <div className="text-xs text-gray-400 mt-1">
-            Sauvegardé {lastSaved.toLocaleTimeString()}
+          <div className="text-xs app-text-muted mt-1">
+            Sauvegardé {formatDateTimeDisplay(lastSaved)}
           </div>
         )}
       </td>

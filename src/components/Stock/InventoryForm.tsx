@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { User } from '../../types';
 import { X, Calendar, FileText } from 'lucide-react';
 import { logger } from '../../lib/logger';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface InventoryFormProps {
   user: User;
@@ -24,7 +25,6 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ user, onClose, onS
     setError('');
 
     try {
-      // Appeler la fonction SQL pour créer l'inventaire avec tous les produits
       const { data, error: functionError } = await supabase.rpc(
         'create_inventory_with_all_products',
         {
@@ -34,15 +34,9 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ user, onClose, onS
         }
       );
 
-      if (functionError) {
-        throw functionError;
-      }
+      if (functionError) throw functionError;
+      if (!data) throw new Error('Aucun ID d\'inventaire retourné');
 
-      if (!data) {
-        throw new Error('Aucun ID d\'inventaire retourné');
-      }
-
-      // Logger l'action
       await logger.log('INVENTORY_CREATED', {
         component: 'InventoryForm',
         inventory_id: data,
@@ -57,7 +51,6 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ user, onClose, onS
     } catch (err: any) {
       console.error('Erreur lors de la création de l\'inventaire:', err);
       setError(err.message || 'Erreur lors de la création de l\'inventaire');
-      
       await logger.logError(err as Error, 'InventoryForm');
     } finally {
       setLoading(false);
@@ -65,79 +58,82 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ user, onClose, onS
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Nouvel inventaire</h2>
+    <Offcanvas onClose={onClose} width="md">
+      <OffcanvasHeader>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold app-text">Nouvel inventaire</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="app-text-muted hover:text-[var(--app-ink-muted)] transition-colors"
             disabled={loading}
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
+      </OffcanvasHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="inventory-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
-          {/* Date de l'inventaire */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="inventory-date" className="app-label">
               <Calendar className="h-4 w-4 inline mr-2" />
               Date de l'inventaire
             </label>
             <input
+              id="inventory-date"
               type="date"
               value={inventoryDate}
               onChange={(e) => setInventoryDate(e.target.value)}
               required
               disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="app-input disabled:bg-[var(--app-surface-muted)] disabled:opacity-50"
             />
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="inventory-notes" className="app-label">
               <FileText className="h-4 w-4 inline mr-2" />
               Notes (optionnel)
             </label>
             <textarea
+              id="inventory-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               disabled={loading}
               rows={3}
               placeholder="Ajoutez des notes sur cet inventaire..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none"
+              className="app-input resize-none disabled:bg-[var(--app-surface-muted)] disabled:opacity-50"
             />
           </div>
 
-          {/* Information */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <p className="text-sm text-blue-800">
+          <div className="app-badge-info border border-[color-mix(in_srgb,var(--app-primary)_30%,var(--app-border))] rounded-md p-3">
+            <p className="text-sm app-text-link">
               <strong>Note :</strong> Tous les produits actifs seront automatiquement inclus dans cet inventaire avec leur stock théorique actuel.
             </p>
           </div>
+        </OffcanvasBody>
 
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="app-btn app-btn-secondary app-btn-sm"
             >
               Annuler
             </button>
             <button
               type="submit"
+              form="inventory-form"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+              className="app-btn app-btn-primary app-btn-sm"
             >
               {loading ? (
                 <>
@@ -145,13 +141,12 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ user, onClose, onS
                   Création...
                 </>
               ) : (
-                'Créer l\'inventaire'
+                "Créer l'inventaire"
               )}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </OffcanvasFooter>
+      </form>
+    </Offcanvas>
   );
 };
-

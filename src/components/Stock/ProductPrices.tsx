@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, ProductPrice, User } from '../../types';
-import { Plus, Edit, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface ProductPricesProps {
   product: Product;
@@ -68,7 +70,7 @@ export const ProductPrices: React.FC<ProductPricesProps> = ({ product, user, onP
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--app-primary)]"></div>
       </div>
     );
   }
@@ -82,7 +84,7 @@ export const ProductPrices: React.FC<ProductPricesProps> = ({ product, user, onP
         </h3>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+          className="app-btn app-btn-primary app-btn-sm"
         >
           <Plus className="h-4 w-4" />
           {t('stock.prices.addPrice')}
@@ -90,18 +92,18 @@ export const ProductPrices: React.FC<ProductPricesProps> = ({ product, user, onP
       </div>
 
       {prices.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <DollarSign className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+        <div className="text-center py-8 app-text-muted">
+          <DollarSign className="h-12 w-12 mx-auto mb-2 app-text-muted opacity-60" />
           <p>Aucun prix défini pour ce produit</p>
         </div>
       ) : (
         <div className="space-y-2">
           {prices.map((price) => (
-            <div key={price.id} className="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+            <div key={price.id} className="app-bg-muted p-3 rounded-lg flex justify-between items-center">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{getPriceTypeLabel(price.price_type)}</span>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-lg font-bold app-text-link">
                     {formatPrice(price.price, price.currency)}
                   </span>
                   {price.is_active && (
@@ -110,9 +112,9 @@ export const ProductPrices: React.FC<ProductPricesProps> = ({ product, user, onP
                     </span>
                   )}
                 </div>
-                <div className="text-sm text-gray-500">
-                  Valide du {new Date(price.valid_from).toLocaleDateString()}
-                  {price.valid_to && ` au ${new Date(price.valid_to).toLocaleDateString()}`}
+                <div className="text-sm app-text-muted">
+                  Valide du {formatDateDisplay(price.valid_from)}
+                  {price.valid_to && ` au ${formatDateDisplay(price.valid_to)}`}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -121,7 +123,7 @@ export const ProductPrices: React.FC<ProductPricesProps> = ({ product, user, onP
                     setEditingPrice(price);
                     setShowForm(true);
                   }}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="app-text-link hover:text-[var(--app-primary-deep)]"
                 >
                   <Edit className="h-4 w-4" />
                 </button>
@@ -268,18 +270,25 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-bold mb-4">
-          {price ? t('stock.prices.editPrice') : t('stock.prices.addPrice')}
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Offcanvas onClose={onClose} width="md" panelZ={85} backdropZ={80}>
+      <OffcanvasHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold app-text">
+            {price ? t('stock.prices.editPrice') : t('stock.prices.addPrice')}
+          </h3>
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--app-surface-muted)] app-text-muted">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </OffcanvasHeader>
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">{t('stock.prices.priceType')}</label>
+            <label className="app-label">{t('stock.prices.priceType')}</label>
             <select
               value={formData.price_type}
               onChange={(e) => setFormData({...formData, price_type: e.target.value as any})}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full border app-border rounded-md px-3 py-2"
             >
               <option value="retail">{t('stock.prices.types.retail')}</option>
               <option value="wholesale">{t('stock.prices.types.wholesale')}</option>
@@ -290,7 +299,7 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('stock.prices.price')}</label>
+              <label className="app-label">{t('stock.prices.price')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -302,15 +311,15 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
                 className={`mt-1 block w-full border rounded-md px-3 py-2 ${
                   minCost !== null && minCost > 0 && parseFloat(formData.price || '0') < minCost
                     ? 'border-red-500 bg-red-50'
-                    : 'border-gray-300'
+                    : 'border-[var(--app-border)]'
                 }`}
               />
               {loadingMinCost ? (
-                <p className="text-xs text-gray-500 mt-1">Calcul du coût minimum...</p>
+                <p className="text-xs app-text-muted mt-1">Calcul du coût minimum...</p>
               ) : minCost !== null && minCost > 0 ? (
                 <div className="mt-1">
                   <p className={`text-xs ${
-                    parseFloat(formData.price || '0') < minCost ? 'text-red-600 font-semibold' : 'text-gray-600'
+                    parseFloat(formData.price || '0') < minCost ? 'text-red-600 font-semibold' : 'app-text-muted'
                   }`}>
                     Coût minimum: {minCost.toFixed(2)} MGA (prix d'achat + frais de transit)
                   </p>
@@ -323,11 +332,11 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
               ) : null}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('stock.prices.currency')}</label>
+              <label className="app-label">{t('stock.prices.currency')}</label>
               <select
                 value={formData.currency}
                 onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="mt-1 block w-full border app-border rounded-md px-3 py-2"
               >
                 <option value="MGA">MGA</option>
                 <option value="EUR">EUR</option>
@@ -338,22 +347,22 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('stock.prices.validFrom')}</label>
+              <label className="app-label">{t('stock.prices.validFrom')}</label>
               <input
                 type="date"
                 required
                 value={formData.valid_from}
                 onChange={(e) => setFormData({...formData, valid_from: e.target.value})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="mt-1 block w-full border app-border rounded-md px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('stock.prices.validTo')}</label>
+              <label className="app-label">{t('stock.prices.validTo')}</label>
               <input
                 type="date"
                 value={formData.valid_to}
                 onChange={(e) => setFormData({...formData, valid_to: e.target.value})}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                className="mt-1 block w-full border app-border rounded-md px-3 py-2"
               />
             </div>
           </div>
@@ -366,29 +375,30 @@ const PriceForm: React.FC<PriceFormProps> = ({ product, price, onClose, onSave, 
               onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
               className="mr-2"
             />
-            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
+            <label htmlFor="is_active" className="app-label text-sm">
               {t('stock.prices.isActive')}
             </label>
           </div>
-
-          <div className="flex justify-end space-x-3">
+        </OffcanvasBody>
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="app-btn app-btn-primary"
             >
               {loading ? t('app.saving') : t('app.save')}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </OffcanvasFooter>
+      </form>
+    </Offcanvas>
   );
 };

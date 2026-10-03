@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Phone, MapPin, Video } from 'lucide-react';
+import { devLog } from '../../lib/devLog';
+import { Plus, Edit, Trash2, Eye, Phone, MapPin, Video } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { ClientForm } from './ClientForm';
 import { ClientDetails } from './ClientDetails';
 import { supabase } from '../../lib/supabase';
 import { Client, User } from '../../types';
 import { logger } from '../../lib/logger';
+import { DataTable, dtTh, dtThRight, dtTd, dtTdMuted, dtTdWrap } from '../ui/DataTable';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface ClientsListProps {
   user: User;
@@ -28,7 +32,7 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
     // Ne charger qu'une seule fois au montage
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
-      console.log('👥 ClientsList: Initialisation de la liste des clients');
+      devLog('👥 ClientsList: Initialisation de la liste des clients');
       fetchClients();
     }
   }, []);
@@ -44,7 +48,7 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   }, [clients, searchTerm]);
 
   const fetchClients = async () => {
-    console.log('👥 ClientsList: Récupération des clients...');
+    devLog('👥 ClientsList: Récupération des clients...');
     const startTime = performance.now();
     
     try {
@@ -58,13 +62,13 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
         throw error;
       }
       
-      console.log(`✅ ClientsList: ${data?.length || 0} clients récupérés`);
+      devLog(`✅ ClientsList: ${data?.length || 0} clients récupérés`);
       setClients(data || []);
     } catch (error) {
       console.error('❌ ClientsList: Erreur lors de la récupération des clients:', error);
     } finally {
       const endTime = performance.now();
-      console.log(`⏱️ ClientsList: Récupération terminée en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`⏱️ ClientsList: Récupération terminée en ${(endTime - startTime).toFixed(2)}ms`);
       setLoading(false);
     }
   };
@@ -103,58 +107,54 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
   const getTrustRatingDisplay = (rating: string) => {
     switch (rating) {
       case 'good':
-        return { label: `✅ ${t('common.goodPayer')}`, className: 'text-green-600 bg-green-100' };
+        return { label: `✅ ${t('common.goodPayer')}`, className: 'app-badge app-badge-success' };
       case 'average':
         return { label: `⚠️ ${t('common.averagePayer')}`, className: 'text-yellow-600 bg-yellow-100' };
       case 'poor':
-        return { label: `❌ ${t('common.poorPayer')}`, className: 'text-red-600 bg-red-100' };
+        return { label: `❌ ${t('common.poorPayer')}`, className: 'app-badge app-badge-danger' };
       default:
-        return { label: t('common.notEvaluated'), className: 'text-gray-600 bg-gray-100' };
+        return { label: t('common.notEvaluated'), className: 'app-badge' };
     }
   };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-10 bg-gray-200 rounded"></div>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
-        <button
-          onClick={async () => {
-            // Logger l'action de création
-            await logger.logUserAction('CREATE_NEW_CLIENT', 'ClientsList', {});
-            setSelectedClient(null);
-            setShowForm(true);
-          }}
-          className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
-        >
-          <Plus size={18} className="sm:w-5 sm:h-5" />
-          <span>{t('clients.newClient')}</span>
-        </button>
-      </div>
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="app-page-title">{t('clients.title')}</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={async () => {
+                // Logger l'action de création
+                await logger.logUserAction('CREATE_NEW_CLIENT', 'ClientsList', {});
+                setSelectedClient(null);
+                setShowForm(true);
+              }}
+              className="app-btn app-btn-primary app-btn-sm whitespace-nowrap"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{t('clients.newClient')}</span>
+            </button>
+          </div>
+        </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder={t('clients.searchPlaceholder')}
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={setSearchTerm}
+            placeholder={t('clients.searchPlaceholder')}
+            inputClassName="text-xs py-1.5"
           />
         </div>
       </div>
@@ -164,20 +164,20 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
         {filteredClients.map((client) => {
           const trustDisplay = getTrustRatingDisplay(client.trust_rating);
           return (
-            <div key={client.id} className="bg-white rounded-lg shadow-md p-4">
+            <div key={client.id} className="app-list-card">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-600 font-medium text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))] flex items-center justify-center flex-shrink-0">
+                    <span className="app-text-link font-medium text-sm">
                       {client.first_name[0]}{client.last_name[0]}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                    <div className="text-sm font-medium app-text truncate">
                       {client.first_name} {client.last_name}
                     </div>
-                    <div className="flex items-center text-xs text-gray-500 mt-1">
-                      <Phone size={12} className="mr-1 text-gray-400" />
+                    <div className="flex items-center text-xs app-text-muted mt-1">
+                      <Phone size={12} className="mr-1 app-text-muted" />
                       <span className="truncate">{client.phone}</span>
                     </div>
                   </div>
@@ -192,8 +192,9 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                       setSelectedClient(client);
                       setShowDetails(true);
                     }}
-                    className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                    className="app-icon-btn app-icon-btn-primary"
                     title={t('clients.viewDetails')}
+                    aria-label={t('clients.viewDetails')}
                   >
                     <Eye size={18} />
                   </button>
@@ -208,15 +209,17 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                           setSelectedClient(client);
                           setShowForm(true);
                         }}
-                        className="text-yellow-600 hover:text-yellow-800 transition-colors p-1"
+                        className="app-icon-btn"
                         title={t('common.edit')}
+                        aria-label={t('common.edit')}
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(client)}
-                        className="text-red-600 hover:text-red-800 transition-colors p-1"
+                        className="app-icon-btn app-icon-btn-danger"
                         title={t('common.delete')}
+                        aria-label={t('common.delete')}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -224,27 +227,27 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                   )}
                 </div>
               </div>
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-xs pt-2 border-t app-divider">
                 {client.address && (
-                  <div className="flex items-center text-gray-600">
-                    <MapPin size={12} className="mr-2 text-gray-400" />
+                  <div className="flex items-center app-text-muted">
+                    <MapPin size={12} className="mr-2 app-text-muted" />
                     <span className="truncate">{client.address}</span>
                   </div>
                 )}
                 {(client.tiktok_id || client.tiktok_nick_name) && (
-                  <div className="flex items-center text-gray-600">
-                    <Video size={12} className="mr-2 text-gray-400" />
+                  <div className="flex items-center app-text-muted">
+                    <Video size={12} className="mr-2 app-text-muted" />
                     <span className="truncate">
                       {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-2 border-t app-divider">
                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${trustDisplay.className}`}>
                     {trustDisplay.label}
                   </span>
-                  <span className="text-gray-500">
-                    {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                  <span className="app-text-muted">
+                    {formatDateDisplay(client.created_at)}
                   </span>
                 </div>
               </div>
@@ -252,8 +255,8 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
           );
         })}
         {filteredClients.length === 0 && (
-          <div className="text-center py-8 bg-white rounded-lg shadow-md">
-            <p className="text-gray-500">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm ? t('clients.noClientsFound') : t('clients.noClients')}
             </p>
           </div>
@@ -261,60 +264,49 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
       </div>
 
       {/* Clients List - Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="hidden md:block app-table-wrap">
+        <DataTable>
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('clients.table.client')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('clients.table.contact')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('clients.table.trust')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('clients.table.createdAt')}
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('common.actions')}
-                </th>
+                <th className={dtTh}>{t('clients.table.client')}</th>
+                <th className={dtTh}>{t('clients.table.contact')}</th>
+                <th className={dtTh}>{t('clients.table.trust')}</th>
+                <th className={dtTh}>{t('clients.table.createdAt')}</th>
+                <th className={dtThRight}>{t('common.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-[var(--app-border)]">
               {filteredClients.map((client) => {
                 const trustDisplay = getTrustRatingDisplay(client.trust_rating);
                 return (
-                  <tr key={client.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={client.id} className="hover:bg-[var(--app-surface-muted)] transition-colors">
+                    <td className={dtTd}>
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
+                        <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--app-primary)_12%,var(--app-surface))] flex items-center justify-center flex-shrink-0">
+                          <span className="app-text-link font-medium text-[11px]">
                             {client.first_name[0]}{client.last_name[0]}
                           </span>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                        <div className="ml-2 min-w-0">
+                          <div className="font-medium truncate">
                             {client.first_name} {client.last_name}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <Phone size={14} className="mr-2 text-gray-400" />
+                    <td className={dtTdWrap}>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center app-text">
+                          <Phone size={13} className="mr-1.5 app-text-muted flex-shrink-0" />
                           {client.phone}
                         </div>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <MapPin size={14} className="mr-2 text-gray-400" />
+                        <div className="flex items-center app-text-muted">
+                          <MapPin size={13} className="mr-1.5 app-text-muted flex-shrink-0" />
                           <span className="truncate max-w-32">{client.address}</span>
                         </div>
                         {(client.tiktok_id || client.tiktok_nick_name) && (
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Video size={14} className="mr-2 text-gray-400" />
+                          <div className="flex items-center app-text-muted">
+                            <Video size={13} className="mr-1.5 app-text-muted flex-shrink-0" />
                             <span className="truncate max-w-32">
                               {client.tiktok_nick_name ? `@${client.tiktok_nick_name}` : client.tiktok_id}
                             </span>
@@ -322,15 +314,15 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${trustDisplay.className}`}>
+                    <td className={dtTd}>
+                      <span className={`inline-flex px-1.5 py-0.5 text-[11px] font-medium rounded-full ${trustDisplay.className}`}>
                         {trustDisplay.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                    <td className={dtTdMuted}>
+                      {formatDateDisplay(client.created_at)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className={`${dtTd} text-right font-medium`}>
                       <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={async () => {
@@ -341,10 +333,11 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                             setSelectedClient(client);
                             setShowDetails(true);
                           }}
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          className="app-icon-btn app-icon-btn-primary"
                           title={t('clients.viewDetails')}
+                          aria-label={t('clients.viewDetails')}
                         >
-                          <Eye size={18} />
+                          <Eye size={14} />
                         </button>
                         {user.role === 'admin' && (
                           <>
@@ -357,17 +350,19 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                                 setSelectedClient(client);
                                 setShowForm(true);
                               }}
-                              className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                              className="app-icon-btn"
                               title={t('common.edit')}
+                              aria-label={t('common.edit')}
                             >
-                              <Edit size={18} />
+                              <Edit size={14} />
                             </button>
                             <button
                               onClick={() => handleDelete(client)}
-                              className="text-red-600 hover:text-red-800 transition-colors"
+                              className="app-icon-btn app-icon-btn-danger"
                               title={t('common.delete')}
+                              aria-label={t('common.delete')}
                             >
-                              <Trash2 size={18} />
+                              <Trash2 size={14} />
                             </button>
                           </>
                         )}
@@ -377,12 +372,11 @@ export const ClientsList: React.FC<ClientsListProps> = ({ user }) => {
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
 
         {filteredClients.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm ? t('clients.noClientsFound') : t('clients.noClients')}
             </p>
           </div>

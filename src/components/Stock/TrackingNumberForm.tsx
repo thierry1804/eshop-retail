@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { TrackingNumber, PurchaseOrder, User } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { X, Calculator, Ruler, Weight, DollarSign } from 'lucide-react';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface TrackingNumberFormProps {
   trackingNumber?: TrackingNumber | null;
@@ -135,51 +136,53 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
 
   if (loadingOrders) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <Offcanvas onClose={onClose} width="lg">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)]"></div>
         </div>
-      </div>
+      </Offcanvas>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-4 sm:p-6 border-b">
-          <h2 className="text-lg sm:text-xl font-bold">
+    <Offcanvas onClose={onClose} width="lg">
+        <OffcanvasHeader>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">
             {trackingNumber ? t('tracking.editTracking') : t('tracking.newTracking')}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="app-text-muted hover:text-[var(--app-ink-muted)]">
             <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
+        </OffcanvasHeader>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Commande d'achat (lecture seule) */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.purchaseOrder')}
               </label>
-              <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50">
+              <div className="app-input app-bg-muted">
                 {trackingNumber?.purchase_order_number || '-'}
               </div>
             </div>
 
             {/* Tracking number (lecture seule) */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.trackingNumber')}
               </label>
-              <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50">
+              <div className="app-input app-bg-muted">
                 {formData.tracking_number || '-'}
               </div>
             </div>
 
             {/* Dimensions */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="app-label flex items-center gap-2">
                 <Ruler className="h-4 w-4" />
                 {t('tracking.length')} (cm)
               </label>
@@ -190,13 +193,13 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.length}
                 onChange={(e) => setFormData({...formData, length: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.width')} (cm)
               </label>
               <input
@@ -206,13 +209,13 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.width}
                 onChange={(e) => setFormData({...formData, width: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.height')} (cm)
               </label>
               <input
@@ -222,24 +225,24 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.height}
                 onChange={(e) => setFormData({...formData, height: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             {/* Volume calculé */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.volume')} (m³)
               </label>
-              <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50">
+              <div className="app-input app-bg-muted">
                 {volumeM3 > 0 ? volumeM3.toFixed(6) : '0.000000'} m³
               </div>
             </div>
 
             {/* Poids */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="app-label flex items-center gap-2">
                 <Weight className="h-4 w-4" />
                 {t('tracking.weight')} (kg)
               </label>
@@ -250,14 +253,14 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.weight_kg}
                 onChange={(e) => setFormData({...formData, weight_kg: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             {/* Tarifs */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="app-label flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 {t('tracking.ratePerM3')} (USD/m³)
               </label>
@@ -268,13 +271,13 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.rate_per_m3}
                 onChange={(e) => setFormData({...formData, rate_per_m3: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.ratePerKg')} (USD/kg)
               </label>
               <input
@@ -284,14 +287,14 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.rate_per_kg}
                 onChange={(e) => setFormData({...formData, rate_per_kg: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             {/* Taux de change */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.exchangeRate')} (USD → MGA)
               </label>
               <input
@@ -301,20 +304,20 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
                 value={formData.exchange_rate_mga}
                 onChange={(e) => setFormData({...formData, exchange_rate_mga: e.target.value})}
                 onFocus={(e) => e.target.select()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 placeholder="0.00"
               />
             </div>
 
             {/* Statut */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.statusLabel')}
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({...formData, status: e.target.value as any})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               >
                 <option value="pending">{t('tracking.status.pending')}</option>
                 <option value="in_transit">{t('tracking.status.in_transit')}</option>
@@ -324,33 +327,33 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
             </div>
 
             {/* Résultats calculés */}
-            <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg">
+            <div className="md:col-span-2 app-badge-info p-4 rounded-lg">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
                 {t('tracking.calculatedCosts')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-gray-600">{t('tracking.costByVolume')}</div>
+                  <div className="text-sm app-text-muted">{t('tracking.costByVolume')}</div>
                   <div className="text-lg font-bold text-green-600">
                     ${costByVolume.toFixed(2)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">{t('tracking.costByWeight')}</div>
+                  <div className="text-sm app-text-muted">{t('tracking.costByWeight')}</div>
                   <div className="text-lg font-bold text-green-600">
                     ${costByWeight.toFixed(2)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">{t('tracking.totalCostUSD')}</div>
+                  <div className="text-sm app-text-muted">{t('tracking.totalCostUSD')}</div>
                   <div className="text-xl font-bold text-green-600">
                     ${totalCostUSD.toFixed(2)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600">{t('tracking.totalCostMGA')}</div>
-                  <div className="text-xl font-bold text-blue-600">
+                  <div className="text-sm app-text-muted">{t('tracking.totalCostMGA')}</div>
+                  <div className="text-xl font-bold app-text-link">
                     {totalCostMGA.toLocaleString('fr-FR')} MGA
                   </div>
                 </div>
@@ -359,38 +362,39 @@ export const TrackingNumberForm: React.FC<TrackingNumberFormProps> = ({
 
             {/* Notes */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('tracking.notes')}
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
                 rows={3}
                 placeholder={t('tracking.notesPlaceholder')}
               />
             </div>
           </div>
-
-          <div className="flex justify-end gap-3 mt-6">
+        </OffcanvasBody>
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || !trackingNumber}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="app-btn app-btn-primary"
             >
               {loading ? t('app.saving') : t('app.save')}
             </button>
           </div>
+        </OffcanvasFooter>
         </form>
-      </div>
-    </div>
+    </Offcanvas>
   );
 };
 

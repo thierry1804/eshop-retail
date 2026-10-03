@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { formatDateToLocalString, createDateFromLocalString, isSameDay } from '../../lib/dateUtils';
+import { formatDateToLocalString, createDateFromLocalString, isSameDay, formatDateDisplay } from '../../lib/dateUtils';
 
 interface DatePickerWithSalesProps {
   value: string; // Format YYYY-MM-DD
@@ -53,28 +53,24 @@ export const DatePickerWithSales: React.FC<DatePickerWithSalesProps> = ({
   const generateCalendarDays = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
-    // Premier jour du mois
+
     const firstDay = new Date(year, month, 1);
-    // Dernier jour du mois
     const lastDay = new Date(year, month + 1, 0);
-    
-    // Premier jour de la semaine du premier jour du mois
+
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
-    // Dernier jour de la semaine du dernier jour du mois
+
     const endDate = new Date(lastDay);
     endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()));
-    
+
     const days = [];
     const today = new Date();
-    
+
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
       const dateStr = formatDateToLocalString(date);
       const hasSales = salesByDate[dateStr] > 0;
       const salesCount = salesByDate[dateStr] || 0;
-      
+
       days.push({
         date: new Date(date),
         isCurrentMonth: date.getMonth() === month,
@@ -84,7 +80,7 @@ export const DatePickerWithSales: React.FC<DatePickerWithSalesProps> = ({
         salesCount
       });
     }
-    
+
     return days;
   };
 
@@ -116,100 +112,106 @@ export const DatePickerWithSales: React.FC<DatePickerWithSalesProps> = ({
     setIsOpen(false);
   };
 
-  const formatDisplayDate = (date: Date) => {
-    return date.toLocaleDateString('fr-FR');
-  };
+  const formatDisplayDate = (date: Date) => formatDateDisplay(date);
 
   const calendarDays = generateCalendarDays();
 
   return (
     <div className={`relative ${className}`} ref={datePickerRef}>
-      {/* Input field */}
-      <div
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="app-input text-xs py-1.5 w-auto min-w-[9.5rem] flex items-center justify-between gap-2 cursor-pointer"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
       >
-        <span className={selectedDate ? 'text-gray-900' : 'text-gray-500'}>
+        <span className={selectedDate ? 'app-text' : 'app-text-muted'}>
           {selectedDate ? formatDisplayDate(selectedDate) : placeholder}
         </span>
-        <Calendar className="h-5 w-5 text-gray-400" />
-      </div>
+        <Calendar className="h-3.5 w-3.5 app-text-muted flex-shrink-0" />
+      </button>
 
-      {/* Dropdown calendar */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 min-w-[280px]">
-          {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <div
+          className="absolute top-full left-0 mt-1 z-50 min-w-[280px] app-surface shadow-[var(--app-shadow-panel)]"
+          role="dialog"
+          aria-label="Calendrier des ventes"
+        >
+          <div className="flex items-center justify-between p-2.5 border-b app-divider">
             <button
+              type="button"
               onClick={goToPreviousMonth}
-              className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+              className="p-1 rounded-md app-text-muted hover:bg-[var(--app-surface-muted)] hover:app-text"
+              aria-label="Mois précédent"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            
-            <h3 className="text-sm font-semibold text-gray-900">
+
+            <h3 className="text-xs font-semibold app-text">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h3>
-            
+
             <button
+              type="button"
               onClick={goToNextMonth}
-              className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+              className="p-1 rounded-md app-text-muted hover:bg-[var(--app-surface-muted)] hover:app-text"
+              aria-label="Mois suivant"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Days of week */}
           <div className="grid grid-cols-7 gap-1 p-2">
             {dayNames.map((day) => (
-              <div key={day} className="p-2 text-center text-xs font-medium text-gray-500">
+              <div key={day} className="p-1.5 text-center text-[11px] font-medium app-text-muted">
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1 p-2">
+          <div className="grid grid-cols-7 gap-1 p-2 pt-0">
             {calendarDays.map((day, index) => (
               <button
                 key={index}
+                type="button"
                 onClick={() => handleDateClick(day.date)}
                 className={`
-                  relative p-2 text-xs rounded-md transition-colors
-                  ${!day.isCurrentMonth 
-                    ? 'text-gray-300 hover:bg-gray-50' 
+                  relative p-1.5 text-xs rounded-md transition-colors
+                  ${!day.isCurrentMonth
+                    ? 'app-text-muted opacity-40 hover:bg-[var(--app-surface-muted)]'
                     : day.isSelected
-                      ? 'bg-blue-500 text-white hover:bg-blue-600'
+                      ? 'bg-[var(--app-primary)] text-[var(--app-surface)] hover:bg-[var(--app-primary-deep)]'
                       : day.isToday
-                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        ? 'bg-[var(--app-primary-soft)] app-text-link'
                         : day.hasSales
-                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-[color-mix(in_srgb,var(--app-success)_14%,transparent)] app-text-success hover:bg-[color-mix(in_srgb,var(--app-success)_22%,transparent)]'
+                          : 'app-text hover:bg-[var(--app-surface-muted)]'
                   }
                 `}
               >
                 <span className="block">{day.date.getDate()}</span>
-                {day.hasSales && day.salesCount && (
-                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                {day.hasSales && day.salesCount ? (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[var(--app-success)] text-[var(--app-surface)] text-[10px] rounded-full h-3.5 w-3.5 flex items-center justify-center leading-none">
                     {day.salesCount}
                   </span>
-                )}
+                ) : null}
               </button>
             ))}
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between p-2 border-t border-gray-200">
+          <div className="flex items-center justify-between gap-2 p-2 border-t app-divider">
             <button
+              type="button"
               onClick={clearDate}
-              className="flex items-center space-x-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+              className="app-btn app-btn-ghost app-btn-sm"
             >
               <X className="h-3 w-3" />
-              <span>Effacer</span>
+              Effacer
             </button>
             <button
+              type="button"
               onClick={goToToday}
-              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+              className="app-btn app-btn-secondary app-btn-sm"
             >
               Aujourd'hui
             </button>

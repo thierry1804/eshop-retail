@@ -132,6 +132,7 @@ export interface Product {
   reserved_stock: number;
   available_stock: number;
   status: 'active' | 'inactive' | 'discontinued';
+  is_published_to_store?: boolean;
   image_url?: string;
   created_at: string;
   updated_at: string;
@@ -141,6 +142,47 @@ export interface Product {
   supplier?: Supplier;
   prices?: ProductPrice[];
   stock_movements?: StockMovement[];
+}
+
+export interface StockPeriodClosure {
+  id: string;
+  closed_at: string;
+  scope: 'all' | 'selection';
+  notes?: string;
+  created_by: string;
+  product_count: number;
+  total_stock_before: number;
+  created_at: string;
+  created_by_user?: User;
+  items?: StockPeriodClosureItem[];
+}
+
+export interface StockPeriodClosureItem {
+  id: string;
+  closure_id: string;
+  product_id: string;
+  stock_before: number;
+  reserved_before: number;
+  min_stock_level_before: number;
+  created_at: string;
+  product?: Product;
+}
+
+export interface CloseStockPeriodResult {
+  success: boolean;
+  error?: string;
+  closure_id?: string;
+  scope?: 'all' | 'selection';
+  closed_count?: number;
+  adjustments_count?: number;
+  total_stock_before?: number;
+  excluded?: Array<{
+    id: string;
+    name: string;
+    sku: string;
+    reserved_stock: number;
+    reason: string;
+  }>;
 }
 
 export interface ProductPrice {
@@ -298,6 +340,10 @@ export interface PurchaseOrder {
   currency: string;
   tracking_number?: string;
   notes?: string;
+  closed_at?: string;
+  closed_by?: string;
+  close_reason?: string;
+  close_mode?: 'short_close' | 'cancel';
   created_by: string;
   updated_by?: string;
   created_at: string;

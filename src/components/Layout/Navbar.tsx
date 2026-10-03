@@ -5,6 +5,7 @@ import { signOut } from '../../lib/supabase';
 import { User as UserType } from '../../types';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { useLockBodyScroll } from '../../hooks/useLockBodyScroll';
 
 interface NavbarProps {
   user: UserType;
@@ -20,6 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
   const navRef = useRef<HTMLElement>(null);
   const [showTopIndicator, setShowTopIndicator] = useState(false);
   const [showBottomIndicator, setShowBottomIndicator] = useState(false);
+
+  useLockBodyScroll(sidebarOpen);
 
   // Fonction pour déterminer si une section contient la page active
   const getActiveSection = (currentPage: string) => {
@@ -111,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       
       // Ajouter le menu logs uniquement pour thierry1804@gmail.com
       if (user.email === 'thierry1804@gmail.com') {
-        navItems.push({ id: 'logs', label: '📊 Logs', icon: Activity, group: 'admin' });
+        navItems.push({ id: 'logs', label: 'Logs', icon: Activity, group: 'admin' });
       }
       
       return navItems;
@@ -171,28 +174,30 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
   return (
     <>
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform transition-all duration-300 ease-in-out ${
+      <div className={`app-sidebar fixed inset-y-0 left-0 z-50 transform transition-all duration-200 ease-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0 ${
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+          <div className="app-sidebar-divider flex items-center justify-between p-4 border-b flex-shrink-0">
             {!sidebarCollapsed && (
-              <h1 className="text-xl font-bold text-blue-600">{t('app.title')}</h1>
+              <p className="text-xl font-bold m-0" style={{ color: 'var(--sidebar-brand)' }}>
+                {t('app.title')}
+              </p>
             )}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="hidden md:flex text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+                className="hidden md:flex p-1 rounded transition-colors app-sidebar-nav-item"
                 title={sidebarCollapsed ? t('navigation.expand', 'Agrandir') : t('navigation.collapse', 'Réduire')}
               >
                 {sidebarCollapsed ? <ChevronRightIcon size={20} /> : <ChevronLeft size={20} />}
               </button>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="md:hidden text-gray-400 hover:text-gray-600"
+                className="md:hidden p-1 rounded transition-colors app-sidebar-nav-item"
               >
                 <X size={24} />
               </button>
@@ -203,12 +208,12 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
           <div className="flex-1 relative overflow-hidden">
             {/* Indicateur en haut */}
             {showTopIndicator && (
-              <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white via-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="app-sidebar-fade-top absolute top-0 left-0 right-0 h-8 z-10 pointer-events-none" />
             )}
             
             {/* Indicateur en bas */}
             {showBottomIndicator && (
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white via-white/80 to-transparent z-10 pointer-events-none" />
+              <div className="app-sidebar-fade-bottom absolute bottom-0 left-0 right-0 h-8 z-10 pointer-events-none" />
             )}
 
             <nav 
@@ -227,12 +232,11 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
                 return groups;
               }, {} as Record<string, typeof navItems>);
 
-              // Définir l'ordre et les titres des groupes
               const groupOrder = [
-                { key: 'sales', title: '📊 VENTES & CLIENTS', icon: '💼' },
-                { key: 'inventory', title: '📦 GESTION DES STOCKS', icon: '📋' },
-                { key: 'finance', title: '💰 FINANCE', icon: '💳' },
-                { key: 'admin', title: '⚙️ ADMINISTRATION', icon: '🔧' }
+                { key: 'sales', title: 'Ventes' },
+                { key: 'inventory', title: 'Stocks' },
+                { key: 'finance', title: 'Finance' },
+                { key: 'admin', title: 'Admin' }
               ];
 
               return groupOrder.map((groupInfo) => {
@@ -248,22 +252,23 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
                     {!sidebarCollapsed && (
                       <button
                         onClick={() => toggleSection(groupInfo.key)}
-                        className={`w-full flex items-center justify-between px-2 py-2 text-xs font-semibold uppercase tracking-wider rounded-md transition-colors ${isActiveSection
-                            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                          }`}
+                        className={`w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-medium rounded-md transition-colors ${
+                          isActiveSection
+                            ? 'app-sidebar-section-active'
+                            : 'app-sidebar-section'
+                        }`}
                       >
                         <span>{groupInfo.title}</span>
                         {isCollapsed ? (
-                          <ChevronRight size={16} className={isActiveSection ? "text-blue-400" : "text-gray-400"} />
+                          <ChevronRight size={16} className="opacity-70" />
                         ) : (
-                          <ChevronDown size={16} className={isActiveSection ? "text-blue-400" : "text-gray-400"} />
+                          <ChevronDown size={16} className="opacity-70" />
                         )}
                       </button>
                     )}
 
                     {/* Éléments du groupe avec animation */}
-                    <div className={`space-y-1 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed && !sidebarCollapsed ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'
+                    <div className={`space-y-1 transition-all duration-200 ease-out overflow-hidden ${isCollapsed && !sidebarCollapsed ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'
                       }`}>
                       {items.map((item) => {
                         const Icon = item.icon;
@@ -274,13 +279,14 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
                               onPageChange(item.id);
                               setSidebarOpen(false);
                             }}
-                            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'space-x-3 px-4'} py-3 rounded-lg text-sm font-medium transition-colors ${currentPage === item.id
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                              }`}
+                            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'gap-2.5 px-3'} py-2 rounded-md text-[13px] font-medium transition-colors ${
+                              currentPage === item.id
+                                ? 'app-sidebar-nav-item-active'
+                                : 'app-sidebar-nav-item'
+                            }`}
                             title={sidebarCollapsed ? item.label : undefined}
                           >
-                            <Icon size={20} />
+                            <Icon size={18} />
                             {!sidebarCollapsed && <span>{item.label}</span>}
                           </button>
                         );
@@ -294,40 +300,59 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
           </div>
 
           {/* Footer - toujours visible en bas */}
-          <div className="flex-shrink-0 border-t border-gray-200">
-            {/* Language Switcher */}
-            <div className={`p-4 ${sidebarCollapsed ? 'px-2' : ''}`}>
-              <LanguageSwitcher collapsed={sidebarCollapsed} />
-            </div>
-
-            {/* User Info */}
-            <div className={`p-4 ${sidebarCollapsed ? 'px-2' : ''}`}>
-              {!sidebarCollapsed && (
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User size={16} className="text-blue-600" />
+          <div className={`app-sidebar-divider flex-shrink-0 border-t ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
+            {sidebarCollapsed ? (
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className="w-8 h-8 rounded-md flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--sidebar-hover)' }}
+                  title={user.name || user.email}
+                >
+                  <User size={16} style={{ color: 'var(--sidebar-muted)' }} />
+                </div>
+                <LanguageSwitcher collapsed />
+                <button
+                  onClick={handleSignOut}
+                  className="w-8 h-8 flex items-center justify-center rounded-md transition-colors app-sidebar-nav-item"
+                  title={t('auth.logout')}
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'var(--sidebar-hover)' }}
+                  >
+                    <User size={16} style={{ color: 'var(--sidebar-muted)' }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                      user.role === 'admin' 
-                        ? 'bg-purple-100 text-purple-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
+                    <p
+                      className="text-xs font-medium truncate leading-tight"
+                      style={{ color: 'var(--sidebar-text)' }}
+                    >
+                      {user.name || user.email}
+                    </p>
+                    <p
+                      className="text-[11px] leading-tight mt-0.5"
+                      style={{ color: 'var(--sidebar-muted)' }}
+                    >
                       {user.role === 'admin' ? 'Admin' : 'Employé'}
-                    </span>
+                    </p>
                   </div>
+                  <LanguageSwitcher collapsed={false} />
                 </div>
-              )}
-              <button
-                onClick={handleSignOut}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'justify-center space-x-2 px-3'} py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors`}
-                title={sidebarCollapsed ? t('auth.logout') : undefined}
-              >
-                <LogOut size={16} />
-                {!sidebarCollapsed && <span>{t('auth.logout')}</span>}
-              </button>
-            </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors app-sidebar-nav-item"
+                >
+                  <LogOut size={14} className="flex-shrink-0" />
+                  <span>{t('auth.logout')}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -335,22 +360,24 @@ export const Navbar: React.FC<NavbarProps> = ({ user, currentPage, onPageChange,
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+          className="fixed inset-0 z-40 md:hidden"
+          style={{ backgroundColor: 'rgba(36, 48, 65, 0.45)' }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Mobile menu button with app name */}
-      <div className="md:hidden fixed top-4 left-4 z-60 flex items-center gap-2">
+      {/* Mobile top bar */}
+      <div className="app-mobile-bar">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="bg-white shadow-lg rounded-lg p-2 text-gray-600 hover:text-gray-900"
+          className="app-icon-btn"
+          aria-label="Menu"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
-        <h1 className="text-lg font-bold text-blue-600 bg-white shadow-lg rounded-lg px-3 py-2">
+        <p className="text-base font-bold m-0" style={{ color: 'var(--sidebar-brand)' }}>
           {t('app.title')}
-        </h1>
+        </p>
       </div>
     </>
   );

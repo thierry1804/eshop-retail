@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { devLog } from '../../lib/devLog';
 import { X, Save, CreditCard } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Sale } from '../../types';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface PaymentFormProps {
   sale: Sale;
@@ -76,7 +78,7 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ sale, onClose, onSubmi
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      console.log('🔍 PaymentForm: Création du paiement avec montant:', amount);
+      devLog('🔍 PaymentForm: Création du paiement avec montant:', amount);
 
       // Préparer les données du paiement
       const paymentData: any = {
@@ -125,214 +127,205 @@ export const PaymentForm: React.FC<PaymentFormProps> = ({ sale, onClose, onSubmi
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex">
-      {/* Overlay pour fermer en cliquant à côté */}
-      <div 
-        className="flex-1" 
-        onClick={onClose}
-      />
-      
-      {/* Offcanvas depuis la droite */}
-      <div className="bg-white w-full max-w-md h-full flex flex-col shadow-2xl">
-        {/* En-tête fixe */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+    <Offcanvas onClose={onClose} width="md">
+      <OffcanvasHeader>
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <CreditCard className="text-green-600" size={24} />
-            <h2 className="text-xl font-semibold text-gray-900">Nouveau Paiement</h2>
+            <CreditCard className="text-green-600" size={22} />
+            <h2 className="text-lg font-semibold app-text">Nouveau Paiement</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="app-text-muted hover:text-[var(--app-ink-muted)] transition-colors"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
+      </OffcanvasHeader>
 
-        {/* Contenu scrollable */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            {/* Sale Info */}
-            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-              <h3 className="font-medium text-gray-900 mb-2">
-                Client: {sale.client?.first_name} {sale.client?.last_name}
-              </h3>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Montant total:</span>
-                  <span className="font-medium">{formatCurrency(sale.total_amount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Déjà payé:</span>
-                  <span className="font-medium">{formatCurrency(Math.max(0, sale.total_payments || (sale.total_amount - sale.remaining_balance)))}</span>
-                </div>
-                <div className="flex justify-between border-t pt-1">
-                  <span className="text-gray-600 font-medium">Solde restant:</span>
-                  <span className="font-bold text-red-600">{formatCurrency(sale.remaining_balance)}</span>
-                </div>
-              </div>
+      <OffcanvasBody className="space-y-4">
+        <div className="app-badge-info p-4 rounded-lg">
+          <h3 className="font-medium app-text mb-2">
+            Client: {sale.client?.first_name} {sale.client?.last_name}
+          </h3>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="app-text-muted">Montant total:</span>
+              <span className="font-medium">{formatCurrency(sale.total_amount)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="app-text-muted">Déjà payé:</span>
+              <span className="font-medium">{formatCurrency(Math.max(0, sale.total_payments || (sale.total_amount - sale.remaining_balance)))}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1">
+              <span className="app-text-muted font-medium">Solde restant:</span>
+              <span className="font-bold text-red-600">{formatCurrency(sale.remaining_balance)}</span>
+            </div>
+          </div>
+        </div>
 
-            <form onSubmit={handleSubmit} id="payment-form" className="space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
+        <form onSubmit={handleSubmit} id="payment-form" className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="payment-amount" className="app-label">
+              Montant du Paiement *
+            </label>
+            <input
+              id="payment-amount"
+              type="text"
+              required
+              value={formData.amount}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9.]/g, '');
+                setFormData({ ...formData, amount: value });
+              }}
+              className="app-input"
+              placeholder={`Max: ${formatCurrency(sale.remaining_balance)}`}
+              onFocus={(e) => e.target.select()}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="payment-method" className="app-label">
+              Moyen de Paiement *
+            </label>
+            <select
+              id="payment-method"
+              required
+              value={formData.payment_method}
+              onChange={(e) => {
+                const newMethod = e.target.value as any;
+                setFormData({
+                  ...formData,
+                  payment_method: newMethod,
+                  provider: newMethod !== 'mobile_money' ? '' : formData.provider,
+                  phone_number: newMethod !== 'mobile_money' ? '' : formData.phone_number,
+                  transaction_id: newMethod !== 'mobile_money' ? '' : formData.transaction_id,
+                });
+              }}
+              className="app-input"
+            >
+              {paymentMethods.map((method) => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {formData.payment_method === 'mobile_money' && (
+            <>
+              <div>
+                <label htmlFor="payment-provider" className="app-label">
+                  Fournisseur Mobile Money *
+                </label>
+                <select
+                  id="payment-provider"
+                  required
+                  value={formData.provider}
+                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                  className="app-input"
+                >
+                  <option value="">Sélectionner un fournisseur</option>
+                  <option value="Orange Money">Orange Money</option>
+                  <option value="Airtel Money">Airtel Money</option>
+                  <option value="MVola">MVola</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Montant du Paiement *
+                <label htmlFor="payment-phone" className="app-label">
+                  Numéro de téléphone *
                 </label>
                 <input
-                  type="text"
+                  id="payment-phone"
+                  type="tel"
                   required
-                  value={formData.amount}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, '');
-                    setFormData({ ...formData, amount: value });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={`Max: ${formatCurrency(sale.remaining_balance)}`}
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                  className="app-input"
+                  placeholder="+261 34 12 34 56 78"
                   onFocus={(e) => e.target.select()}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Moyen de Paiement *
+                <label htmlFor="payment-transaction_id" className="app-label">
+                  Identifiant de transaction *
                 </label>
-                <select
+                <input
+                  id="payment-transaction_id"
+                  type="text"
                   required
-                  value={formData.payment_method}
-                  onChange={(e) => {
-                    const newMethod = e.target.value as any;
-                    // Réinitialiser les champs mobile_money si on change de méthode
-                    setFormData({ 
-                      ...formData, 
-                      payment_method: newMethod,
-                      provider: newMethod !== 'mobile_money' ? '' : formData.provider,
-                      phone_number: newMethod !== 'mobile_money' ? '' : formData.phone_number,
-                      transaction_id: newMethod !== 'mobile_money' ? '' : formData.transaction_id,
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {paymentMethods.map((method) => (
-                    <option key={method.value} value={method.value}>
-                      {method.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Champs spécifiques pour mobile money */}
-              {formData.payment_method === 'mobile_money' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fournisseur Mobile Money *
-                    </label>
-                    <select
-                      required
-                      value={formData.provider}
-                      onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Sélectionner un fournisseur</option>
-                      <option value="Orange Money">Orange Money</option>
-                      <option value="Airtel Money">Airtel Money</option>
-                      <option value="MVola">MVola</option>
-                      <option value="Autre">Autre</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Numéro de téléphone *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.phone_number}
-                      onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="+261 34 12 34 56 78"
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Identifiant de transaction *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.transaction_id}
-                      onChange={(e) => setFormData({ ...formData, transaction_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ex: TXN123456789"
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Détails du paiement..."
+                  value={formData.transaction_id}
+                  onChange={(e) => setFormData({ ...formData, transaction_id: e.target.value })}
+                  className="app-input"
+                  placeholder="Ex: TXN123456789"
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
+            </>
+          )}
 
-              {/* New Balance Preview */}
-              {formData.amount && parseFloat(formData.amount) > 0 && (
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Nouveau solde après paiement:</span>
-                    <span className="font-bold text-green-600">
-                      {formatCurrency(sale.remaining_balance - parseFloat(formData.amount))}
-                    </span>
-                  </div>
-                  {sale.remaining_balance - parseFloat(formData.amount) === 0 && (
-                    <div className="text-xs text-green-600 mt-1">
-                      ✅ Cette vente sera marquée comme réglée
-                    </div>
-                  )}
+          <div>
+            <label htmlFor="payment-notes" className="app-label">
+              Notes
+            </label>
+            <textarea
+              id="payment-notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={3}
+              className="app-input"
+              placeholder="Détails du paiement..."
+            />
+          </div>
+
+          {formData.amount && parseFloat(formData.amount) > 0 && (
+            <div className="bg-green-50 p-3 rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span className="app-text-muted">Nouveau solde après paiement:</span>
+                <span className="font-bold text-green-600">
+                  {formatCurrency(sale.remaining_balance - parseFloat(formData.amount))}
+                </span>
+              </div>
+              {sale.remaining_balance - parseFloat(formData.amount) === 0 && (
+                <div className="text-xs text-green-600 mt-1">
+                  ✅ Cette vente sera marquée comme réglée
                 </div>
               )}
-            </form>
-          </div>
-        </div>
+            </div>
+          )}
+        </form>
+      </OffcanvasBody>
 
-        {/* Boutons d'action fixes en bas */}
-        <div className="border-t border-gray-200 p-6 bg-white flex-shrink-0">
-          <div className="flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              form="payment-form"
-              disabled={loading}
-              className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              <Save size={18} />
-              <span>{loading ? 'Enregistrement...' : 'Enregistrer'}</span>
-            </button>
-          </div>
+      <OffcanvasFooter>
+        <div className="app-actions w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="app-btn app-btn-secondary flex-1"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            form="payment-form"
+            disabled={loading}
+            className="app-btn app-btn-success flex-1"
+          >
+            <Save size={18} />
+            <span>{loading ? 'Enregistrement...' : 'Enregistrer'}</span>
+          </button>
         </div>
-      </div>
-    </div>
+      </OffcanvasFooter>
+    </Offcanvas>
   );
 };

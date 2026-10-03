@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, User } from '../../types';
-import { Plus, Search, Eye, Edit, Package, RefreshCw, DollarSign, AlertCircle, TrendingUp } from 'lucide-react';
+import { Plus, Eye, Edit, Package, RefreshCw, DollarSign, AlertCircle, TrendingUp, Archive } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { PurchaseOrderForm } from './PurchaseOrderForm';
 import { PurchaseOrderDetails } from './PurchaseOrderDetails';
+import { PurchaseOrderCloseModal } from './PurchaseOrderCloseModal';
+import { ReceiptForm } from './ReceiptForm';
 import { DeliveryProgressBar } from './DeliveryProgressBar';
+import { DataTable, dtTh, dtTd } from '../ui/DataTable';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface PurchaseOrdersListProps {
   user: User;
@@ -22,6 +27,10 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
   const [showForm, setShowForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [viewingOrder, setViewingOrder] = useState<PurchaseOrder | null>(null);
+  const [closingOrder, setClosingOrder] = useState<PurchaseOrder | null>(null);
+  const [closingOrders, setClosingOrders] = useState<PurchaseOrder[] | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Flag pour éviter les chargements multiples au montage
   const hasInitializedRef = useRef(false);
@@ -95,19 +104,70 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
     }) || false;
     
     const matchesSearch = matchesOrderFields || matchesProduct;
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const isOpen = order.status !== 'received' && order.status !== 'cancelled' && !order.closed_at;
+    const isOverdue = (() => {
+      if (!order.expected_delivery_date || !isOpen) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expectedDate = new Date(order.expected_delivery_date);
+      expectedDate.setHours(0, 0, 0, 0);
+      return expectedDate < today;
+    })();
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'to_close'
+          ? isOverdue && (order.status === 'ordered' || order.status === 'partial' || order.status === 'pending')
+          : order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  const canCloseOrder = (order: PurchaseOrder) =>
+    (order.status === 'ordered' || order.status === 'partial' || order.status === 'pending') &&
+    !order.closed_at;
+
+  const closableFiltered = filteredOrders.filter(canCloseOrder);
+  const selectedClosableOrders = filteredOrders.filter(
+    (o) => selectedIds.has(o.id) && canCloseOrder(o)
+  );
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllClosable = () => {
+    const allSelected =
+      closableFiltered.length > 0 &&
+      closableFiltered.every((o) => selectedIds.has(o.id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        closableFiltered.forEach((o) => next.delete(o.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        closableFiltered.forEach((o) => next.add(o.id));
+        return next;
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-[var(--app-stripe)] app-text';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'ordered': return 'bg-blue-100 text-blue-800';
+      case 'ordered': return 'app-badge app-badge-info';
       case 'partial': return 'bg-orange-100 text-orange-800';
       case 'received': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-[var(--app-stripe)] app-text';
     }
   };
 
@@ -141,27 +201,41 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{t('supply.title')}</h1>
-          <p className="text-sm sm:text-base text-gray-600">{t('supply.subtitle')}</p>
+          <h1 className="app-page-title truncate">{t('supply.title')}</h1>
+          <p className="app-page-subtitle">{t('supply.subtitle')}</p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0 justify-end">
+          {selectedClosableOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setClosingOrders(selectedClosableOrders)}
+              className="app-btn app-btn-sm"
+              style={{ backgroundColor: 'var(--app-ink)', color: '#f8fafc' }}
+            >
+              <Archive className="h-3.5 w-3.5" />
+              <span>
+                {t('supply.close.bulkAction')} ({selectedClosableOrders.length})
+              </span>
+            </button>
+          )}
           <button
             onClick={() => fetchOrders(false)}
             disabled={refreshing}
-            className="bg-gray-100 text-gray-700 px-2 sm:px-4 py-2 rounded-md hover:bg-gray-200 flex items-center gap-1 sm:gap-2 disabled:opacity-50"
+            className="app-btn app-btn-secondary app-btn-sm disabled:opacity-50"
             title={t('app.refresh') || 'Rafraîchir'}
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{t('app.refresh')}</span>
           </button>
           <button
@@ -172,97 +246,81 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                 setShowForm(true);
               }
             }}
-            className="bg-blue-600 text-white px-2 sm:px-4 py-2 rounded-md hover:bg-blue-700 flex items-center gap-1 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
+            className="app-btn app-btn-primary app-btn-sm whitespace-nowrap"
           >
-            <Plus className="h-4 w-4 flex-shrink-0" />
+            <Plus className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="hidden sm:inline">{t('supply.createOrder')}</span>
             <span className="sm:hidden">Créer</span>
           </button>
         </div>
       </div>
 
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalOrders') || 'Total commandes'}</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-            </div>
-            <div className="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
-              <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalAmount')}</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 truncate">
-                {stats.totalAmount.toLocaleString()} {mainCurrency}
-              </p>
-            </div>
-            <div className="bg-green-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
-              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.totalItemsOrdered') || 'Articles commandés'}</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stats.totalItemsOrdered}</p>
-            </div>
-            <div className="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
-              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{t('supply.overdue') || 'En retard'}</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">{stats.overdue}</p>
-            </div>
-            <div className="bg-red-100 p-2 sm:p-3 rounded-full flex-shrink-0 ml-2">
-              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
-            </div>
-          </div>
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={t('supply.searchOrders') + ' (numéro, fournisseur, produit, SKU...)'}
+            inputClassName="text-xs py-1.5"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="app-input text-xs py-1.5 w-auto sm:min-w-[12rem]"
+          >
+            <option value="all">{t('supply.allStatuses')}</option>
+            <option value="to_close">{t('supply.toClose')}</option>
+            <option value="draft">{t('supply.status.draft')}</option>
+            <option value="pending">{t('supply.status.pending')}</option>
+            <option value="ordered">{t('supply.status.ordered')}</option>
+            <option value="partial">{t('supply.status.partial')}</option>
+            <option value="received">{t('supply.status.received')}</option>
+            <option value="cancelled">{t('supply.status.cancelled')}</option>
+          </select>
         </div>
       </div>
 
-      {/* Filtres */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder={t('supply.searchOrders') + ' (numéro, fournisseur, produit, SKU...)'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+      {/* Statistiques */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="app-kpi">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--app-ink-muted)' }}>{t('supply.totalOrders') || 'Total commandes'}</p>
+              <p className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-ink)' }}>{stats.total}</p>
             </div>
+            <Package className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--app-ink-muted)' }} />
           </div>
-          <div className="sm:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">{t('supply.allStatuses')}</option>
-              <option value="draft">{t('supply.status.draft')}</option>
-              <option value="pending">{t('supply.status.pending')}</option>
-              <option value="ordered">{t('supply.status.ordered')}</option>
-              <option value="partial">{t('supply.status.partial')}</option>
-              <option value="received">{t('supply.status.received')}</option>
-              <option value="cancelled">{t('supply.status.cancelled')}</option>
-            </select>
+        </div>
+
+        <div className="app-kpi">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--app-ink-muted)' }}>{t('supply.totalAmount')}</p>
+              <p className="text-lg font-semibold mt-0.5 truncate" style={{ color: 'var(--app-ink)' }}>
+                {stats.totalAmount.toLocaleString()} {mainCurrency}
+              </p>
+            </div>
+            <DollarSign className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--app-ink-muted)' }} />
+          </div>
+        </div>
+
+        <div className="app-kpi">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--app-ink-muted)' }}>{t('supply.totalItemsOrdered') || 'Articles commandés'}</p>
+              <p className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-ink)' }}>{stats.totalItemsOrdered}</p>
+            </div>
+            <TrendingUp className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--app-ink-muted)' }} />
+          </div>
+        </div>
+
+        <div className="app-kpi">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--app-ink-muted)' }}>{t('supply.overdue') || 'En retard'}</p>
+              <p className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-danger)' }}>{stats.overdue}</p>
+            </div>
+            <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--app-danger)' }} />
           </div>
         </div>
       </div>
@@ -270,12 +328,12 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
       {/* Liste des commandes - Mobile Card View */}
       <div className="md:hidden space-y-3">
         {filteredOrders.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+          <div className="app-empty">
+            <Package className="h-12 w-12 app-text-muted mx-auto mb-4" />
+            <h3 className="app-empty-title">
               {t('supply.noOrders')}
             </h3>
-            <p className="text-sm text-gray-500 mb-4 px-4">
+            <p className="app-empty-text mb-4">
               {t('supply.noOrdersDescription')}
             </p>
             <button
@@ -286,27 +344,27 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                   setShowForm(true);
                 }
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              className="app-btn app-btn-primary"
             >
               {t('supply.createFirstOrder')}
             </button>
           </div>
         ) : (
           filteredOrders.map((order) => (
-            <div key={order.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div key={order.id} className="app-list-card">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-gray-900 truncate">{order.order_number}</div>
-                  <div className="text-xs text-gray-500 mt-1 truncate">{order.supplier_name || t('supply.noSupplier')}</div>
+                  <div className="text-sm font-semibold app-text truncate">{order.order_number}</div>
+                  <div className="text-xs app-text-muted mt-1 truncate">{order.supplier_name || t('supply.noSupplier')}</div>
                 </div>
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 flex-shrink-0 ${getStatusColor(order.status)}`}>
                   {getStatusLabel(order.status)}
                 </span>
               </div>
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-xs pt-2 border-t app-divider">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Date:</span>
-                  <span className="text-gray-900">{new Date(order.order_date).toLocaleDateString()}</span>
+                  <span className="app-text-muted">Date:</span>
+                  <span className="app-text">{formatDateDisplay(order.order_date)}</span>
                 </div>
                 {order.expected_delivery_date && (
                   <div className="pt-1">
@@ -315,32 +373,44 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                 )}
                 {order.tracking_number && (
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Suivi:</span>
-                    <span className="font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded border text-xs">
+                    <span className="app-text-muted">Suivi:</span>
+                    <span className="font-mono app-text-muted app-bg-muted px-2 py-1 rounded border text-xs">
                       {order.tracking_number}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-gray-100">
-                  <div className="flex items-center gap-1 text-gray-600">
+                <div className="flex justify-between pt-2 border-t app-divider">
+                  <div className="flex items-center gap-1 app-text-muted">
                     <Package className="h-3 w-3" />
                     <span>{order.purchase_order_items?.length || 0} {t('supply.items')}</span>
                   </div>
-                  <div className="text-sm font-semibold text-gray-900">
+                  <div className="text-sm font-semibold app-text">
                     {order.total_amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {order.currency}
                   </div>
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-end gap-2 pt-2 border-t app-divider">
                   <button
                     onClick={() => setViewingOrder(order)}
-                    className="text-blue-600 hover:text-blue-900 text-xs font-medium flex items-center gap-1"
+                    className="app-text-link text-xs font-medium flex items-center gap-1"
                   >
                     <Eye className="h-4 w-4" />
                     {t('app.view')}
                   </button>
+                  {canCloseOrder(order) && (
+                    <>
+                      <span className="app-text-muted opacity-40">|</span>
+                      <button
+                        onClick={() => setClosingOrder(order)}
+                        className="app-text hover:opacity-80 text-xs font-medium flex items-center gap-1"
+                      >
+                        <Archive className="h-4 w-4" />
+                        {t('supply.close.action')}
+                      </button>
+                    </>
+                  )}
                   {order.status === 'draft' && (
                     <>
-                      <span className="text-gray-300">|</span>
+                      <span className="app-text-muted opacity-40">|</span>
                       <button
                         onClick={() => {
                           setEditingOrder(order);
@@ -360,25 +430,25 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
         )}
         {refreshing && (
           <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)]"></div>
           </div>
         )}
       </div>
 
       {/* Liste des commandes - Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+      <div className="hidden md:block app-table-wrap relative">
         {refreshing && (
           <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)]"></div>
           </div>
         )}
         {filteredOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="app-empty">
+            <Package className="h-12 w-12 app-text-muted mx-auto mb-4" />
+            <h3 className="app-empty-title">
               {t('supply.noOrders')}
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="app-empty-text mb-4">
               {t('supply.noOrdersDescription')}
             </p>
             <button
@@ -389,99 +459,109 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                   setShowForm(true);
                 }
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              className="app-btn app-btn-primary"
             >
               {t('supply.createFirstOrder')}
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+          <DataTable>
+              <thead className="app-bg-muted">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('supply.orderNumber')}
+                  <th className={`${dtTh} w-10`}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        closableFiltered.length > 0 &&
+                        closableFiltered.every((o) => selectedIds.has(o.id))
+                      }
+                      onChange={toggleSelectAllClosable}
+                      className="w-4 h-4 rounded border app-border accent-[var(--app-primary)]"
+                      title={t('supply.close.selectClosable')}
+                    />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('supply.supplier')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      {t('supply.statut')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('supply.orderDate')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('deliveries.trackingNumber')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('supply.totalAmount')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('supply.items')}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {t('app.actions')}
-                  </th>
+                  <th className={dtTh}>{t('supply.orderNumber')}</th>
+                  <th className={dtTh}>{t('supply.supplier')}</th>
+                  <th className={dtTh}>{t('supply.statut')}</th>
+                  <th className={dtTh}>{t('supply.orderDate')}</th>
+                  <th className={dtTh}>{t('deliveries.trackingNumber')}</th>
+                  <th className={dtTh}>{t('supply.totalAmount')}</th>
+                  <th className={dtTh}>{t('supply.items')}</th>
+                  <th className={dtTh}>{t('app.actions')}</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-[var(--app-border)]">
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-blue-50 transition-colors border-b border-gray-100">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {order.order_number}
-                      </div>
+                  <tr key={order.id} className="hover:bg-[var(--app-surface-muted)] transition-colors">
+                    <td className={dtTd}>
+                      {canCloseOrder(order) ? (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(order.id)}
+                          onChange={() => toggleSelect(order.id)}
+                          className="w-4 h-4 rounded border app-border accent-[var(--app-primary)]"
+                        />
+                      ) : (
+                        <span className="inline-block w-4" />
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {order.supplier_name || <span className="text-gray-400 italic">{t('supply.noSupplier')}</span>}
-                      </div>
+                    <td className={dtTd}>
+                      <span className="font-semibold">{order.order_number}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                    <td className={dtTd}>
+                      {order.supplier_name || <span className="app-text-muted italic">{t('supply.noSupplier')}</span>}
+                    </td>
+                    <td className={dtTd}>
+                      <span className={`inline-flex px-1.5 py-0.5 text-[11px] font-semibold rounded-full ${getStatusColor(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 mb-1">
-                        {new Date(order.order_date).toLocaleDateString()}
+                    <td className="px-3 py-1.5">
+                      <div className="text-xs app-text">
+                        {formatDateDisplay(order.order_date)}
                       </div>
                       {order.expected_delivery_date && (
                         <DeliveryProgressBar order={order} compact={true} />
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className={dtTd}>
                       {order.tracking_number ? (
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-mono text-gray-700 bg-gray-50 px-2 py-1 rounded border">
-                            {order.tracking_number}
-                          </div>
-                        </div>
+                        <span className="font-mono text-[11px] app-text-muted app-bg-muted px-1.5 py-0.5 rounded border">
+                          {order.tracking_number}
+                        </span>
                       ) : (
-                        <span className="text-sm text-gray-400">-</span>
+                        <span className="app-text-muted">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">
+                    <td className={dtTd}>
+                      <span className="font-semibold">
                         {order.total_amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {order.currency}
-                      </div>
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center gap-1">
-                        <Package className="h-4 w-4 text-gray-400" />
+                    <td className={dtTd}>
+                      <span className="inline-flex items-center gap-1">
+                        <Package className="h-3.5 w-3.5 app-text-muted" />
                         {order.purchase_order_items?.length || 0}
-                      </div>
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className={`${dtTd} font-medium`}>
                       <div className="flex space-x-2">
                         <button
                           onClick={() => setViewingOrder(order)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="app-text-link"
                           title={t('app.view')}
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+                        {canCloseOrder(order) && (
+                          <button
+                            onClick={() => setClosingOrder(order)}
+                            className="app-text-muted hover:app-text"
+                            title={t('supply.close.action')}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        )}
                         {order.status === 'draft' && (
                           <button
                             onClick={() => {
@@ -499,8 +579,7 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+          </DataTable>
         )}
       </div>
 
@@ -535,6 +614,59 @@ export const PurchaseOrdersList: React.FC<PurchaseOrdersListProps> = ({ user, on
             setShowForm(true);
           }}
           user={user}
+        />
+      )}
+
+      {closingOrder && (
+        <PurchaseOrderCloseModal
+          order={closingOrder}
+          items={(closingOrder.purchase_order_items || []) as any}
+          user={user}
+          onClose={() => setClosingOrder(null)}
+          onComplete={() => {
+            setClosingOrder(null);
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(closingOrder.id);
+              return next;
+            });
+            fetchOrders(false);
+          }}
+          onReceiveRemaining={() => {
+            const order = closingOrder;
+            setClosingOrder(null);
+            setReceiptOrder(order);
+          }}
+        />
+      )}
+
+      {closingOrders && closingOrders.length > 0 && (
+        <PurchaseOrderCloseModal
+          orders={closingOrders}
+          user={user}
+          onClose={() => setClosingOrders(null)}
+          onComplete={() => {
+            const ids = new Set(closingOrders.map((o) => o.id));
+            setClosingOrders(null);
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              ids.forEach((id) => next.delete(id));
+              return next;
+            });
+            fetchOrders(false);
+          }}
+        />
+      )}
+
+      {receiptOrder && (
+        <ReceiptForm
+          purchaseOrder={receiptOrder}
+          user={user}
+          onClose={() => setReceiptOrder(null)}
+          onSave={() => {
+            setReceiptOrder(null);
+            fetchOrders(false);
+          }}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { devLog, devWarn } from './devLog';
 import type { Database } from '../types/supabase';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -26,7 +27,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         console.error('Key:', supabaseAnonKey ? 'Définie' : 'Manquante');
         throw new Error('Variables d\'environnement Supabase manquantes. Vérifiez votre fichier .env');
       }
-      console.log('🔧 Supabase: Création de l\'instance unique');
+      devLog('🔧 Supabase: Création de l\'instance unique');
       supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
         auth: {
           persistSession: true,
@@ -83,7 +84,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
           // Supabase gère lui-même les sessions expirées
           return result;
         } catch (error) {
-          console.warn('⚠️ Supabase: Erreur lors de la récupération de session:', error);
+          devWarn('⚠️ Supabase: Erreur lors de la récupération de session:', error);
           sessionCache = null; // Invalider le cache en cas d'erreur
           return { data: { session: null, user: null }, error: error as any };
         }
@@ -98,7 +99,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         // Si on rafraîchit trop souvent, ignorer (minimum 15 minutes entre rafraîchissements)
         const MIN_REFRESH_INTERVAL = 900000; // 15 minutes pour éviter les 429
         if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-          console.log(`⏳ Supabase: Rafraîchissement ignoré (${Math.round((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000)}s restants)`);
+          devLog(`⏳ Supabase: Rafraîchissement ignoré (${Math.round((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000)}s restants)`);
           // Retourner la session actuelle au lieu de rafraîchir
           const { data: { session } } = await supabaseInstance.auth.getSession();
           return { data: { session, user: session?.user || null }, error: null };
@@ -106,7 +107,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         
         // Si un rafraîchissement est déjà en cours, attendre
         if (isRefreshing) {
-          console.log('⏳ Supabase: Rafraîchissement déjà en cours, attente...');
+          devLog('⏳ Supabase: Rafraîchissement déjà en cours, attente...');
           // Attendre jusqu'à 5 secondes
           let waitCount = 0;
           while (isRefreshing && waitCount < 50) {
@@ -124,7 +125,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         lastTokenRefreshAttempt = now;
         
         try {
-          console.log('🔄 Supabase: Rafraîchissement du token autorisé');
+          devLog('🔄 Supabase: Rafraîchissement du token autorisé');
           
           // Utiliser un timeout pour éviter les blocages
           const refreshPromise = originalRefreshSession(refreshToken);
@@ -144,7 +145,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
               errorMessage.includes('Too Many Requests');
             
             if (isRateLimit) {
-              console.warn('⚠️ Supabase: Erreur 429 (rate limit) lors du rafraîchissement, utilisation de la session actuelle');
+              devWarn('⚠️ Supabase: Erreur 429 (rate limit) lors du rafraîchissement, utilisation de la session actuelle');
               // Ne pas déconnecter l'utilisateur, retourner la session actuelle
               const { data: { session } } = await supabaseInstance.auth.getSession();
               return { data: { session, user: session?.user || null }, error: null };
@@ -163,19 +164,19 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
             errorMessage.includes('Timeout');
           
           if (isRateLimit) {
-            console.warn('⚠️ Supabase: Erreur 429 ou timeout lors du rafraîchissement, utilisation de la session actuelle');
+            devWarn('⚠️ Supabase: Erreur 429 ou timeout lors du rafraîchissement, utilisation de la session actuelle');
             // Ne pas déconnecter l'utilisateur, retourner la session actuelle
             try {
               const { data: { session } } = await supabaseInstance.auth.getSession();
               return { data: { session, user: session?.user || null }, error: null };
             } catch (sessionError) {
               // Si même getSession échoue, retourner une erreur mais ne pas throw
-              console.warn('⚠️ Supabase: Impossible de récupérer la session après erreur 429:', sessionError);
+              devWarn('⚠️ Supabase: Impossible de récupérer la session après erreur 429:', sessionError);
               return { data: { session: null, user: null }, error: null };
             }
           }
           
-          console.warn('⚠️ Supabase: Erreur lors du rafraîchissement du token:', error);
+          devWarn('⚠️ Supabase: Erreur lors du rafraîchissement du token:', error);
           // Ne pas throw l'erreur pour éviter que Supabase déclenche SIGNED_OUT
           // Retourner la session actuelle à la place
           try {
@@ -227,13 +228,13 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
               // Vérifier si la session est toujours valide
               const { data: { session: currentSession } } = await supabaseInstance.auth.getSession();
               if (currentSession && currentSession.user) {
-                console.log('⚠️ Supabase: Événement SIGNED_OUT filtré (session toujours valide, probable erreur 429)');
+                devLog('⚠️ Supabase: Événement SIGNED_OUT filtré (session toujours valide, probable erreur 429)');
                 // Ne pas propager l'événement SIGNED_OUT si la session est toujours valide
                 // Ne pas déclencher TOKEN_REFRESHED non plus pour éviter le spam
                 return;
               }
             } catch (error) {
-              console.warn('⚠️ Supabase: Erreur lors de la vérification de session dans onAuthStateChange:', error);
+              devWarn('⚠️ Supabase: Erreur lors de la vérification de session dans onAuthStateChange:', error);
               // En cas d'erreur, propager quand même l'événement
             }
           }
@@ -242,7 +243,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
         });
       };
       
-      console.log('✅ Supabase: Instance créée avec succès (rafraîchissement automatique activé, protection contre rate limit, cache de session 5 min, intervalle minimum 15 min)');
+      devLog('✅ Supabase: Instance créée avec succès (rafraîchissement automatique activé, protection contre rate limit, cache de session 5 min, intervalle minimum 15 min)');
     }
     return supabaseInstance!;
   } catch (error) {
@@ -253,7 +254,7 @@ export const supabase: ReturnType<typeof createClient<Database>> = (() => {
 
 // Auth helpers
 export const signIn = async (email: string, password: string) => {
-  console.log('🔐 Supabase: Tentative de connexion avec Supabase...');
+  devLog('🔐 Supabase: Tentative de connexion avec Supabase...');
   const startTime = performance.now();
   
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -262,12 +263,12 @@ export const signIn = async (email: string, password: string) => {
   });
   
   const endTime = performance.now();
-  console.log(`⏱️ Supabase: Connexion Supabase terminée en ${(endTime - startTime).toFixed(2)}ms`);
+  devLog(`⏱️ Supabase: Connexion Supabase terminée en ${(endTime - startTime).toFixed(2)}ms`);
   
   if (error) {
     console.error('❌ Supabase: Erreur de connexion:', error);
   } else {
-    console.log('✅ Supabase: Connexion réussie');
+    devLog('✅ Supabase: Connexion réussie');
   }
   
   return { data, error };

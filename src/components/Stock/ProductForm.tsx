@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { devLog } from '../../lib/devLog';
 import { supabase } from '../../lib/supabase';
 import { Product, User, Category, Supplier } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { generateIncrementalSKU } from '../../lib/skuGenerator';
 import { X, Package, Upload, Image as ImageIcon } from 'lucide-react';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -28,7 +29,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
     min_stock_level: 0,
     max_stock_level: '',
     current_stock: 0,
-    status: 'active' as 'active' | 'inactive' | 'discontinued'
+    status: 'active' as 'active' | 'inactive' | 'discontinued',
+    is_published_to_store: false
   });
   const [isNewProduct, setIsNewProduct] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -58,7 +60,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
         min_stock_level: product.min_stock_level,
         max_stock_level: product.max_stock_level?.toString() || '',
         current_stock: product.current_stock,
-        status: product.status
+        status: product.status,
+        is_published_to_store: product.is_published_to_store ?? false
       });
       setCurrentImageUrl(product.image_url || null);
       setImagePreview(null);
@@ -278,7 +281,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
         data.supplier_id = null;
       }
 
-      console.log('Données à sauvegarder:', data);
+      devLog('Données à sauvegarder:', data);
 
       if (product) {
         // @ts-ignore - Types Supabase non générés pour la table products
@@ -298,40 +301,34 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
     }
   };
 
-  const overlayContent = (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-[60] transition-opacity"
-        style={{ top: 0, left: 0, right: 0, bottom: 0, margin: 0, padding: 0 }}
-        onClick={onClose}
-      />
-
-      {/* Offcanvas */}
-      <div
-        className="fixed top-0 right-0 bottom-0 w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl bg-white shadow-xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col"
-        style={{ top: 0, right: 0, margin: 0, padding: 0 }}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center p-3 sm:p-4 md:p-6 border-b bg-gray-50 flex-shrink-0">
-          <h3 className="text-base sm:text-lg md:text-xl font-bold flex items-center">
-            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 text-blue-600" />
+  return (
+    <Offcanvas
+      onClose={onClose}
+      width="xl"
+      ariaLabel={product ? t('stock.editProduct') : t('stock.newProduct')}
+    >
+      <OffcanvasHeader>
+        <div className="flex justify-between items-center">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold flex items-center min-w-0">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 mr-2 app-text-link flex-shrink-0" />
             <span className="truncate">{product ? t('stock.editProduct') : t('stock.newProduct')}</span>
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
+            className="app-icon-btn flex-shrink-0 ml-2"
+            aria-label={t('app.cancel')}
           >
-            <X className="h-5 w-5 sm:h-6 sm:w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
+      </OffcanvasHeader>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
-          <form onSubmit={handleSubmit} id="product-form" className="space-y-6">
+      <form id="product-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="md:p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productName')} *</label>
+                <label className="app-label">{t('stock.productName')} *</label>
               <input
                 type="text"
                 required
@@ -340,23 +337,21 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                   setFormData({...formData, name: e.target.value});
                   setNameError(null); // Réinitialiser l'erreur quand l'utilisateur modifie le nom
                 }}
-                  className={`w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    nameError ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`app-input ${nameError ? 'border-red-500' : ''}`}
               />
               {nameError && (
                 <p className="mt-1 text-sm text-red-600">{nameError}</p>
               )}
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productSku')} *</label>
+                <label className="app-label">{t('stock.productSku')} *</label>
               <input
                 type="text"
                 required
                 value={formData.sku}
                 onChange={(e) => setFormData({...formData, sku: e.target.value})}
-                  className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  isNewProduct ? 'bg-gray-100' : ''
+                  className={`app-input ${
+                  isNewProduct ? 'app-bg-muted' : ''
                 }`}
                 readOnly={isNewProduct}
                 title={isNewProduct ? t('stock.form.skuAutoGenerated') : ''}
@@ -364,13 +359,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
               />
               {isNewProduct && (
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs app-text-muted">
                     {t('stock.form.skuFormat')}
                   </span>
                   <button
                     type="button"
                     onClick={generateSKU}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="text-sm app-text-link hover:text-[var(--app-primary-deep)]"
                   >
                     {t('stock.form.generateNewSku')}
                   </button>
@@ -380,18 +375,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
           </div>
           
           <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('common.description')}</label>
+              <label className="app-label">{t('common.description')}</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="app-input"
               rows={3}
             />
           </div>
 
             {/* Upload d'image */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 Photo du produit
               </label>
               <div className="space-y-3">
@@ -400,7 +395,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                     <img
                       src={imagePreview || currentImageUrl || ''}
                       alt={formData.name || 'Aperçu'}
-                      className="w-full h-48 object-cover rounded-md border border-gray-300"
+                      className="w-full h-48 object-cover rounded-md border app-border"
                     />
                     <button
                       type="button"
@@ -414,13 +409,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                    className="border-2 border-dashed border-[var(--app-border)] rounded-md p-6 text-center cursor-pointer hover:border-[var(--app-primary)] hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] transition-colors"
                   >
-                    <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 mb-1">
+                    <ImageIcon className="h-12 w-12 mx-auto app-text-muted mb-2" />
+                    <p className="text-sm app-text-muted mb-1">
                       Cliquez pour ajouter une photo
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs app-text-muted">
                       PNG, JPG jusqu'à 5MB
                     </p>
                   </div>
@@ -436,7 +431,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
+                    className="w-full app-badge px-4 py-2 rounded-md hover:bg-[var(--app-surface-muted)] flex items-center justify-center gap-2 transition-colors"
                   >
                     <Upload className="h-4 w-4" />
                     Choisir une image
@@ -447,11 +442,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productCategory')}</label>
+                <label className="app-label">{t('stock.productCategory')}</label>
               <select
                 value={formData.category_id}
                 onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
               >
                 <option value="">{t('app.select')}</option>
                 {categories.map(cat => (
@@ -460,11 +455,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
               </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productSupplier')}</label>
+                <label className="app-label">{t('stock.productSupplier')}</label>
               <select
                 value={formData.supplier_id}
                 onChange={(e) => setFormData({...formData, supplier_id: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
               >
                 <option value="">{t('app.select')}</option>
                 {suppliers.map(supp => (
@@ -473,110 +468,122 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSa
               </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.productUnit')}</label>
+                <label className="app-label">{t('stock.productUnit')}</label>
               <input
                 type="text"
                 value={formData.unit}
                 onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
               />
             </div>
           </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.minStockLevel')}</label>
+                <label className="app-label">{t('stock.minStockLevel')}</label>
               <input
                 type="number"
                 value={formData.min_stock_level}
                   onChange={(e) => setFormData({ ...formData, min_stock_level: parseInt(e.target.value) || 0 })}
                   onFocus={(e) => e.target.select()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
               />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.maxStockLevel')}</label>
+                <label className="app-label">{t('stock.maxStockLevel')}</label>
               <input
                 type="number"
                 value={formData.max_stock_level}
                 onChange={(e) => setFormData({...formData, max_stock_level: e.target.value})}
                   onFocus={(e) => e.target.select()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
               />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('stock.currentStock')}</label>
+                <label className="app-label">{t('stock.currentStock')}</label>
               <input
                 type="number"
                 value={formData.current_stock}
                   onChange={(e) => setFormData({ ...formData, current_stock: parseInt(e.target.value) || 0 })}
                   onFocus={(e) => e.target.select()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Code-barres</label>
+                <label className="app-label">Code-barres</label>
                 <input
                   type="text"
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
                   placeholder="Code-barres (optionnel)"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Poids</label>
+                <label className="app-label">Poids</label>
                 <input
                   type="number"
                   step="0.001"
                   value={formData.weight}
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
                   placeholder="Poids (optionnel)"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dimensions</label>
+                <label className="app-label">Dimensions</label>
                 <input
                   type="text"
                   value={formData.dimensions}
                   onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="app-input"
                   placeholder="Dimensions (optionnel)"
               />
             </div>
           </div>
 
-          </form>
-        </div>
+            <div className="pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.is_published_to_store}
+                  onChange={(e) =>
+                    setFormData({ ...formData, is_published_to_store: e.target.checked })
+                  }
+                  className="w-4 h-4 app-text-link border-[var(--app-border)] rounded focus:ring-[var(--app-primary)]"
+                />
+                <span className="text-sm app-text">Publier sur le store</span>
+              </label>
+              <p className="mt-1 text-xs app-text-muted">
+                Flag uniquement — aucune synchronisation e-commerce pour le moment.
+              </p>
+            </div>
 
-        {/* Footer avec boutons */}
-        <div className="border-t bg-white p-3 sm:p-4 md:p-6 flex-shrink-0">
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+        </OffcanvasBody>
+
+        <OffcanvasFooter>
+          <div className="app-actions flex-col-reverse sm:flex-row w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
+              className="app-btn app-btn-secondary w-full sm:w-auto"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
-              form="product-form"
               disabled={loading || uploadingImage}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors text-sm sm:text-base"
+              className="app-btn app-btn-primary w-full sm:w-auto"
             >
               {loading || uploadingImage ? (uploadingImage ? 'Upload de l\'image...' : t('stock.saving')) : t('app.save')}
             </button>
           </div>
-        </div>
-      </div>
-    </>
+        </OffcanvasFooter>
+      </form>
+    </Offcanvas>
   );
-
-  return createPortal(overlayContent, document.body);
 };

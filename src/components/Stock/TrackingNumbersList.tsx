@@ -12,9 +12,12 @@ import {
 import { TrackingNumber, User } from '../../types';
 import { useTranslation } from 'react-i18next';
 import {
-  PackageSearch, Search, Trash2,
+  PackageSearch, Trash2,
   X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download, Database
 } from 'lucide-react';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody } from '../ui/Offcanvas';
+import { SearchField } from '../ui/SearchField';
+import { DataTable, dtTh, dtThRight, dtTd } from '../ui/DataTable';
 
 const IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL =
   'https://api.importation-express.com/public/tracking?customerId=3239&phoneNumber=0384271168';
@@ -327,8 +330,8 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock className="h-4 w-4 text-gray-500" />;
-      case 'in_transit': return <Truck className="h-4 w-4 text-blue-500" />;
+      case 'pending': return <Clock className="h-4 w-4 app-text-muted" />;
+      case 'in_transit': return <Truck className="h-4 w-4 app-text-link" />;
       case 'arrived': return <PackageSearch className="h-4 w-4 text-orange-500" />;
       case 'received': return <CheckCircle className="h-4 w-4 text-green-500" />;
       default: return <Clock className="h-4 w-4" />;
@@ -726,138 +729,239 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
   return (
     <>
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
         </div>
       ) : (
         <>
-      {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-            {t('tracking.title')}
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            {t('tracking.subtitle')}
-          </p>
+      <div className="app-sticky-chrome space-y-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="app-page-title">{t('tracking.title')}</h1>
+            <p className="app-page-subtitle">{t('tracking.subtitle')}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={syncAndFetchTrackingNumbers}
+              disabled={loading}
+              className="app-btn app-btn-secondary app-btn-sm disabled:opacity-50"
+              title={t('tracking.syncTracking')}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              {t('tracking.syncTracking')}
+            </button>
+            <button
+              type="button"
+              onClick={openImportationExpressApiModal}
+              className="app-btn app-btn-secondary app-btn-sm"
+              title={t('tracking.viewIeApiTitle')}
+            >
+              <Braces className="h-3.5 w-3.5" />
+              {t('tracking.viewIeApi')}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={syncAndFetchTrackingNumbers}
-          disabled={loading}
-          className="bg-gray-100 text-gray-700 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50"
-          title={t('tracking.syncTracking')}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          {t('tracking.syncTracking')}
-        </button>
-        <button
-          type="button"
-          onClick={openImportationExpressApiModal}
-          className="bg-white border border-gray-300 text-gray-800 px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 text-sm sm:text-base"
-          title={t('tracking.viewIeApiTitle')}
-        >
-          <Braces className="h-4 w-4" />
-          {t('tracking.viewIeApi')}
-        </button>
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={t('tracking.searchPlaceholder')}
+            inputClassName="text-xs py-1.5"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="app-input text-xs py-1.5 w-auto sm:min-w-[12rem]"
+          >
+            <option value="all">{t('tracking.allStatuses')}</option>
+            <option value="pending">{t('tracking.status.pending')}</option>
+            <option value="in_transit">{t('tracking.status.in_transit')}</option>
+            <option value="arrived">{t('tracking.status.arrived')}</option>
+            <option value="received">{t('tracking.status.received')}</option>
+          </select>
         </div>
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">{t('tracking.totalTracking')}</div>
-          <div className="text-2xl font-bold text-gray-900">{filteredTracking.length}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="app-kpi">
+          <div className="text-xs font-medium" style={{ color: 'var(--app-ink-muted)' }}>{t('tracking.totalTracking')}</div>
+          <div className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-ink)' }}>{filteredTracking.length}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">{t('tracking.totalCostUSD')}</div>
-          <div className="text-2xl font-bold text-green-600">
+        <div className="app-kpi">
+          <div className="text-xs font-medium" style={{ color: 'var(--app-ink-muted)' }}>{t('tracking.totalCostUSD')}</div>
+          <div className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-success)' }}>
             ${totalCostUSD.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600">{t('tracking.totalCostMGA')}</div>
-          <div className="text-2xl font-bold text-blue-600">
+        <div className="app-kpi">
+          <div className="text-xs font-medium" style={{ color: 'var(--app-ink-muted)' }}>{t('tracking.totalCostMGA')}</div>
+          <div className="text-lg font-semibold mt-0.5" style={{ color: 'var(--app-ink)' }}>
             {totalCostMGA.toLocaleString('fr-FR')} MGA
           </div>
         </div>
       </div>
 
-      {/* Filtres */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder={t('tracking.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+      {/* Liste — mobile */}
+      <div className="md:hidden space-y-3">
+        {filteredTracking.length === 0 ? (
+          <div className="app-empty">
+            <p className="app-empty-text">
+              {searchTerm || statusFilter !== 'all'
+                ? t('tracking.noTrackingNumbersFound')
+                : t('tracking.noTrackingNumbers')}
+            </p>
           </div>
-          <div className="sm:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">{t('tracking.allStatuses')}</option>
-              <option value="pending">{t('tracking.status.pending')}</option>
-              <option value="in_transit">{t('tracking.status.in_transit')}</option>
-              <option value="arrived">{t('tracking.status.arrived')}</option>
-              <option value="received">{t('tracking.status.received')}</option>
-            </select>
-          </div>
-        </div>
+        ) : (
+          filteredTracking.map((tn) => {
+            const editedData = editingRows.get(tn.id);
+            const isEditing = !!editedData;
+            const isSaving = savingRows.has(tn.id);
+            const displayData = { ...tn, ...editedData };
+            const calculated = getCalculatedValues(tn, editedData);
+
+            return (
+              <div key={tn.id} className={`app-list-card ${isEditing ? 'ring-1 ring-[color-mix(in_srgb,var(--app-primary)_25%,var(--app-border))]' : ''}`}>
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium app-text font-mono truncate">
+                      {tn.tracking_number}
+                    </div>
+                    {(tn.orderCount ?? 0) > 1 && (
+                      <div className="text-xs app-text-link mt-0.5">
+                        {tn.orderCount} {t('tracking.ordersCount')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {getStatusIcon(displayData.status)}
+                    <select
+                      value={displayData.status}
+                      onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
+                      className="app-input text-xs py-1 max-w-[7rem]"
+                      title={getStatusLabel(displayData.status)}
+                    >
+                      <option value="pending">{t('tracking.status.pending')}</option>
+                      <option value="in_transit">{t('tracking.status.in_transit')}</option>
+                      <option value="arrived">{t('tracking.status.arrived')}</option>
+                      <option value="received">{t('tracking.status.received')}</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2 text-xs pt-2 border-t app-divider">
+                  <div className="flex justify-between">
+                    <span className="app-text-muted">{t('tracking.volume')}</span>
+                    <span className="app-text">
+                      {calculated.volumeM3 > 0 ? `${calculated.volumeM3.toFixed(4)} m³` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="app-text-muted">{t('tracking.weight')}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={displayData.weight_kg || ''}
+                      onChange={(e) => handleFieldChange(tn.id, 'weight_kg', e.target.value)}
+                      placeholder="0"
+                      className="app-input w-24 text-xs py-1 text-right"
+                    />
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="app-text-muted">{t('tracking.costUSD')}</span>
+                    <span className="font-medium text-green-700">${calculated.totalCostUSD.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t app-divider">
+                    <span className="app-text-muted">{t('tracking.costMGA')}</span>
+                    <span className="font-medium app-text">
+                      {calculated.totalCostMGA.toLocaleString('fr-FR')} MGA
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t app-divider">
+                    {isEditing && (
+                      <button
+                        onClick={() => handleSave(tn)}
+                        disabled={isSaving}
+                        className="app-icon-btn text-green-700 disabled:opacity-50"
+                        title={t('app.save')}
+                      >
+                        {isSaving ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (tn.status === 'received') {
+                          alert(t('tracking.cannotDeleteReceived'));
+                          return;
+                        }
+                        if (confirm(t('tracking.confirmDelete'))) {
+                          const { error } = await supabase
+                            .from('tracking_numbers')
+                            .delete()
+                            .eq('id', tn.id);
+                          if (!error) {
+                            refreshTrackingNumbers();
+                          } else {
+                            alert(t('tracking.deleteError'));
+                          }
+                        }
+                      }}
+                      disabled={tn.status === 'received'}
+                      className={`app-icon-btn ${tn.status === 'received' ? 'opacity-40 cursor-not-allowed' : 'app-icon-btn-danger'}`}
+                      title={
+                        tn.status === 'received'
+                          ? t('tracking.cannotDeleteReceived')
+                          : t('common.delete')
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Tableau */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div ref={tableContainerRef} className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      {/* Tableau — desktop */}
+      <div className="hidden md:block app-table-wrap">
+        <DataTable ref={tableContainerRef}>
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                <th className={`${dtTh} left-0 z-40`}>
                   {t('tracking.trackingNumber')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tracking.dimensions')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tracking.volume')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tracking.weight')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className={dtTh}>{t('tracking.dimensions')}</th>
+                <th className={dtTh}>{t('tracking.volume')}</th>
+                <th className={dtTh}>{t('tracking.weight')}</th>
+                <th className={dtTh}>
                   {t('tracking.ratePerM3')} / {t('tracking.ratePerKg')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tracking.exchangeRate')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tracking.costUSD')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky bg-gray-50 z-10" style={{ right: '200px' }}>
+                <th className={dtTh}>{t('tracking.exchangeRate')}</th>
+                <th className={dtTh}>{t('tracking.costUSD')}</th>
+                <th className={`${dtTh} z-40`} style={{ right: '200px' }}>
                   {t('tracking.costMGA')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky bg-gray-50 z-10" style={{ right: '100px' }}>
+                <th className={`${dtTh} z-40`} style={{ right: '100px' }}>
                   {t('tracking.statusLabel')}
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10">
+                <th className={`${dtThRight} right-0 z-40`}>
                   {t('common.actions')}
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-[var(--app-border)]">
               {filteredTracking.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={10} className="px-3 py-6 text-center text-xs app-text-muted">
                     {searchTerm || statusFilter !== 'all' 
                       ? t('tracking.noTrackingNumbersFound')
                       : t('tracking.noTrackingNumbers')}
@@ -872,18 +976,18 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                   const calculated = getCalculatedValues(tn, editedData);
                   
                   return (
-                    <tr key={tn.id} className={`hover:bg-gray-50 ${isEditing ? 'bg-blue-50' : ''}`}>
-                      <td className={`px-6 py-4 whitespace-nowrap sticky left-0 z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`}>
-                        <div className="text-sm font-medium text-gray-900">
+                    <tr key={tn.id} className={`hover:bg-[var(--app-surface-muted)] group ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`}>
+                      <td className={`px-3 py-1.5 whitespace-nowrap sticky left-0 z-20 text-xs ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`}>
+                        <div className="font-medium app-text">
                           {tn.tracking_number}
                         </div>
                         {(tn.orderCount ?? 0) > 1 && (
-                          <div className="text-xs text-blue-600 mt-1">
+                          <div className="text-xs app-text-link mt-1">
                             {tn.orderCount} {t('tracking.ordersCount')}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                         <div className="flex gap-1 items-center">
                           <input
                             type="number"
@@ -893,7 +997,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             onChange={(e) => handleFieldChange(tn.id, 'length', e.target.value)}
                             onFocus={handleInputFocus}
                             placeholder="L"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-16 px-2 py-1 app-input text-sm"
                           />
                           <span>×</span>
                           <input
@@ -904,7 +1008,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             onChange={(e) => handleFieldChange(tn.id, 'width', e.target.value)}
                             onFocus={handleInputFocus}
                             placeholder="l"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-16 px-2 py-1 app-input text-sm"
                           />
                           <span>×</span>
                           <input
@@ -915,22 +1019,22 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             onChange={(e) => handleFieldChange(tn.id, 'height', e.target.value)}
                             onFocus={handleInputFocus}
                             placeholder="H"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-16 px-2 py-1 app-input text-sm"
                           />
-                          <span className="text-xs text-gray-500 ml-1">cm</span>
+                          <span className="text-xs app-text-muted ml-1">cm</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs text-sm app-text">
                         {calculated.volumeM3 > 0 ? (
                           <span className="flex items-center gap-1">
                             {calculated.volumeM3.toFixed(6)} m³
                             {calculated.volumeSource === 'api' && (
-                              <span className="text-xs font-medium text-blue-500 bg-blue-50 px-1 rounded" title="Volume fourni par l'API Importation Express">IE</span>
+                              <span className="app-badge app-badge-info text-xs px-1" title="Volume fourni par l'API Importation Express">IE</span>
                             )}
                           </span>
                         ) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                         <input
                           type="number"
                           step="0.01"
@@ -939,11 +1043,11 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                           onChange={(e) => handleFieldChange(tn.id, 'weight_kg', e.target.value)}
                           onFocus={handleInputFocus}
                           placeholder="0.00"
-                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                          className="w-20 px-2 py-1 app-input text-sm"
                         />
-                        <span className="text-xs text-gray-500 ml-1">kg</span>
+                        <span className="text-xs app-text-muted ml-1">kg</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                         <div className="flex flex-col gap-1">
                           <input
                             type="number"
@@ -953,7 +1057,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             onChange={(e) => handleFieldChange(tn.id, 'rate_per_m3', e.target.value)}
                             onFocus={handleInputFocus}
                             placeholder="USD/m³"
-                            className="w-24 px-2 py-1 border border-gray-300 rounded text-xs"
+                            className="w-24 px-2 py-1 app-input text-xs"
                           />
                           <input
                             type="number"
@@ -963,11 +1067,11 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             onChange={(e) => handleFieldChange(tn.id, 'rate_per_kg', e.target.value)}
                             onFocus={handleInputFocus}
                             placeholder="USD/kg"
-                            className="w-24 px-2 py-1 border border-gray-300 rounded text-xs"
+                            className="w-24 px-2 py-1 app-input text-xs"
                           />
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs">
                         <input
                           type="number"
                           step="0.01"
@@ -976,23 +1080,23 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                           onChange={(e) => handleFieldChange(tn.id, 'exchange_rate_mga', e.target.value)}
                           onFocus={handleInputFocus}
                           placeholder="Taux"
-                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                          className="w-24 px-2 py-1 app-input text-sm"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-xs text-sm font-medium app-text-success">
                         ${calculated.totalCostUSD.toFixed(2)}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 sticky z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`} style={{ right: '200px' }}>
+                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs text-sm font-medium app-text-link sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`} style={{ right: '200px' }}>
                         {calculated.totalCostMGA.toLocaleString('fr-FR')} MGA
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap sticky z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`} style={{ right: '100px' }}>
+                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`} style={{ right: '100px' }}>
                         <div className="flex items-center gap-1.5">
                           {getStatusIcon(displayData.status)}
                         <select
                           value={displayData.status}
                           onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
                           onFocus={handleInputFocus}
-                          className="text-sm border border-gray-300 rounded px-2 py-1"
+                          className="app-input text-sm px-2 py-1"
                           title={getStatusLabel(displayData.status)}
                         >
                           <option value="pending">{t('tracking.status.pending')}</option>
@@ -1002,13 +1106,13 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                         </select>
                         </div>
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 z-10 ${isEditing ? 'bg-blue-50' : 'bg-white'}`}>
+                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs text-right text-sm font-medium sticky right-0 z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`}>
                         <div className="flex items-center justify-end gap-2">
                           {isEditing && (
                             <button
                               onClick={() => handleSave(tn)}
                               disabled={isSaving}
-                              className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                              className="app-text-success hover:text-green-800 disabled:opacity-50"
                               title={t('app.save')}
                             >
                               {isSaving ? (
@@ -1040,8 +1144,8 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                             }}
                             disabled={tn.status === 'received'}
                             className={`${tn.status === 'received' 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-red-600 hover:text-red-800'
+                              ? 'app-text-muted cursor-not-allowed' 
+                              : 'app-text-danger hover:text-red-800'
                             }`}
                             title={tn.status === 'received' 
                               ? t('tracking.cannotDeleteReceived') 
@@ -1057,35 +1161,24 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                 })
               )}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
       </div>
         </>
       )}
     </div>
 
     {ieApiModalOpen && (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50"
-        onClick={() => setIeApiModalOpen(false)}
-        role="presentation"
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[92vh] flex flex-col"
-          onClick={e => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ie-api-modal-title"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
-            <h2 id="ie-api-modal-title" className="text-lg font-semibold text-gray-900 pr-2">
+      <Offcanvas onClose={() => setIeApiModalOpen(false)} width="xl">
+          <OffcanvasHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="ie-api-modal-title" className="text-lg font-semibold app-text pr-2">
               {t('tracking.ieApiModalTitle')}
             </h2>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700 select-none">
+              <label className="inline-flex items-center gap-2 text-sm app-text-muted select-none">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300"
+                  className="rounded app-border"
                   checked={ieSyncForce}
                   onChange={e => setIeSyncForce(e.target.checked)}
                 />
@@ -1099,7 +1192,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                   setIeSyncPreview(buildSyncPreview(ieSyncForce));
                 }}
                 disabled={ieApiRows.length === 0 || ieApiLoading || ieSyncApplying}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="app-btn app-btn-primary app-btn-sm"
                 title={t('tracking.syncFromIeApi')}
               >
                 <Database className="h-4 w-4" />
@@ -1109,7 +1202,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                 type="button"
                 onClick={() => void handleExportIeApiExcel()}
                 disabled={ieApiRows.length === 0 || ieApiLoading}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="app-btn app-btn-success app-btn-sm"
                 title={t('tracking.ieApiExport')}
               >
                 <Download className="h-4 w-4" />
@@ -1118,22 +1211,23 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
               <button
                 type="button"
                 onClick={() => setIeApiModalOpen(false)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                className="p-2 rounded-lg app-text-muted hover:bg-[var(--app-surface-muted)]"
                 title={t('app.close')}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
           </div>
-          <p className="px-4 py-2 text-xs text-gray-500 font-mono break-all border-b border-gray-100">
+          <p className="mt-2 text-xs app-text-muted font-mono break-all">
             {IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL}
           </p>
-          <div className="px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-            {ieApiMatchCount !== null && !ieApiLoading && (
-              <span>{t('tracking.ieApiCountLabel', { count: ieApiMatchCount })}</span>
-            )}
-          </div>
-          <div className="flex-1 overflow-auto p-2 sm:p-4 min-h-[200px]">
+          {ieApiMatchCount !== null && !ieApiLoading && (
+            <p className="mt-1 text-sm app-text-muted">
+              {t('tracking.ieApiCountLabel', { count: ieApiMatchCount })}
+            </p>
+          )}
+          </OffcanvasHeader>
+          <OffcanvasBody className="min-h-0">
 
             {/* Résultat du sync */}
             {ieSyncDone && (
@@ -1148,18 +1242,18 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
             {/* Aperçu du sync */}
             {ieSyncPreview !== null && (
-              <div className="mb-4 border border-blue-200 rounded-lg bg-blue-50 p-3">
+              <div className="mb-4 app-surface rounded-lg bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] p-3">
                 {ieSyncLastPreviewForce && (
                   <p className="text-xs text-amber-900 bg-amber-100 border border-amber-200 rounded px-2 py-1.5 mb-2">
                     {t('tracking.ieSyncForceBanner')}
                   </p>
                 )}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-blue-900 text-sm">
+                  <span className="font-medium app-text text-sm">
                     {t('tracking.ieSyncPreviewTitle')}
                   </span>
                   <button
-                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                    className="text-xs app-text-muted hover:app-text-muted underline"
                     onClick={() => setIeSyncPreview(null)}
                   >
                     {t('app.cancel')}
@@ -1167,54 +1261,54 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                 </div>
 
                 {ieSyncPreview.length === 0 ? (
-                  <p className="text-sm text-blue-700">{t('tracking.ieSyncNoChanges')}</p>
+                  <p className="text-sm app-text-link">{t('tracking.ieSyncNoChanges')}</p>
                 ) : (
                   <>
-                    <p className="text-xs text-blue-700 mb-2">
+                    <p className="text-xs app-text-link mb-2">
                       {t('tracking.ieSyncSummary', { count: ieSyncPreview.length })}
                     </p>
-                    <div className="overflow-x-auto rounded border border-blue-200 bg-white mb-3">
-                      <table className="min-w-full text-xs divide-y divide-gray-100">
-                        <thead className="bg-gray-50">
+                    <div className="overflow-x-auto app-surface rounded mb-3">
+                      <table className="app-table-striped min-w-full text-xs divide-y divide-[var(--app-border)]">
+                        <thead className="app-bg-muted">
                           <tr>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.trackingNumber')}</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.ieApiCol.currentStatus')} IE</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} actuel</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.statusLabel')} →</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.weight')} →</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">{t('tracking.volume')} →</th>
-                            <th className="px-2 py-1.5 text-left font-medium text-gray-600">
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.trackingNumber')}</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.ieApiCol.currentStatus')} IE</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.statusLabel')} actuel</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.statusLabel')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.weight')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">{t('tracking.volume')} →</th>
+                            <th className="px-2 py-1.5 text-left font-medium app-text-muted">
                               {t('tracking.ieSyncColRatesFromEstimate')}
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-[var(--app-border)]">
                           {ieSyncPreview.map(item => (
-                            <tr key={item.dbId} className="hover:bg-gray-50">
+                            <tr key={item.dbId} className="hover:bg-[var(--app-surface-muted)]">
                               <td className="px-2 py-1.5 font-mono">{item.trackingNumber}</td>
-                              <td className="px-2 py-1.5 text-gray-600 italic">{item.ieStatus || '—'}</td>
+                              <td className="px-2 py-1.5 app-text-muted italic">{item.ieStatus || '—'}</td>
                               <td className="px-2 py-1.5">{t(`tracking.status.${item.currentDbStatus}`)}</td>
                               <td className="px-2 py-1.5">
                                 {item.statusChanged && item.mappedStatus ? (
-                                  <span className="text-blue-700 font-medium">
+                                  <span className="app-text-link font-medium">
                                     {t(`tracking.status.${item.mappedStatus}`)}
                                   </span>
                                 ) : '—'}
                               </td>
                               <td className="px-2 py-1.5">
                                 {item.weightChanged && item.ieWeightKg ? (
-                                  <span className="text-blue-700 font-medium">{item.ieWeightKg} kg</span>
+                                  <span className="app-text-link font-medium">{item.ieWeightKg} kg</span>
                                 ) : '—'}
                               </td>
                               <td className="px-2 py-1.5">
                                 {item.volumeChanged && item.ieVolumeCbm ? (
-                                  <span className="text-blue-700 font-medium">{item.ieVolumeCbm} m³</span>
+                                  <span className="app-text-link font-medium">{item.ieVolumeCbm} m³</span>
                                 ) : '—'}
                               </td>
                               <td className="px-2 py-1.5">
                                 {item.amountChanged && item.ieEstimateAr != null && item.ieEstimateAr > 0 ? (
                                   <span
-                                    className="text-blue-700 font-medium"
+                                    className="app-text-link font-medium"
                                     title={t('tracking.ieSyncColRatesFromEstimateTitle')}
                                   >
                                     {t('tracking.ieSyncRatesAppliedHint')}
@@ -1229,7 +1323,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                     <button
                       onClick={() => void applySyncFromIeApi(ieSyncPreview)}
                       disabled={ieSyncApplying}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="app-btn app-btn-primary app-btn-sm"
                     >
                       {ieSyncApplying ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
@@ -1245,37 +1339,37 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
 
             {ieApiLoading && (
               <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--app-primary)]" />
               </div>
             )}
             {!ieApiLoading && ieApiError && (
-              <p className="text-red-600 text-sm mb-2">{ieApiError}</p>
+              <p className="app-text-danger text-sm mb-2">{ieApiError}</p>
             )}
             {!ieApiLoading && ieApiRawText && (
-              <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap break-words max-h-40 overflow-auto border border-gray-200 rounded p-2 bg-gray-50 mb-3">
+              <pre className="text-xs font-mono app-text-muted whitespace-pre-wrap break-words max-h-40 overflow-auto border app-border rounded p-2 app-bg-muted mb-3">
                 {ieApiRawText}
               </pre>
             )}
             {!ieApiLoading && ieApiRows.length > 0 && (
-                <div className="overflow-x-auto rounded-lg border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200 text-xs">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
+                <div className="overflow-x-auto rounded-lg border app-border">
+                  <table className="app-table-striped min-w-full divide-y divide-[var(--app-border)] text-xs">
+                    <thead className="app-bg-muted sticky top-0 z-10">
                       <tr>
                         {IE_API_TABLE_COLUMN_ORDER.map(key => (
                           <th
                             key={key}
-                            className="px-2 py-2 text-left font-medium text-gray-600 whitespace-nowrap"
+                            className="px-2 py-2 text-left font-medium app-text-muted whitespace-nowrap"
                           >
                             {ieApiTableColumnLabels[key]}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
+                    <tbody className="divide-y divide-[var(--app-border)]">
                       {ieApiRows.map((row, idx) => (
-                        <tr key={`${row.trackingNumber}-${idx}`} className="hover:bg-gray-50/80">
+                        <tr key={`${row.trackingNumber}-${idx}`} className="hover:bg-[var(--app-surface-muted)]/80">
                           {IE_API_TABLE_COLUMN_ORDER.map(key => (
-                            <td key={key} className="px-2 py-1.5 text-gray-900 max-w-[14rem] truncate align-top" title={row[key]}>
+                            <td key={key} className="px-2 py-1.5 app-text max-w-[14rem] truncate align-top" title={row[key]}>
                               {row[key] || '—'}
                             </td>
                           ))}
@@ -1286,11 +1380,10 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                 </div>
             )}
             {!ieApiLoading && !ieApiError && ieApiRows.length === 0 && !ieApiRawText && (
-              <p className="text-sm text-gray-500 py-4">{t('tracking.ieApiNoShipments')}</p>
+              <p className="text-sm app-text-muted py-4">{t('tracking.ieApiNoShipments')}</p>
             )}
-          </div>
-        </div>
-      </div>
+          </OffcanvasBody>
+      </Offcanvas>
     )}
     </>
   );

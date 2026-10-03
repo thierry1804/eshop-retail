@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Calendar, CreditCard } from 'lucide-react';
+import { Calendar, CreditCard, RefreshCw } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { supabase } from '../../lib/supabase';
 import { Payment } from '../../types';
+import { DataTable, dtTh, dtTd, dtTdWrap } from '../ui/DataTable';
+import { formatDateTimeDisplay } from '../../lib/dateUtils';
 
 export const PaymentsList: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -85,13 +88,13 @@ export const PaymentsList: React.FC = () => {
       case 'cash':
         return { label: '💵 Espèces', className: 'text-green-600 bg-green-100' };
       case 'mobile_money':
-        return { label: '📱 Mobile Money', className: 'text-blue-600 bg-blue-100' };
+        return { label: '📱 Mobile Money', className: 'app-badge-info' };
       case 'bank_transfer':
         return { label: '🏦 Virement', className: 'text-purple-600 bg-purple-100' };
       case 'other':
-        return { label: '🔄 Autre', className: 'text-gray-600 bg-gray-100' };
+        return { label: '🔄 Autre', className: 'app-badge' };
       default:
-        return { label: 'Inconnu', className: 'text-gray-600 bg-gray-100' };
+        return { label: 'Inconnu', className: 'app-badge' };
     }
   };
 
@@ -105,54 +108,45 @@ export const PaymentsList: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des paiements...</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]" />
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Suivi des Paiements</h1>
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="text-xs sm:text-sm text-gray-500">
-            Total: {formatCurrency(payments.reduce((sum, payment) => sum + payment.amount, 0))}
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="min-w-0">
+            <h1 className="app-page-title">Suivi des Paiements</h1>
+            <p className="app-page-subtitle">
+              Total: {formatCurrency(payments.reduce((sum, payment) => sum + payment.amount, 0))}
+            </p>
           </div>
-          <button
-            onClick={fetchPayments}
-            className="flex items-center space-x-2 px-2 sm:px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm sm:text-base"
-          >
-            <span>🔄</span>
-            <span className="hidden sm:inline">Actualiser</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={fetchPayments}
+              className="app-btn app-btn-secondary app-btn-sm whitespace-nowrap"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Actualiser</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher par client ou notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-        <div>
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Rechercher par client ou notes..."
+            inputClassName="text-xs py-1.5"
+          />
           <select
             value={paymentMethodFilter}
             onChange={(e) => setPaymentMethodFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="app-input text-xs py-1.5 w-auto sm:min-w-[12rem]"
           >
             {paymentMethods.map((method) => (
               <option key={method.value} value={method.value}>
@@ -170,44 +164,41 @@ export const PaymentsList: React.FC = () => {
           const client = payment.sale?.clients;
           
           return (
-            <div key={payment.id} className="bg-white rounded-lg shadow-md p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CreditCard size={16} className="text-green-600" />
+            <div key={payment.id} className="app-list-card">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CreditCard size={13} className="text-green-600" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900 truncate">
+                    <div className="text-xs font-medium app-text truncate">
                       {client ? `${client.first_name || ''} ${client.last_name || ''}` : 'Client non trouvé'}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">{client?.phone || 'Téléphone non disponible'}</div>
+                    <div className="text-[11px] app-text-muted truncate">{client?.phone || 'Téléphone non disponible'}</div>
                   </div>
                 </div>
-                <div className="text-lg font-bold text-green-600 ml-2 flex-shrink-0">
+                <div className="text-sm font-semibold text-green-600 ml-2 flex-shrink-0">
                   {formatCurrency(payment.amount)}
                 </div>
               </div>
-              <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+              <div className="space-y-1 text-[11px] pt-2 border-t app-divider">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Moyen:</span>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${methodDisplay.className}`}>
+                  <span className="app-text-muted">Moyen:</span>
+                  <span className={`inline-flex px-1.5 py-0.5 text-[11px] font-medium rounded ${methodDisplay.className}`}>
                     {methodDisplay.label}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Date:</span>
-                  <div className="flex items-center space-x-1 text-gray-900">
-                    <Calendar size={12} className="text-gray-400" />
-                    <span>{new Date(payment.created_at).toLocaleDateString('fr-FR')}</span>
-                    <span className="text-gray-400">
-                      {new Date(payment.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  <span className="app-text-muted">Date:</span>
+                  <div className="flex items-center space-x-1 app-text">
+                    <Calendar size={11} className="app-text-muted" />
+                    <span>{formatDateTimeDisplay(payment.created_at)}</span>
                   </div>
                 </div>
                 {payment.notes && (
-                  <div className="pt-1">
-                    <span className="text-gray-600">Notes: </span>
-                    <span className="text-gray-900">{payment.notes}</span>
+                  <div className="pt-0.5">
+                    <span className="app-text-muted">Notes: </span>
+                    <span className="app-text">{payment.notes}</span>
                   </div>
                 )}
               </div>
@@ -215,8 +206,8 @@ export const PaymentsList: React.FC = () => {
           );
         })}
         {filteredPayments.length === 0 && (
-          <div className="text-center py-8 bg-white rounded-lg shadow-md">
-            <p className="text-gray-500 text-sm">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm || paymentMethodFilter !== 'all' ? 'Aucun paiement trouvé pour ces critères' : 'Aucun paiement enregistré'}
             </p>
           </div>
@@ -224,69 +215,55 @@ export const PaymentsList: React.FC = () => {
       </div>
 
       {/* Payments List - Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="hidden md:block app-table-wrap">
+        <DataTable>
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Montant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Moyen de Paiement
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notes
-                </th>
+                <th className={dtTh}>Client</th>
+                <th className={dtTh}>Montant</th>
+                <th className={dtTh}>Moyen de Paiement</th>
+                <th className={dtTh}>Date</th>
+                <th className={dtTh}>Notes</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-[var(--app-surface)] divide-y divide-[var(--app-border)]">
               {filteredPayments.map((payment) => {
                 const methodDisplay = getPaymentMethodDisplay(payment.payment_method);
                 const client = payment.sale?.clients;
                 
                 return (
-                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={payment.id} className="hover:bg-[var(--app-surface-muted)] transition-colors">
+                    <td className={dtTd}>
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <CreditCard size={16} className="text-green-600" />
+                        <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <CreditCard size={13} className="text-green-600" />
                         </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                        <div className="ml-2 min-w-0">
+                          <div className="font-medium truncate">
                             {client ? `${client.first_name || ''} ${client.last_name || ''}` : 'Client non trouvé'}
                           </div>
-                          <div className="text-sm text-gray-500">{client?.phone || 'Téléphone non disponible'}</div>
+                          <div className="text-[11px] app-text-muted truncate">{client?.phone || 'Téléphone non disponible'}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-lg font-bold text-green-600">
+                    <td className={dtTd}>
+                      <div className="font-semibold text-green-600">
                         {formatCurrency(payment.amount)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${methodDisplay.className}`}>
+                    <td className={dtTd}>
+                      <span className={`inline-flex px-1.5 py-0.5 text-[11px] font-medium rounded ${methodDisplay.className}`}>
                         {methodDisplay.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2 text-sm text-gray-900">
-                        <Calendar size={14} className="text-gray-400" />
-                        <span>{new Date(payment.created_at).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(payment.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    <td className={dtTd}>
+                      <div className="flex items-center space-x-1">
+                        <Calendar size={12} className="app-text-muted flex-shrink-0" />
+                        <span>{formatDateTimeDisplay(payment.created_at)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs">
+                    <td className={dtTdWrap}>
+                      <div className="max-w-xs truncate">
                         {payment.notes || '-'}
                       </div>
                     </td>
@@ -294,12 +271,11 @@ export const PaymentsList: React.FC = () => {
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
 
         {filteredPayments.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">
+          <div className="app-empty">
+            <p className="app-empty-text">
               {searchTerm || paymentMethodFilter !== 'all' ? 'Aucun paiement trouvé pour ces critères' : 'Aucun paiement enregistré'}
             </p>
           </div>

@@ -1,4 +1,5 @@
 import { syncQueue, syncTable } from './sync';
+import { devLog } from '../devLog';
 import { getQueue } from './db';
 
 export class SyncManager {
@@ -10,13 +11,13 @@ export class SyncManager {
   private constructor() {
     // Écouter les changements de connexion
     window.addEventListener('online', () => {
-      console.log('🌐 Connexion rétablie, démarrage de la synchronisation...');
+      devLog('🌐 Connexion rétablie, démarrage de la synchronisation...');
       this.startAutoSync();
       this.sync();
     });
 
     window.addEventListener('offline', () => {
-      console.log('📴 Mode offline, arrêt de la synchronisation automatique');
+      devLog('📴 Mode offline, arrêt de la synchronisation automatique');
       this.stopAutoSync();
     });
 
@@ -53,11 +54,11 @@ export class SyncManager {
     this.notifyListeners(true);
 
     try {
-      console.log('🔄 SyncManager: Démarrage de la synchronisation...');
+      devLog('🔄 SyncManager: Démarrage de la synchronisation...');
       
       // Synchroniser la queue d'abord
       const queueResult = await syncQueue();
-      console.log(`✅ SyncManager: Queue synchronisée - ${queueResult.success} réussies, ${queueResult.failed} échouées`);
+      devLog(`✅ SyncManager: Queue synchronisée - ${queueResult.success} réussies, ${queueResult.failed} échouées`);
 
       // Synchroniser les tables principales si la queue est vide ou presque
       if (queueResult.success > 0 || queueResult.failed === 0) {
@@ -72,7 +73,7 @@ export class SyncManager {
         }
       }
 
-      console.log('✅ SyncManager: Synchronisation terminée');
+      devLog('✅ SyncManager: Synchronisation terminée');
     } catch (error) {
       console.error('❌ SyncManager: Erreur lors de la synchronisation:', error);
     } finally {
@@ -96,14 +97,14 @@ export class SyncManager {
       }
     }, intervalMs);
 
-    console.log(`🔄 SyncManager: Synchronisation automatique démarrée (toutes les ${intervalMs / 1000}s)`);
+    devLog(`🔄 SyncManager: Synchronisation automatique démarrée (toutes les ${intervalMs / 1000}s)`);
   }
 
   public stopAutoSync() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
-      console.log('⏸️ SyncManager: Synchronisation automatique arrêtée');
+      devLog('⏸️ SyncManager: Synchronisation automatique arrêtée');
     }
   }
 

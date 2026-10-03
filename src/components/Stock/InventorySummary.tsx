@@ -1,6 +1,7 @@
 import React from 'react';
 import { Inventory } from '../../types';
 import { Package, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { formatDateTimeDisplay } from '../../lib/dateUtils';
 
 interface InventorySummaryProps {
   inventory: Inventory;
@@ -16,13 +17,13 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'app-badge-info border-[color-mix(in_srgb,var(--app-primary)_30%,var(--app-border))]';
       case 'draft':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'app-badge border-[var(--app-border)]';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'app-badge border-[var(--app-border)]';
     }
   };
 
@@ -42,12 +43,12 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
+    <div className="app-surface p-4 mb-4">
       <div className="flex items-start justify-between gap-4">
         {/* Colonne principale avec les métriques */}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-gray-900">Résumé de l'inventaire</h2>
+            <h2 className="text-lg font-bold app-text">Résumé de l'inventaire</h2>
             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>
               {getStatusLabel()}
             </span>
@@ -55,24 +56,24 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             {/* Total produits */}
-            <div className="bg-gray-50 rounded-lg p-3">
+            <div className="app-bg-muted rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-600">Total produits</p>
-                  <p className="text-xl font-bold text-gray-900">{inventory.total_products}</p>
+                  <p className="text-xs app-text-muted">Total produits</p>
+                  <p className="text-xl font-bold app-text">{inventory.total_products}</p>
                 </div>
-                <Package className="h-6 w-6 text-gray-400" />
+                <Package className="h-6 w-6 app-text-muted" />
               </div>
             </div>
 
             {/* Produits comptés */}
-            <div className="bg-blue-50 rounded-lg p-3">
+            <div className="app-badge-info rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-blue-600">Produits comptés</p>
-                  <p className="text-xl font-bold text-blue-900">{inventory.counted_products}</p>
+                  <p className="text-xs app-text-link">Produits comptés</p>
+                  <p className="text-xl font-bold app-text-link">{inventory.counted_products}</p>
                 </div>
-                <CheckCircle className="h-6 w-6 text-blue-400" />
+                <CheckCircle className="h-6 w-6 app-text-link opacity-80" />
               </div>
             </div>
 
@@ -106,15 +107,15 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
           {/* Barre de progression */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-700">Avancement du comptage</span>
-              <span className="text-xs text-gray-600">
+              <span className="app-label">Avancement du comptage</span>
+              <span className="text-xs app-text-muted">
                 {inventory.counted_products} / {inventory.total_products}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-[var(--app-border)] rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  progressPercentage === 100 ? 'bg-green-600' : 'bg-blue-600'
+                  progressPercentage === 100 ? 'bg-[var(--app-success)]' : 'bg-[var(--app-primary)]'
                 }`}
                 style={{ width: `${progressPercentage}%` }}
               />
@@ -126,22 +127,16 @@ export const InventorySummary: React.FC<InventorySummaryProps> = ({ inventory })
         <div className="flex-shrink-0 w-48 space-y-3 pt-7">
           {inventory.completed_at && (
             <div>
-              <p className="text-xs text-gray-600 mb-1">Date de finalisation</p>
-              <p className="text-sm font-medium text-gray-900">
-                {new Date(inventory.completed_at).toLocaleDateString('fr-FR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+              <p className="text-xs app-text-muted mb-1">Date de finalisation</p>
+              <p className="text-sm font-medium app-text">
+                {formatDateTimeDisplay(inventory.completed_at)}
               </p>
             </div>
           )}
           {inventory.notes && (
             <div>
-              <p className="text-xs text-gray-600 mb-1">Notes</p>
-              <p className="text-sm font-medium text-gray-900 uppercase">{inventory.notes}</p>
+              <p className="text-xs app-text-muted mb-1">Notes</p>
+              <p className="text-sm font-medium app-text uppercase">{inventory.notes}</p>
             </div>
           )}
         </div>

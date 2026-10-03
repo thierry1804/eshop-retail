@@ -1,5 +1,6 @@
 import React from 'react';
 import { PurchaseOrder } from '../../types';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface DeliveryProgressBarProps {
   order: PurchaseOrder;
@@ -45,8 +46,8 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
   // Calculer le pourcentage de progression
   let percentage = 0;
   let status: 'normal' | 'warning' | 'overdue' = 'normal';
-  let color = 'bg-blue-500';
-  let bgColor = 'bg-blue-100';
+  let color = 'bg-[var(--app-primary)]';
+  let bgColor = 'bg-[var(--app-primary-soft)]';
 
   if (totalDays > 0) {
     percentage = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
@@ -86,17 +87,17 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
   if (compact) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex-1 h-2 rounded-full overflow-hidden app-bg-muted">
           <div
             className={`h-full ${isReceived ? 'bg-green-500' : color} transition-all duration-300`}
             style={{ width: `${Math.min(100, percentage)}%` }}
           />
         </div>
         <span className={`text-xs font-medium ${
-          isReceived ? 'text-green-600' :
-          status === 'overdue' ? 'text-red-600' :
+          isReceived ? 'app-text-success' :
+          status === 'overdue' ? 'app-text-danger' :
           status === 'warning' ? 'text-orange-600' :
-          'text-gray-600'
+          'app-text-muted'
         }`}>
           {isReceived 
             ? 'Reçu'
@@ -114,7 +115,7 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">
+        <span className="text-sm font-medium app-text">
           {status === 'overdue' 
             ? 'Date de livraison dépassée'
             : status === 'warning'
@@ -123,10 +124,10 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
           }
         </span>
         <span className={`text-sm font-semibold ${
-          isReceived ? 'text-green-600' :
-          status === 'overdue' ? 'text-red-600' :
+          isReceived ? 'app-text-success' :
+          status === 'overdue' ? 'app-text-danger' :
           status === 'warning' ? 'text-orange-600' :
-          'text-blue-600'
+          'app-text-link'
         }`}>
           {isReceived
             ? 'Commande reçue'
@@ -144,12 +145,12 @@ export const DeliveryProgressBar: React.FC<DeliveryProgressBarProps> = ({ order,
           style={{ width: `${Math.min(100, percentage)}%` }}
         />
       </div>
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>Commande: {new Date(order.order_date).toLocaleDateString()}</span>
+      <div className="flex items-center justify-between text-xs app-text-muted">
+        <span>Commande: {formatDateDisplay(order.order_date)}</span>
         {isReceived && referenceDate !== today ? (
-          <span>Reçu le: {referenceDate.toLocaleDateString()}</span>
+          <span>Reçu le: {formatDateDisplay(referenceDate)}</span>
         ) : (
-          <span>Livraison prévue: {new Date(order.expected_delivery_date).toLocaleDateString()}</span>
+          <span>Livraison prévue: {formatDateDisplay(order.expected_delivery_date)}</span>
         )}
       </div>
     </div>

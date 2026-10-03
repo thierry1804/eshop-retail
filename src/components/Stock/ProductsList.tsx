@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { devLog } from '../../lib/devLog';
 import { supabase } from '../../lib/supabase';
 import { Product, User, PurchaseOrder, Sale } from '../../types';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge, ClipboardCheck, Power, PowerOff } from 'lucide-react';
+import { Plus, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, ArrowUpDown, CheckCircle, XCircle, Eye, Edit, ShoppingBag, ArrowUp, GitMerge, ClipboardCheck, Power, PowerOff, Archive, Globe } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { ProductForm } from './ProductForm';
 import { ProductDetails } from './ProductDetails';
 import { PurchaseOrderDetails } from '../Supply/PurchaseOrderDetails';
 import { SaleForm } from '../Sales/SaleForm';
 import { ProductMergeModal } from './ProductMergeModal';
+import { StockPeriodCloseModal } from './StockPeriodCloseModal';
+import { DataTable, dtTh, dtTd } from '../ui/DataTable';
 
 interface ProductsListProps {
   user: User;
@@ -23,6 +27,10 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [sortBy, setSortBy] = useState<string>('name');
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
+  const [filterPublish, setFilterPublish] = useState<string>('all');
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeScope, setCloseScope] = useState<'all' | 'selection'>('selection');
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   // État pour stocker les IDs des dernières commandes par produit
   const [productLastOrders, setProductLastOrders] = useState<Record<string, string>>({});
@@ -40,16 +48,17 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 30;
+  const [itemsPerPage, setItemsPerPage] = useState(30);
+  const pageSizeOptions = [10, 25, 30, 50, 100];
 
   useEffect(() => {
-    console.log('📦 ProductsList: Initialisation du composant');
+    devLog('📦 ProductsList: Initialisation du composant');
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
     try {
-      console.log('📦 ProductsList: Début du chargement des produits');
+      devLog('📦 ProductsList: Début du chargement des produits');
       setLoading(true);
       const startTime = performance.now();
       
@@ -71,7 +80,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       ]);
 
       const endTime = performance.now();
-      console.log(`📦 ProductsList: Requêtes terminées en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`📦 ProductsList: Requêtes terminées en ${(endTime - startTime).toFixed(2)}ms`);
 
       const { data, error } = productsResult;
 
@@ -80,7 +89,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
         throw error;
       }
       
-      console.log(`✅ ProductsList: ${data?.length || 0} produits récupérés`);
+      devLog(`✅ ProductsList: ${data?.length || 0} produits récupérés`);
       setProducts(data || []);
       setProductLastOrders(lastOrdersResult);
       setProductLastSales(lastSalesResult);
@@ -88,7 +97,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       setProductQuantities(quantitiesResult);
 
       // Désactiver le loading immédiatement pour afficher les produits
-      console.log('📦 ProductsList: Fin du chargement, désactivation du loading');
+      devLog('📦 ProductsList: Fin du chargement, désactivation du loading');
       setLoading(false);
     } catch (error) {
       console.error('❌ ProductsList: Erreur lors du chargement des produits:', error);
@@ -102,7 +111,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
 
   const fetchLastOrders = async (): Promise<Record<string, string>> => {
     try {
-      console.log('📦 ProductsList: Début du chargement des dernières commandes');
+      devLog('📦 ProductsList: Début du chargement des dernières commandes');
       const startTime = performance.now();
 
       // Récupérer toutes les commandes avec leurs produits
@@ -159,8 +168,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       }
 
       const endTime = performance.now();
-      console.log(`✅ ProductsList: Dernières commandes chargées en ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📦 ProductsList: ${Object.keys(lastOrdersMap).length} produits avec commandes`);
+      devLog(`✅ ProductsList: Dernières commandes chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`📦 ProductsList: ${Object.keys(lastOrdersMap).length} produits avec commandes`);
 
       return lastOrdersMap;
     } catch (error) {
@@ -171,7 +180,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
 
   const fetchLastSales = async (): Promise<Record<string, string>> => {
     try {
-      console.log('📦 ProductsList: Début du chargement des dernières ventes');
+      devLog('📦 ProductsList: Début du chargement des dernières ventes');
       const startTime = performance.now();
 
       // Récupérer toutes les ventes avec leurs produits
@@ -227,8 +236,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       }
 
       const endTime = performance.now();
-      console.log(`✅ ProductsList: Dernières ventes chargées en ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📦 ProductsList: ${Object.keys(lastSalesMap).length} produits avec ventes`);
+      devLog(`✅ ProductsList: Dernières ventes chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`📦 ProductsList: ${Object.keys(lastSalesMap).length} produits avec ventes`);
 
       return lastSalesMap;
     } catch (error) {
@@ -239,7 +248,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
 
   const fetchLastStockIns = async (): Promise<Record<string, { referenceId: string; referenceType?: string }>> => {
     try {
-      console.log('📦 ProductsList: Début du chargement des derniers approvisionnements');
+      devLog('📦 ProductsList: Début du chargement des derniers approvisionnements');
       const startTime = performance.now();
 
       // Récupérer tous les mouvements d'entrée (in) ou liés à des achats (purchase)
@@ -288,8 +297,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       }
 
       const endTime = performance.now();
-      console.log(`✅ ProductsList: Derniers approvisionnements chargés en ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📦 ProductsList: ${Object.keys(lastStockInsMap).length} produits avec approvisionnements`);
+      devLog(`✅ ProductsList: Derniers approvisionnements chargés en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`📦 ProductsList: ${Object.keys(lastStockInsMap).length} produits avec approvisionnements`);
 
       return lastStockInsMap;
     } catch (error) {
@@ -298,10 +307,51 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  const fetchLastClosureDates = async (): Promise<Record<string, string>> => {
+    try {
+      const { data, error } = await supabase
+        .from('stock_period_closure_items')
+        .select(`
+          product_id,
+          closure:stock_period_closures!inner(
+            closed_at
+          )
+        `);
+
+      if (error) {
+        console.error('❌ ProductsList: Erreur chargement dernières clôtures:', error);
+        return {};
+      }
+
+      const lastClosureMap: Record<string, string> = {};
+      type ClosureItemRow = {
+        product_id: string;
+        closure: { closed_at: string } | { closed_at: string }[] | null;
+      };
+
+      for (const row of (data as ClosureItemRow[]) || []) {
+        const closure = Array.isArray(row.closure) ? row.closure[0] : row.closure;
+        const closedAt = closure?.closed_at;
+        if (!closedAt) continue;
+        const existing = lastClosureMap[row.product_id];
+        if (!existing || new Date(closedAt) > new Date(existing)) {
+          lastClosureMap[row.product_id] = closedAt;
+        }
+      }
+
+      return lastClosureMap;
+    } catch (error) {
+      console.error('❌ ProductsList: Erreur chargement dernières clôtures:', error);
+      return {};
+    }
+  };
+
   const fetchProductQuantities = async (): Promise<Record<string, { quantityIn: number; quantityOut: number }>> => {
     try {
-      console.log('📦 ProductsList: Début du chargement des quantités entrées/sorties');
+      devLog('📦 ProductsList: Début du chargement des quantités entrées/sorties');
       const startTime = performance.now();
+
+      const lastClosureMap = await fetchLastClosureDates();
 
       // Récupérer tous les mouvements de stock avec leurs quantités
       const { data, error } = await supabase
@@ -311,7 +361,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           movement_type,
           quantity,
           reference_type,
-          reference_id
+          reference_id,
+          reason,
+          created_at
         `)
         .not('product_id', 'is', null);
 
@@ -320,7 +372,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
         return {};
       }
 
-      // Calculer les quantités entrées et sorties par produit
+      // Calculer les quantités entrées et sorties par produit (après dernière clôture)
       const quantitiesMap: Record<string, { quantityIn: number; quantityOut: number }> = {};
       if (data) {
         type MovementData = {
@@ -329,10 +381,23 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           quantity: number;
           reference_type?: 'purchase' | 'sale' | 'adjustment' | 'transfer' | 'return' | null;
           reference_id?: string | null;
+          reason?: string | null;
+          created_at: string;
         };
 
         for (const movement of data as MovementData[]) {
           const productId = movement.product_id;
+
+          // Ignorer les mouvements de clôture de période
+          if (movement.reason === 'period_close') {
+            continue;
+          }
+
+          const lastClosureAt = lastClosureMap[productId];
+          if (lastClosureAt && new Date(movement.created_at) <= new Date(lastClosureAt)) {
+            continue;
+          }
+
           if (!quantitiesMap[productId]) {
             quantitiesMap[productId] = { quantityIn: 0, quantityOut: 0 };
           }
@@ -367,8 +432,8 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       }
 
       const endTime = performance.now();
-      console.log(`✅ ProductsList: Quantités chargées en ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📦 ProductsList: ${Object.keys(quantitiesMap).length} produits avec quantités`);
+      devLog(`✅ ProductsList: Quantités chargées en ${(endTime - startTime).toFixed(2)}ms`);
+      devLog(`📦 ProductsList: ${Object.keys(quantitiesMap).length} produits avec quantités`);
 
       return quantitiesMap;
     } catch (error) {
@@ -515,11 +580,39 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
     }
   };
 
+  const toggleProductStorePublish = async (product: Product) => {
+    const nextValue = !product.is_published_to_store;
+    try {
+      // @ts-ignore - Types Supabase non générés pour la table products
+      const { error } = await (supabase.from('products') as any)
+        .update({
+          is_published_to_store: nextValue,
+          updated_by: user.id
+        })
+        .eq('id', product.id);
+
+      if (error) throw error;
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, is_published_to_store: nextValue } : p
+        )
+      );
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour publication store:', error);
+      alert('Impossible de mettre à jour la publication sur le store.');
+    }
+  };
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.barcode?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || product.status === filterStatus;
+    const matchesPublish =
+      filterPublish === 'all' ||
+      (filterPublish === 'published' && product.is_published_to_store) ||
+      (filterPublish === 'unpublished' && !product.is_published_to_store);
     
     // Filtrer les produits avec des noms identiques si le filtre est activé
     let matchesDuplicates = true;
@@ -530,7 +623,7 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
       matchesDuplicates = nameCount > 1;
     }
     
-    return matchesSearch && matchesStatus && matchesDuplicates;
+    return matchesSearch && matchesStatus && matchesPublish && matchesDuplicates;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -556,16 +649,48 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedProducts = sortedProducts.slice(startIndex, endIndex);
 
-  // Réinitialiser à la page 1 quand les filtres changent
+  // Réinitialiser à la page 1 quand les filtres ou la taille de page changent
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, sortBy, showDuplicatesOnly]);
+  }, [searchTerm, filterStatus, filterPublish, sortBy, showDuplicatesOnly, itemsPerPage]);
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
+
+  const toggleSelectPage = () => {
+    const pageIds = paginatedProducts.map((p) => p.id);
+    const allSelected = pageIds.every((id) => selectedProductIds.has(id));
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const openCloseModal = (scope: 'all' | 'selection') => {
+    if (scope === 'selection' && selectedProductIds.size === 0) {
+      alert('Sélectionnez au moins un produit à clôturer.');
+      return;
+    }
+    setCloseScope(scope);
+    setShowCloseModal(true);
+  };
 
   const getStockStatus = (product: Product) => {
-    if (product.current_stock === 0) return { status: 'out', color: 'text-red-600', icon: AlertTriangle };
+    if (product.current_stock === 0) return { status: 'out', color: 'app-text-danger', icon: AlertTriangle };
     if (product.current_stock <= product.min_stock_level) return { status: 'low', color: 'text-yellow-600', icon: AlertTriangle };
-    if (product.max_stock_level && product.current_stock > product.max_stock_level) return { status: 'high', color: 'text-blue-600', icon: TrendingUp };
-    return { status: 'normal', color: 'text-green-600', icon: TrendingDown };
+    if (product.max_stock_level && product.current_stock > product.max_stock_level) return { status: 'high', color: 'app-text-link', icon: TrendingUp };
+    return { status: 'normal', color: 'app-text-success', icon: TrendingDown };
   };
 
   const getCurrentPrice = (product: Product) => {
@@ -576,29 +701,45 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('stock.title')}</h1>
-          <p className="text-sm sm:text-base text-gray-600">{t('stock.subtitle')}</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+        <div className="min-w-0">
+          <h1 className="app-page-title">{t('stock.title')}</h1>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => {
-              // Utiliser un événement personnalisé pour changer de page
               window.dispatchEvent(new CustomEvent('navigate', { detail: 'inventories' }));
             }}
-            className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="app-btn app-btn-secondary app-btn-sm"
           >
-            <ClipboardCheck className="h-4 w-4" />
+            <ClipboardCheck className="h-3.5 w-3.5" />
             Inventaires
+          </button>
+          <button
+            onClick={() => openCloseModal('selection')}
+            disabled={selectedProductIds.size === 0}
+            className="app-btn app-btn-secondary app-btn-sm disabled:opacity-50"
+            title="Clôturer la période pour la sélection"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Clôturer ({selectedProductIds.size})
+          </button>
+          <button
+            onClick={() => openCloseModal('all')}
+            className="app-btn app-btn-secondary app-btn-sm"
+            title="Clôturer tous les produits actifs"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Tous
           </button>
           {getDuplicateGroups().length > 0 && (
             <button
@@ -610,42 +751,35 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                 }
               }}
               title={`Fusionner les doublons (${getDuplicateGroups().length})`}
-              className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="app-btn app-btn-secondary app-btn-sm"
             >
-              <GitMerge className="h-4 w-4" />
+              <GitMerge className="h-3.5 w-3.5" />
               ({getDuplicateGroups().length})
             </button>
           )}
           <button
             onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="app-btn app-btn-primary app-btn-sm"
           >
-            <Plus className="h-4 w-4" />
-            {t('stock.newProduct')}
+            <Plus className="h-3.5 w-3.5" />
+            Nouveau
           </button>
         </div>
       </div>
 
-      {/* Filtres et recherche */}
-      <div className="bg-white p-3 sm:p-4 rounded-lg shadow">
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder={t('stock.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+      {/* Filtres et recherche — une seule ligne compacte */}
+      <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={t('stock.searchPlaceholder')}
+            inputClassName="text-xs py-1.5"
+          />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+              className="app-input text-xs py-1.5 w-auto"
             >
               <option value="all">{t('stock.filters.allStatuses')}</option>
               <option value="active">{t('stock.status.active')}</option>
@@ -655,24 +789,50 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+              className="app-input text-xs py-1.5 w-auto"
             >
               <option value="name">{t('stock.filters.sortByName')}</option>
               <option value="sku">{t('stock.filters.sortBySku')}</option>
               <option value="stock">{t('stock.filters.sortByStock')}</option>
               <option value="price">{t('stock.filters.sortByPrice')}</option>
             </select>
-            <label className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 text-sm sm:text-base">
+            <select
+              value={filterPublish}
+              onChange={(e) => setFilterPublish(e.target.value)}
+              className="app-input text-xs py-1.5 w-auto"
+            >
+              <option value="all">Store</option>
+              <option value="published">Publiés</option>
+              <option value="unpublished">Non publiés</option>
+            </select>
+            <label
+              className="flex items-center gap-1.5 px-2 py-1.5 border app-border rounded-md cursor-pointer hover:bg-[var(--app-surface-muted)] text-xs app-text-muted"
+              title={t('stock.filters.showDuplicatesOnly')}
+            >
               <input
                 type="checkbox"
                 checked={showDuplicatesOnly}
                 onChange={(e) => setShowDuplicatesOnly(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-3.5 h-3.5 rounded border app-border accent-[var(--app-primary)]"
               />
-              <span className="text-gray-700">{t('stock.filters.showDuplicatesOnly')}</span>
+              Doublons
             </label>
-          </div>
-        </div>
+            <label
+              className="flex items-center gap-1.5 px-2 py-1.5 border app-border rounded-md cursor-pointer hover:bg-[var(--app-surface-muted)] text-xs app-text-muted"
+              title="Tout sélectionner (page)"
+            >
+              <input
+                type="checkbox"
+                checked={
+                  paginatedProducts.length > 0 &&
+                  paginatedProducts.every((p) => selectedProductIds.has(p.id))
+                }
+                onChange={toggleSelectPage}
+                className="w-3.5 h-3.5 rounded border app-border accent-[var(--app-primary)]"
+              />
+              Page
+            </label>
+      </div>
       </div>
 
       {/* Liste des produits - Mobile Card View */}
@@ -682,73 +842,81 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           const StockIcon = stockStatus.icon;
           
           return (
-            <div key={product.id} className="bg-white rounded-lg shadow-md p-4">
+            <div key={product.id} className="app-list-card">
               <div className="flex items-start space-x-3 mb-3">
+                <input
+                  type="checkbox"
+                  checked={selectedProductIds.has(product.id)}
+                  onChange={() => toggleProductSelection(product.id)}
+                  className="mt-1 w-4 h-4 rounded border app-border accent-[var(--app-primary)] flex-shrink-0"
+                />
                 {product.image_url && !imageErrors[product.id] ? (
                   <img
                     src={product.image_url}
                     alt={product.name}
-                    className="h-16 w-16 object-cover rounded-md border border-gray-300 flex-shrink-0"
+                    className="h-16 w-16 object-cover rounded-md border app-border flex-shrink-0"
                     onError={() => {
                       setImageErrors(prev => ({ ...prev, [product.id]: true }));
                     }}
                   />
                 ) : (
-                  <div className="h-16 w-16 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center flex-shrink-0">
-                    <Package className="h-8 w-8 text-gray-400" />
+                  <div className="h-16 w-16 bg-[var(--app-stripe)] rounded-md border app-border flex items-center justify-center flex-shrink-0">
+                    <Package className="h-8 w-8 app-text-muted" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {product.category?.name || 'Sans catégorie'} • <span className="font-mono text-gray-400">{product.sku}</span>
+                  <div className="text-sm font-medium app-text truncate">
+                    {product.name}
+                  </div>
+                  <div className="text-xs app-text-muted mt-1">
+                    {product.category?.name || 'Sans catégorie'} • <span className="font-mono app-text-muted">{product.sku}</span>
                   </div>
                 </div>
               </div>
-              <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+              <div className="space-y-2 text-xs pt-2 border-t app-divider">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Stock:</span>
+                  <span className="app-text-muted">Stock:</span>
                   <div className="flex items-center">
                     <StockIcon className={`h-4 w-4 mr-1 ${stockStatus.color}`} />
-                    <span className="text-gray-900 font-medium">
+                    <span className="app-text font-medium">
                       {product.current_stock} / {product.min_stock_level}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Qté entrée:</span>
-                  <span className="text-gray-900 font-medium">{productQuantities[product.id]?.quantityIn || 0}</span>
+                  <span className="app-text-muted">Qté entrée:</span>
+                  <span className="app-text font-medium">{productQuantities[product.id]?.quantityIn || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Qté sortie:</span>
-                  <span className="text-gray-900 font-medium">{productQuantities[product.id]?.quantityOut || 0}</span>
+                  <span className="app-text-muted">Qté sortie:</span>
+                  <span className="app-text font-medium">{productQuantities[product.id]?.quantityOut || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Prix:</span>
-                  <span className="text-gray-900 font-medium">{getCurrentPrice(product)}</span>
+                  <span className="app-text-muted">Prix:</span>
+                  <span className="app-text font-medium">{getCurrentPrice(product)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Activité:</span>
+                  <span className="app-text-muted">Activité:</span>
                   <div className="flex items-center gap-2">
                     {productLastOrders[product.id] && (
                       <button
                         onClick={() => handleOrderClick(productLastOrders[product.id])}
-                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-blue-50"
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,transparent)]"
                         title={t('stock.table.hasOrder')}
                       >
                         <ShoppingCart 
-                          className="h-4 w-4 text-blue-600" 
+                          className="h-4 w-4 app-text-link" 
                         />
                       </button>
                     )}
                     {productLastSales[product.id] && (
                       <button
                         onClick={() => handleSaleClick(productLastSales[product.id])}
-                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-green-50"
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-[color-mix(in_srgb,var(--app-success)_12%,transparent)]"
                         title="Dernière vente"
                       >
                         <ShoppingBag 
-                          className="h-4 w-4 text-green-600" 
+                          className="h-4 w-4 app-text-success" 
                         />
                       </button>
                     )}
@@ -762,11 +930,11 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                             handleMovementClick(stockIn.referenceId, stockIn.referenceType || '');
                           }
                         }}
-                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-purple-50"
+                        className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-[var(--app-surface-muted)]"
                         title="Dernier approvisionnement"
                       >
                         <ArrowUp 
-                          className="h-4 w-4 text-purple-600" 
+                          className="h-4 w-4 app-text-muted" 
                         />
                       </button>
                     )}
@@ -782,12 +950,12 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         title={t('stock.table.hasMovement')}
                       >
                         <ArrowUpDown 
-                          className="h-4 w-4 text-orange-600" 
+                          className="h-4 w-4 app-text-muted" 
                         />
                       </button>
                     )}
                     {!productLastOrders[product.id] && !productLastSales[product.id] && !productLastStockIns[product.id] && !productMovements[product.id]?.hasMovement && (
-                      <span className="text-gray-400">-</span>
+                      <span className="app-text-muted">-</span>
                     )}
                   </div>
                 </div>
@@ -809,11 +977,26 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                   </span>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => toggleProductStorePublish(product)}
+                      className={`transition-colors p-1 rounded hover:bg-[var(--app-surface-muted)] ${
+                        product.is_published_to_store
+                          ? 'app-text-link'
+                          : 'app-text-muted hover:app-text-link'
+                      }`}
+                      title={
+                        product.is_published_to_store
+                          ? 'Retirer du store'
+                          : 'Publier sur le store'
+                      }
+                    >
+                      <Globe className="h-5 w-5" />
+                    </button>
+                    <button
                       onClick={() => toggleProductStatus(product)}
-                      className={`transition-colors p-1 rounded hover:bg-gray-50 ${
+                      className={`transition-colors p-1 rounded hover:bg-[var(--app-surface-muted)] ${
                         product.status === 'active' 
-                          ? 'text-orange-600 hover:text-orange-900' 
-                          : 'text-green-600 hover:text-green-900'
+                          ? 'app-text-danger'
+                          : 'app-text-success'
                       }`}
                       title={product.status === 'active' ? t('stock.disableProduct') : t('stock.enableProduct')}
                     >
@@ -825,8 +1008,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                     </button>
                     <button
                       onClick={() => setSelectedProduct(product)}
-                      className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                      className="app-icon-btn app-icon-btn-primary"
                       title={t('stock.viewDetails')}
+                      aria-label={t('stock.viewDetails')}
                     >
                       <Eye className="h-5 w-5" />
                     </button>
@@ -835,8 +1019,9 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         setSelectedProduct(product);
                         setShowForm(true);
                       }}
-                      className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 rounded hover:bg-indigo-50"
+                      className="app-icon-btn"
                       title={t('app.edit')}
+                      aria-label={t('app.edit')}
                     >
                       <Edit className="h-5 w-5" />
                     </button>
@@ -847,124 +1032,147 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
           );
         })}
         {sortedProducts.length === 0 && (
-          <div className="text-center py-8 bg-white rounded-lg shadow-md">
-            <p className="text-gray-500">{t('stock.noProducts')}</p>
+          <div className="app-empty">
+            <p className="app-empty-text">{t('stock.noProducts')}</p>
           </div>
         )}
       </div>
 
       {/* Pagination - Mobile */}
-      {sortedProducts.length > itemsPerPage && (
-        <div className="md:hidden bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)} sur {sortedProducts.length}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('app.previous')}
-              </button>
-              <span className="text-sm text-gray-700">
-                Page {currentPage} / {totalPages}
+      {sortedProducts.length > 0 && (
+        <div className="md:hidden app-surface rounded-md px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs app-text-muted">
+              <span>
+                {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)} / {sortedProducts.length}
               </span>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('app.next')}
-              </button>
+              <label className="flex items-center gap-1">
+                <span className="app-text-muted">Par page</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="px-1.5 py-1 border app-border rounded-md text-xs"
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 text-xs border app-border rounded-md hover:bg-[var(--app-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('app.previous')}
+                </button>
+                <span className="text-xs app-text-muted">
+                  {currentPage}/{totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 text-xs border app-border rounded-md hover:bg-[var(--app-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('app.next')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Liste des produits - Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="hidden md:block app-table-wrap">
+        <DataTable>
+            <thead className="app-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="sticky top-0 left-0 z-40 app-bg-muted px-3 py-2 text-left w-12 min-w-[3rem] border-b app-border">
+                  <input
+                    type="checkbox"
+                    checked={
+                      paginatedProducts.length > 0 &&
+                      paginatedProducts.every((p) => selectedProductIds.has(p.id))
+                    }
+                    onChange={toggleSelectPage}
+                    className="w-4 h-4 rounded border app-border accent-[var(--app-primary)]"
+                    title="Tout sélectionner (page)"
+                  />
+                </th>
+                <th className={`sticky top-0 left-12 z-40 min-w-[16rem] border-b border-r app-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] ${dtTh}`}>
                   {t('stock.table.product')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.stock')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  IN
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  OUT
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.price')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.status')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('stock.table.activity')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className={dtTh}>{t('stock.table.stock')}</th>
+                <th className={dtTh}>IN</th>
+                <th className={dtTh}>OUT</th>
+                <th className={dtTh}>{t('stock.table.price')}</th>
+                <th className={dtTh}>{t('stock.table.status')}</th>
+                <th className={dtTh}>{t('stock.table.activity')}</th>
+                <th className={`sticky top-0 right-0 z-40 border-b border-l app-border shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)] ${dtTh}`}>
                   {t('common.actions')}
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-[var(--app-border)]">
               {paginatedProducts.map((product) => {
                 const stockStatus = getStockStatus(product);
                 const StockIcon = stockStatus.icon;
                 
                 return (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={product.id} className="group hover:bg-[var(--app-surface-muted)]">
+                    <td className="sticky left-0 z-20  px-3 py-1.5 whitespace-nowrap w-12 min-w-[3rem]">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.has(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                        className="w-4 h-4 rounded border app-border accent-[var(--app-primary)]"
+                      />
+                    </td>
+                    <td className="sticky left-12 z-20  px-3 py-1.5 whitespace-nowrap min-w-[16rem] border-r app-divider shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
                       <div className="flex items-center">
                         {product.image_url && !imageErrors[product.id] ? (
                           <img
                             src={product.image_url}
                             alt={product.name}
-                            className="h-10 w-10 object-cover rounded-md border border-gray-300 mr-3 flex-shrink-0"
+                            className="h-7 w-7 object-cover rounded-md border app-border mr-2 flex-shrink-0"
                             onError={() => {
                               setImageErrors(prev => ({ ...prev, [product.id]: true }));
                             }}
                           />
                         ) : (
-                          <div className="h-10 w-10 bg-gray-100 rounded-md border border-gray-300 flex items-center justify-center mr-3 flex-shrink-0">
-                            <Package className="h-6 w-6 text-gray-400" />
+                          <div className="h-7 w-7 bg-[var(--app-stripe)] rounded-md border app-border flex items-center justify-center mr-2 flex-shrink-0">
+                            <Package className="h-3.5 w-3.5 app-text-muted" />
                           </div>
                         )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {product.category?.name || 'Sans catégorie'} • <span className="font-mono text-gray-400">{product.sku}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium app-text truncate">{product.name}</div>
+                          <div className="text-[11px] app-text-muted truncate">
+                            {product.category?.name || 'Sans catégorie'} • <span className="font-mono app-text-muted">{product.sku}</span>
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className={dtTd}>
                       <div className="flex items-center">
-                        <StockIcon className={`h-4 w-4 mr-2 ${stockStatus.color}`} />
-                        <span className="text-sm text-gray-900">
+                        <StockIcon className={`h-3.5 w-3.5 mr-1.5 flex-shrink-0 ${stockStatus.color}`} />
+                        <span>
                           {product.current_stock} / {product.min_stock_level}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className={dtTd}>
                       {productQuantities[product.id]?.quantityIn || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className={dtTd}>
                       {productQuantities[product.id]?.quantityOut || 0}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className={dtTd}>
                       {getCurrentPrice(product)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full ${
+                    <td className={dtTd}>
+                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full ${
                         product.status === 'active' ? 'bg-green-100 text-green-800' :
                         product.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
@@ -980,75 +1188,90 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                         )}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className={dtTd}>
+                      <div className="flex items-center gap-1.5">
                         {productLastOrders[product.id] && (
                           <button
                             onClick={() => handleOrderClick(productLastOrders[product.id])}
-                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-blue-50"
+                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,transparent)]"
                             title={t('stock.table.hasOrder')}
                           >
                             <ShoppingCart 
-                              className="h-4 w-4 text-blue-600" 
+                              className="h-4 w-4 app-text-link" 
                             />
                           </button>
                         )}
                         {productLastStockIns[product.id] && (
                           <button
-                            className="hover:opacity-70 transition-opacity p-1 rounded hover:bg-purple-50"
+                            className="hover:opacity-70 transition-opacity p-1 rounded hover:bg-[var(--app-surface-muted)]"
                             title="Dernier approvisionnement"
                           >
                             <ArrowUp 
-                              className="h-4 w-4 text-purple-600" 
+                              className="h-4 w-4 app-text-muted" 
                             />
                           </button>
                         )}
                         {productLastSales[product.id] && (
                           <button
                             onClick={() => handleSaleClick(productLastSales[product.id])}
-                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-green-50"
+                            className="cursor-pointer hover:opacity-70 transition-opacity p-1 rounded hover:bg-[color-mix(in_srgb,var(--app-success)_12%,transparent)]"
                             title="Dernière vente"
                           >
                             <ShoppingBag 
-                              className="h-4 w-4 text-green-600" 
+                              className="h-4 w-4 app-text-success" 
                             />
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="sticky right-0 z-20  px-3 py-1.5 whitespace-nowrap text-xs font-medium border-l app-divider shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.06)]">
                       <div className="flex items-center gap-3">
                         <button
+                          onClick={() => toggleProductStorePublish(product)}
+                          className={`transition-colors p-1 rounded hover:bg-[var(--app-surface-muted)] ${
+                            product.is_published_to_store
+                              ? 'app-text-link'
+                              : 'app-text-muted hover:app-text-link'
+                          }`}
+                          title={
+                            product.is_published_to_store
+                              ? 'Retirer du store'
+                              : 'Publier sur le store'
+                          }
+                        >
+                          <Globe className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => toggleProductStatus(product)}
-                          className={`transition-colors p-1 rounded hover:bg-gray-50 ${
+                          className={`transition-colors p-1 rounded hover:bg-[var(--app-surface-muted)] ${
                             product.status === 'active' 
-                              ? 'text-orange-600 hover:text-orange-900' 
-                              : 'text-green-600 hover:text-green-900'
+                              ? 'app-text-danger' 
+                              : 'app-text-success'
                           }`}
                           title={product.status === 'active' ? t('stock.disableProduct') : t('stock.enableProduct')}
                         >
                           {product.status === 'active' ? (
-                            <PowerOff className="h-5 w-5" />
+                            <PowerOff className="h-4 w-4" />
                           ) : (
-                            <Power className="h-5 w-5" />
+                            <Power className="h-4 w-4" />
                           )}
                         </button>
                         <button
                           onClick={() => setSelectedProduct(product)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                          className="app-text-link transition-colors p-1 rounded hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,transparent)]"
                           title={t('stock.viewDetails')}
                         >
-                          <Eye className="h-5 w-5" />
+                          <Eye className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => {
                             setSelectedProduct(product);
                             setShowForm(true);
                           }}
-                          className="text-indigo-600 hover:text-indigo-900 transition-colors p-1 rounded hover:bg-indigo-50"
+                          className="app-text-muted hover:app-text transition-colors p-1 rounded hover:bg-[var(--app-surface-muted)]"
                           title={t('app.edit')}
                         >
-                          <Edit className="h-5 w-5" />
+                          <Edit className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -1056,64 +1279,79 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
         {sortedProducts.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-gray-500">{t('stock.noProducts')}</p>
+            <p className="app-text-muted">{t('stock.noProducts')}</p>
           </div>
         )}
       </div>
 
       {/* Pagination - Desktop */}
-      {sortedProducts.length > itemsPerPage && (
-        <div className="hidden md:block bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Affichage de {startIndex + 1} à {Math.min(endIndex, sortedProducts.length)} sur {sortedProducts.length} produits
+      {sortedProducts.length > 0 && (
+        <div className="hidden md:block app-surface rounded-md px-3 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-xs app-text-muted">
+              <span>
+                {startIndex + 1}–{Math.min(endIndex, sortedProducts.length)} sur {sortedProducts.length}
+              </span>
+              <label className="flex items-center gap-1.5">
+                <span className="app-text-muted">Par page</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="px-2 py-1 border app-border rounded-md text-xs"
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('app.previous')}
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                  if (
-                    page === 1 ||
-                    page === totalPages ||
-                    (page >= currentPage - 1 && page <= currentPage + 1)
-                  ) {
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 text-sm border rounded-lg ${
-                          currentPage === page
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  } else if (page === currentPage - 2 || page === currentPage + 2) {
-                    return <span key={page} className="px-2 text-gray-500">...</span>;
-                  }
-                  return null;
-                })}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 text-xs border app-border rounded-md hover:bg-[var(--app-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('app.previous')}
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-2 py-1 text-xs border rounded-md ${
+                            currentPage === page
+                              ? 'bg-[var(--app-primary)] text-white border-[var(--app-primary)]'
+                              : 'app-border hover:bg-[var(--app-surface-muted)]'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (page === currentPage - 2 || page === currentPage + 2) {
+                      return <span key={page} className="px-1 app-text-muted text-xs">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1 text-xs border app-border rounded-md hover:bg-[var(--app-surface-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('app.next')}
+                </button>
               </div>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('app.next')}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1187,6 +1425,21 @@ export const ProductsList: React.FC<ProductsListProps> = ({ user }) => {
             setSelectedDuplicateGroup([]);
           }}
           user={user}
+        />
+      )}
+
+      {showCloseModal && (
+        <StockPeriodCloseModal
+          user={user}
+          scope={closeScope}
+          products={products}
+          selectedProductIds={Array.from(selectedProductIds)}
+          onClose={() => setShowCloseModal(false)}
+          onComplete={() => {
+            setShowCloseModal(false);
+            setSelectedProductIds(new Set());
+            fetchProducts();
+          }}
         />
       )}
     </div>

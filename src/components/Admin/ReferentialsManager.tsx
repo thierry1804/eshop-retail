@@ -324,7 +324,7 @@ export const ReferentialsManager: React.FC = () => {
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+        className="w-4 h-4 app-text-link rounded focus:ring-[var(--app-primary)]"
       />
       <span className="text-sm">{label}</span>
     </label>
@@ -333,23 +333,23 @@ export const ReferentialsManager: React.FC = () => {
   return (
     <div className="p-3 sm:p-4 md:p-6">
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-xl sm:text-2xl font-bold app-text mb-2">
           Gestion des référentiels
         </h1>
-        <p className="text-sm sm:text-base text-gray-600">
+        <p className="text-sm sm:text-base app-text-muted">
           Gérez les catégories et fournisseurs et définissez sur quels modules ils apparaissent
         </p>
       </div>
 
       {/* Onglets */}
-      <div className="mb-4 sm:mb-6 border-b border-gray-200">
+      <div className="mb-4 sm:mb-6 border-b border-[var(--app-border)]">
         <div className="flex gap-2 sm:gap-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab('categories')}
             className={`px-4 py-2 font-medium border-b-2 ${
               activeTab === 'categories'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'app-tab-active'
+                : 'app-tab'
             }`}
           >
             <Tag className="inline mr-2" size={18} />
@@ -359,8 +359,8 @@ export const ReferentialsManager: React.FC = () => {
             onClick={() => setActiveTab('suppliers')}
             className={`px-4 py-2 font-medium border-b-2 ${
               activeTab === 'suppliers'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'app-tab-active'
+                : 'app-tab'
             }`}
           >
             <Truck className="inline mr-2" size={18} />
@@ -370,42 +370,42 @@ export const ReferentialsManager: React.FC = () => {
       </div>
 
       {/* Contenu */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="app-surface">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Chargement...</div>
+          <div className="p-8 text-center app-text-muted">Chargement...</div>
         ) : activeTab === 'categories' ? (
           <div className="p-6">
             {/* Formulaire de création */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="mb-6 p-4 app-bg-muted rounded-lg">
               <h3 className="text-lg font-semibold mb-4">Nouvelle catégorie</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="app-label">
                     Nom *
                   </label>
                   <input
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="app-input"
                     placeholder="Ex: Communication, Frais bancaires..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="app-label">
                     Description
                   </label>
                   <input
                     type="text"
                     value={newCategoryDescription}
                     onChange={(e) => setNewCategoryDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="app-input"
                     placeholder="Description optionnelle"
                   />
                 </div>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="app-label">
                   Modules où cette catégorie apparaît *
                 </label>
                 <div className="flex gap-6">
@@ -431,7 +431,7 @@ export const ReferentialsManager: React.FC = () => {
               </div>
               <button
                 onClick={handleCreateCategory}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                className="app-btn app-btn-primary"
               >
                 <Plus size={18} />
                 Ajouter la catégorie
@@ -444,7 +444,7 @@ export const ReferentialsManager: React.FC = () => {
                 Catégories ({categories.length})
               </h3>
               {categories.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">
+                <p className="app-text-muted text-center py-8">
                   Aucune catégorie
                 </p>
               ) : (
@@ -457,7 +457,7 @@ export const ReferentialsManager: React.FC = () => {
                     return (
                       <div
                         key={category.id}
-                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        className="p-4 border app-border rounded-lg hover:bg-[var(--app-surface-muted)]"
                       >
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4">
@@ -465,19 +465,19 @@ export const ReferentialsManager: React.FC = () => {
                               type="text"
                               value={editingCategory.name || ''}
                               onChange={(e) => handleCategoryFieldChange(category.id, 'name', e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="app-input"
                               placeholder="Nom"
                             />
                             <input
                               type="text"
                               value={editingCategory.description || ''}
                               onChange={(e) => handleCategoryFieldChange(category.id, 'description', e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="app-input"
                               placeholder="Description"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="app-label">
                               Modules où cette catégorie apparaît
                             </label>
                             <div className="flex gap-6">
@@ -500,7 +500,7 @@ export const ReferentialsManager: React.FC = () => {
                               {hasChanges && (
                                 <button
                                   onClick={() => handleUpdateCategory(category.id)}
-                                  className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 text-sm"
+                                  className="app-btn app-btn-success app-btn-sm"
                                 >
                                   <Save size={16} />
                                   Enregistrer
@@ -513,7 +513,7 @@ export const ReferentialsManager: React.FC = () => {
                                     delete newEditing[category.id];
                                     setEditingCategories(newEditing);
                                   }}
-                                  className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center gap-2 text-sm"
+                                  className="app-btn app-btn-secondary app-btn-sm flex items-center gap-2 text-sm"
                                 >
                                   <X size={16} />
                                   Annuler
@@ -538,36 +538,36 @@ export const ReferentialsManager: React.FC = () => {
         ) : (
           <div className="p-6">
             {/* Formulaire de création */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="mb-6 p-4 app-bg-muted rounded-lg">
               <h3 className="text-lg font-semibold mb-4">Nouveau fournisseur</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="app-label">
                     Nom *
                   </label>
                   <input
                     type="text"
                     value={newSupplierName}
                     onChange={(e) => setNewSupplierName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="app-input"
                     placeholder="Ex: Fournisseur ABC..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="app-label">
                     Contact
                   </label>
                   <input
                     type="text"
                     value={newSupplierContact}
                     onChange={(e) => setNewSupplierContact(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="app-input"
                     placeholder="Téléphone, email..."
                   />
                 </div>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="app-label">
                   Modules où ce fournisseur apparaît *
                 </label>
                 <div className="flex gap-6">
@@ -593,7 +593,7 @@ export const ReferentialsManager: React.FC = () => {
               </div>
               <button
                 onClick={handleCreateSupplier}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                className="app-btn app-btn-primary"
               >
                 <Plus size={18} />
                 Ajouter le fournisseur
@@ -606,7 +606,7 @@ export const ReferentialsManager: React.FC = () => {
                 Fournisseurs ({suppliers.length})
               </h3>
               {suppliers.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">
+                <p className="app-text-muted text-center py-8">
                   Aucun fournisseur
                 </p>
               ) : (
@@ -619,7 +619,7 @@ export const ReferentialsManager: React.FC = () => {
                     return (
                       <div
                         key={supplier.id}
-                        className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        className="p-4 border app-border rounded-lg hover:bg-[var(--app-surface-muted)]"
                       >
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-4">
@@ -627,19 +627,19 @@ export const ReferentialsManager: React.FC = () => {
                               type="text"
                               value={editingSupplier.name || ''}
                               onChange={(e) => handleSupplierFieldChange(supplier.id, 'name', e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="app-input"
                               placeholder="Nom"
                             />
                             <input
                               type="text"
                               value={editingSupplier.contact_info || ''}
                               onChange={(e) => handleSupplierFieldChange(supplier.id, 'contact_info', e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="app-input"
                               placeholder="Contact"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="app-label">
                               Modules où ce fournisseur apparaît
                             </label>
                             <div className="flex gap-6">
@@ -662,7 +662,7 @@ export const ReferentialsManager: React.FC = () => {
                               {hasChanges && (
                                 <button
                                   onClick={() => handleUpdateSupplier(supplier.id)}
-                                  className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2 text-sm"
+                                  className="app-btn app-btn-success app-btn-sm"
                                 >
                                   <Save size={16} />
                                   Enregistrer
@@ -675,7 +675,7 @@ export const ReferentialsManager: React.FC = () => {
                                     delete newEditing[supplier.id];
                                     setEditingSuppliers(newEditing);
                                   }}
-                                  className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center gap-2 text-sm"
+                                  className="app-btn app-btn-secondary app-btn-sm flex items-center gap-2 text-sm"
                                 >
                                   <X size={16} />
                                   Annuler

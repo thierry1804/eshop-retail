@@ -3,6 +3,7 @@
  */
 
 import { PostgrestError } from '@supabase/supabase-js';
+import { devWarn } from './devLog';
 
 interface RetryOptions {
   maxRetries?: number;
@@ -55,7 +56,7 @@ export async function withRetry<T>(
       if (onRetry) {
         onRetry(attempt + 1, delay);
       } else {
-        console.warn(
+        devWarn(
           `⚠️ Supabase: 429 Too Many Requests, attente de ${delay}ms avant retry ${attempt + 1}/${maxRetries}`
         );
       }
@@ -84,7 +85,7 @@ export async function withRetry<T>(
       if (onRetry) {
         onRetry(attempt + 1, delay);
       } else {
-        console.warn(
+        devWarn(
           `⚠️ Supabase: Erreur réseau, attente de ${delay}ms avant retry ${attempt + 1}/${maxRetries}`
         );
       }

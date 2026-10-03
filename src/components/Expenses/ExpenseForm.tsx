@@ -494,11 +494,11 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
         {/* Section 1: Champs requis */}
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Informations principales</h3>
+          <h3 className="app-label uppercase tracking-wide text-xs font-semibold">Informations principales</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Montant */}
             <div>
-              <label htmlFor="amount" className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label htmlFor="amount" className="app-label">
                 {t('expenses.expenseAmount')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -513,14 +513,14 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                   placeholder="0.00"
                   required
                   disabled={expense?.locked}
-                  className={`w-full pl-3 pr-12 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
+                  className={`app-input pl-3 pr-12 disabled:opacity-50 disabled:cursor-not-allowed ${
                     fieldErrors.amount && touchedFields.amount
-                      ? 'border-red-300 focus:ring-red-500 bg-red-50'
-                      : 'border-gray-300 focus:ring-blue-500'
+                      ? 'border-red-300 bg-red-50'
+                      : ''
                   }`}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
-                  <span className="text-gray-500 text-xs font-medium">MGA</span>
+                  <span className="app-text-muted text-xs font-medium">MGA</span>
                 </div>
               </div>
               {fieldErrors.amount && touchedFields.amount && (
@@ -533,7 +533,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
 
             {/* Date */}
             <div>
-              <label htmlFor="date" className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label htmlFor="date" className="app-label">
                 {t('expenses.expenseDate')} <span className="text-red-500">*</span>
               </label>
               <input
@@ -545,10 +545,10 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                 onBlur={handleBlur}
                 required
                 disabled={expense?.locked}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm ${
+                className={`app-input disabled:opacity-50 disabled:cursor-not-allowed ${
                   fieldErrors.date && touchedFields.date
-                    ? 'border-red-300 focus:ring-red-500 bg-red-50'
-                    : 'border-gray-300 focus:ring-blue-500'
+                    ? 'border-red-300 bg-red-50'
+                    : ''
                 }`}
               />
               {fieldErrors.date && touchedFields.date && (
@@ -562,12 +562,12 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
         </div>
 
         {/* Section 2: Classification */}
-        <div className="space-y-3 pt-3 border-t border-gray-200">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Classification</h3>
+        <div className="space-y-3 pt-3 border-t border-[var(--app-border)]">
+          <h3 className="app-label uppercase tracking-wide text-xs font-semibold">Classification</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Catégorie avec autocomplétion */}
             <div className="relative">
-              <label htmlFor="category_search" className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label htmlFor="category_search" className="app-label">
                 {t('expenses.expenseCategory')}
               </label>
               <div className="relative">
@@ -600,16 +600,16 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                   }}
                   placeholder="Rechercher une catégorie"
                   disabled={expense?.locked}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                  className="app-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 {showCategoryDropdown && (categorySearch || mostUsedCategories.length > 0) && (
                   <div
                     ref={categoryDropdownRef}
-                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto"
+                    className="absolute z-10 w-full mt-1 app-dropdown max-h-48 overflow-auto"
                   >
                     {categorySearch && filteredCategories.length > 0 && (
                       <div className="p-1.5">
-                        <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Résultats</div>
+                        <div className="text-xs font-semibold app-text-muted uppercase px-2 py-1">Résultats</div>
                         {filteredCategories.map((category) => (
                           <button
                             key={category.id}
@@ -620,7 +620,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                               setShowCategoryDropdown(false);
                               categoryInputRef.current?.blur();
                             }}
-                            className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 rounded transition-colors text-sm"
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] rounded transition-colors text-sm"
                           >
                             {category.name}
                           </button>
@@ -629,7 +629,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                     )}
                     {!categorySearch && mostUsedCategories.length > 0 && (
                       <div className="p-1.5">
-                        <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Fréquemment utilisées</div>
+                        <div className="text-xs font-semibold app-text-muted uppercase px-2 py-1">Fréquemment utilisées</div>
                         {mostUsedCategories.map((category) => (
                           <button
                             key={category.id}
@@ -640,7 +640,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                               setShowCategoryDropdown(false);
                               categoryInputRef.current?.blur();
                             }}
-                            className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 rounded transition-colors text-sm"
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] rounded transition-colors text-sm"
                           >
                             {category.name}
                           </button>
@@ -649,7 +649,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                     )}
                     {categorySearch && filteredCategories.length === 0 && (
                       <div className="p-1.5">
-                        <div className="p-2 text-xs text-gray-500 text-center mb-2">
+                        <div className="p-2 text-xs app-text-muted text-center mb-2">
                           Aucune catégorie trouvée
                         </div>
                         <button
@@ -660,7 +660,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                             }
                           }}
                           disabled={creatingCategory || !categorySearch.trim()}
-                          className="w-full text-left px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded transition-colors text-sm font-medium text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="w-full text-left px-2.5 py-1.5 app-badge-info hover:bg-[color-mix(in_srgb,var(--app-primary)_15%,var(--app-surface))] rounded transition-colors text-sm font-medium app-text-link disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                           <span>+</span>
                           {creatingCategory ? 'Création...' : `Créer "${categorySearch}"`}
@@ -674,7 +674,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
 
             {/* Fournisseur avec autocomplétion */}
             <div className="relative">
-              <label htmlFor="supplier_search" className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label htmlFor="supplier_search" className="app-label">
                 {t('expenses.expenseSupplier')}
               </label>
               <div className="relative">
@@ -707,16 +707,16 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                   }}
                   placeholder="Rechercher un fournisseur"
                   disabled={expense?.locked}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                  className="app-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 {showSupplierDropdown && (supplierSearch || mostUsedSuppliers.length > 0) && (
                   <div
                     ref={supplierDropdownRef}
-                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto"
+                    className="absolute z-10 w-full mt-1 app-dropdown max-h-48 overflow-auto"
                   >
                     {supplierSearch && filteredSuppliers.length > 0 && (
                       <div className="p-1.5">
-                        <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Résultats</div>
+                        <div className="text-xs font-semibold app-text-muted uppercase px-2 py-1">Résultats</div>
                         {filteredSuppliers.map((supplier) => (
                           <button
                             key={supplier.id}
@@ -727,7 +727,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                               setShowSupplierDropdown(false);
                               supplierInputRef.current?.blur();
                             }}
-                            className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 rounded transition-colors text-sm"
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] rounded transition-colors text-sm"
                           >
                             {supplier.name}
                           </button>
@@ -736,7 +736,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                     )}
                     {!supplierSearch && mostUsedSuppliers.length > 0 && (
                       <div className="p-1.5">
-                        <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Fréquemment utilisés</div>
+                        <div className="text-xs font-semibold app-text-muted uppercase px-2 py-1">Fréquemment utilisés</div>
                         {mostUsedSuppliers.map((supplier) => (
                           <button
                             key={supplier.id}
@@ -747,7 +747,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                               setShowSupplierDropdown(false);
                               supplierInputRef.current?.blur();
                             }}
-                            className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 rounded transition-colors text-sm"
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))] rounded transition-colors text-sm"
                           >
                             {supplier.name}
                           </button>
@@ -756,7 +756,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                     )}
                     {supplierSearch && filteredSuppliers.length === 0 && (
                       <div className="p-1.5">
-                        <div className="p-2 text-xs text-gray-500 text-center mb-2">
+                        <div className="p-2 text-xs app-text-muted text-center mb-2">
                           Aucun fournisseur trouvé
                         </div>
                         <button
@@ -767,7 +767,7 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
                             }
                           }}
                           disabled={creatingSupplier || !supplierSearch.trim()}
-                          className="w-full text-left px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded transition-colors text-sm font-medium text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          className="w-full text-left px-2.5 py-1.5 app-badge-info hover:bg-[color-mix(in_srgb,var(--app-primary)_15%,var(--app-surface))] rounded transition-colors text-sm font-medium app-text-link disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                           <span>+</span>
                           {creatingSupplier ? 'Création...' : `Créer "${supplierSearch}"`}
@@ -782,10 +782,10 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
         </div>
 
         {/* Section 3: Description */}
-        <div className="space-y-3 pt-3 border-t border-gray-200">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Détails</h3>
+        <div className="space-y-3 pt-3 border-t border-[var(--app-border)]">
+          <h3 className="app-label uppercase tracking-wide text-xs font-semibold">Détails</h3>
           <div>
-            <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1.5">
+            <label htmlFor="description" className="app-label">
               {t('expenses.expenseDescription')}
             </label>
             <textarea
@@ -796,18 +796,18 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
               placeholder={t('expenses.descriptionPlaceholder')}
               rows={3}
               disabled={expense?.locked}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors resize-none text-sm"
+              className="app-input resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs app-text-muted">
               {formData.description.length} caractères
             </p>
           </div>
         </div>
 
         {/* Section 4: Options */}
-        <div className="space-y-3 pt-3 border-t border-gray-200">
-          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Options</h3>
-          <div className="flex items-start gap-2.5 p-3 bg-gray-50 rounded-md">
+        <div className="space-y-3 pt-3 border-t border-[var(--app-border)]">
+          <h3 className="app-label uppercase tracking-wide text-xs font-semibold">Options</h3>
+          <div className="flex items-start gap-2.5 p-3 app-bg-muted rounded-md">
             <input
               type="checkbox"
               id="locked"
@@ -815,13 +815,13 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
               checked={formData.locked}
               onChange={handleInputChange}
               disabled={expense?.locked}
-              className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed mt-0.5"
+              className="h-3.5 w-3.5 app-text-link focus:ring-[var(--app-primary)] border-[var(--app-border)] rounded disabled:opacity-50 disabled:cursor-not-allowed mt-0.5"
             />
             <div className="flex-1">
-              <label htmlFor="locked" className="block text-xs font-medium text-gray-700">
+              <label htmlFor="locked" className="app-label mb-0">
                 {t('expenses.locked')}
               </label>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs app-text-muted mt-0.5">
                 Ne peut plus être modifiée ou supprimée après enregistrement
               </p>
               {expense?.locked && (
@@ -835,12 +835,12 @@ const ExpenseForm = forwardRef<HTMLFormElement, ExpenseFormProps>(({ expense, on
         </div>
 
         {/* Aide clavier */}
-        <div className="pt-3 border-t border-gray-200">
-          <p className="text-xs text-gray-400 flex items-center gap-1.5 flex-wrap">
+        <div className="pt-3 border-t border-[var(--app-border)]">
+          <p className="text-xs app-text-muted flex items-center gap-1.5 flex-wrap">
             <span>Raccourcis:</span>
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Esc</kbd>
+            <kbd className="px-1.5 py-0.5 app-bg-muted rounded text-xs app-text-muted">Esc</kbd>
             <span>annuler,</span>
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Ctrl+Enter</kbd>
+            <kbd className="px-1.5 py-0.5 app-bg-muted rounded text-xs app-text-muted">Ctrl+Enter</kbd>
             <span>enregistrer</span>
           </p>
         </div>

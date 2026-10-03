@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { devLog } from '../../lib/devLog';
 import { X, AlertTriangle, CheckCircle, Package, TrendingUp, ShoppingCart, Eye, Trash2, ShoppingBag, ArrowUp } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, MergePreview } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface ProductMergeModalProps {
   duplicateGroup: Product[];
@@ -341,7 +344,7 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
         throw new Error('IDs de produits ou utilisateur invalides');
       }
 
-      console.log('Appel merge_products avec:', {
+      devLog('Appel merge_products avec:', {
         master_product_id: masterId,
         duplicate_product_id: duplicateId,
         merge_user_id: userId,
@@ -379,34 +382,30 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
   const duplicateProduct = duplicateGroup.find(p => p.id === selectedDuplicate);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div 
-        className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* En-tête */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+    <Offcanvas onClose={onClose} width="lg">
+        <OffcanvasHeader>
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-lg font-semibold app-text">
               Fusionner les produits en doublon
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs app-text-muted mt-0.5">
               {duplicateGroup.length} produits avec le même nom détectés
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="app-text-muted hover:text-[var(--app-ink-muted)] transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
+        </OffcanvasHeader>
 
-        {/* Contenu scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <OffcanvasBody className="space-y-6">
           {/* Sélection du produit maître */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="app-label mb-3">
               Produit maître (produit qui sera conservé) *
             </label>
             <div className="space-y-2">
@@ -415,8 +414,8 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                   key={product.id}
                   className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                     selectedMaster === product.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-[var(--app-primary)] app-badge-info'
+                      : 'border-[var(--app-border)] hover:border-[var(--app-border)]'
                   }`}
                 >
                   <input
@@ -437,19 +436,19 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                     {/* Informations principales à gauche */}
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{product.name}</span>
+                        <span className="font-semibold app-text">{product.name}</span>
                         {selectedMaster === product.id && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <span className="text-xs app-badge-info px-2 py-1 rounded">
                             MAÎTRE
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-600 mt-1 space-y-1">
+                      <div className="text-sm app-text-muted mt-1 space-y-1">
                         <div>SKU: {product.sku}</div>
                         <div>Stock: {product.current_stock} {product.unit}</div>
                         <div>Statut: {product.status}</div>
-                        <div className="text-xs text-gray-500">
-                          Créé le: {new Date(product.created_at).toLocaleDateString('fr-FR')}
+                        <div className="text-xs app-text-muted">
+                          Créé le: {formatDateDisplay(product.created_at)}
                         </div>
                       </div>
                     </div>
@@ -457,17 +456,17 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                     {/* Détails d'activité à droite */}
                     <div className="flex-shrink-0 w-48">
                       {loadingActivity ? (
-                        <div className="text-xs text-gray-400">Chargement...</div>
+                        <div className="text-xs app-text-muted">Chargement...</div>
                       ) : (
                         <div className="space-y-2 text-xs">
                           {productLastOrders[product.id] && (
-                            <div className="flex items-start gap-1.5 text-gray-600">
-                              <ShoppingCart className="h-3.5 w-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex items-start gap-1.5 app-text-muted">
+                              <ShoppingCart className="h-3.5 w-3.5 app-text-link mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium">Dernière commande</div>
-                                <div className="text-gray-500">{new Date(productLastOrders[product.id].date).toLocaleDateString('fr-FR')}</div>
+                                <div className="app-text-muted">{formatDateDisplay(productLastOrders[product.id].date)}</div>
                                 {productLastOrders[product.id].trackingNumber && (
-                                  <div className="text-gray-700 font-mono mt-0.5">
+                                  <div className="app-text font-mono mt-0.5">
                                     {productLastOrders[product.id].trackingNumber}
                                   </div>
                                 )}
@@ -475,25 +474,25 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                             </div>
                           )}
                           {productLastStockIns[product.id] && (
-                            <div className="flex items-start gap-1.5 text-gray-600">
+                            <div className="flex items-start gap-1.5 app-text-muted">
                               <ArrowUp className="h-3.5 w-3.5 text-purple-600 mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium">Dernier approvisionnement</div>
-                                <div className="text-gray-500">{new Date(productLastStockIns[product.id].date).toLocaleDateString('fr-FR')}</div>
+                                <div className="app-text-muted">{formatDateDisplay(productLastStockIns[product.id].date)}</div>
                               </div>
                             </div>
                           )}
                           {productLastSales[product.id] && (
-                            <div className="flex items-start gap-1.5 text-gray-600">
+                            <div className="flex items-start gap-1.5 app-text-muted">
                               <ShoppingBag className="h-3.5 w-3.5 text-green-600 mt-0.5 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium">Dernière vente</div>
-                                <div className="text-gray-500">{new Date(productLastSales[product.id].date).toLocaleDateString('fr-FR')}</div>
+                                <div className="app-text-muted">{formatDateDisplay(productLastSales[product.id].date)}</div>
                               </div>
                             </div>
                           )}
                           {!productLastOrders[product.id] && !productLastStockIns[product.id] && !productLastSales[product.id] && (
-                            <div className="text-gray-400 italic">Aucune activité</div>
+                            <div className="app-text-muted italic">Aucune activité</div>
                           )}
                         </div>
                       )}
@@ -507,7 +506,7 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
           {/* Sélection du produit à fusionner */}
           {selectedMaster && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="app-label mb-3">
                 Produit à fusionner vers le maître *
               </label>
               <div className="space-y-2">
@@ -519,7 +518,7 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                       className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                         selectedDuplicate === product.id
                           ? 'border-orange-500 bg-orange-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-[var(--app-border)] hover:border-[var(--app-border)]'
                       }`}
                     >
                       <input
@@ -532,14 +531,14 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-900">{product.name}</span>
+                          <span className="font-semibold app-text">{product.name}</span>
                           {selectedDuplicate === product.id && (
                             <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
                               À FUSIONNER
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1 space-y-1">
+                        <div className="text-sm app-text-muted mt-1 space-y-1">
                           <div>SKU: {product.sku}</div>
                           <div>Stock: {product.current_stock} {product.unit}</div>
                           <div>Statut: {product.status}</div>
@@ -562,17 +561,17 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                   className="mt-1"
                 />
                 <div>
-                  <div className="font-medium text-gray-900 flex items-center gap-2">
+                  <div className="font-medium app-text flex items-center gap-2">
                     <Trash2 className="h-4 w-4" />
                     Supprimer définitivement le produit fusionné
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">
+                  <div className="text-sm app-text-muted mt-1">
                     {deleteDuplicate ? (
                       <span className="text-red-600">
                         ⚠️ Le produit sera supprimé de la base de données. Cette action est irréversible.
                       </span>
                     ) : (
-                      <span className="text-gray-600">
+                      <span className="app-text-muted">
                         Le produit sera marqué comme "discontinué" mais conservé pour l'historique.
                       </span>
                     )}
@@ -585,15 +584,15 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
           {/* Prévisualisation */}
           {previewLoading && (
             <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-sm text-gray-600 mt-2">Chargement de la prévisualisation...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)] mx-auto"></div>
+              <p className="text-sm app-text-muted mt-2">Chargement de la prévisualisation...</p>
             </div>
           )}
 
           {preview && !previewLoading && (
             <div className="border-t pt-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Prévisualisation de la fusion</h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold app-text mb-3">Prévisualisation de la fusion</h3>
+              <div className="app-bg-muted rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <span>
@@ -601,7 +600,7 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <ShoppingCart className="h-4 w-4 text-blue-600" />
+                  <ShoppingCart className="h-4 w-4 app-text-link" />
                   <span>
                     <strong>{preview.impact.purchase_order_items}</strong> articles de commande transférés
                   </span>
@@ -653,13 +652,13 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
               <p className="text-sm text-red-700 mt-1">{error}</p>
             </div>
           )}
-        </div>
+        </OffcanvasBody>
 
-        {/* Footer avec boutons */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 flex-shrink-0">
+        <OffcanvasFooter>
+        <div className="app-actions">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="app-btn app-btn-secondary"
             disabled={loading}
           >
             Annuler
@@ -667,7 +666,7 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
           <button
             onClick={handleMerge}
             disabled={!selectedMaster || !selectedDuplicate || loading || previewLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="app-btn app-btn-primary"
           >
             {loading ? (
               <>
@@ -682,8 +681,8 @@ export const ProductMergeModal: React.FC<ProductMergeModalProps> = ({
             )}
           </button>
         </div>
-      </div>
-    </div>
+        </OffcanvasFooter>
+    </Offcanvas>
   );
 };
 

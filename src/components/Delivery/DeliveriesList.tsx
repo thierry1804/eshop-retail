@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
-import { Plus, Search, Truck, MapPin, Clock, Eye, Edit, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Truck, MapPin, Clock, Eye, Edit, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { DeliveryForm } from './DeliveryForm';
 import { DeliveryDetails } from './DeliveryDetails';
 import { DeliverySchedule } from './DeliverySchedule';
 import { DeliveryReport } from './DeliveryReport';
+import { DataTable, dtTh, dtTd, dtTdMuted, dtTdWrap } from '../ui/DataTable';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface DeliveriesListProps {
   user: User;
@@ -101,13 +104,13 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'preparing': return 'bg-blue-100 text-blue-800';
-      case 'in_transit': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'app-badge bg-yellow-100 text-yellow-800';
+      case 'preparing': return 'app-badge app-badge-info';
+      case 'in_transit': return 'app-badge bg-purple-100 text-purple-800';
+      case 'delivered': return 'app-badge app-badge-success';
+      case 'failed': return 'app-badge app-badge-danger';
+      case 'cancelled': return 'app-badge';
+      default: return 'app-badge';
     }
   };
 
@@ -126,61 +129,64 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-2">
+      <div className="app-sticky-chrome space-y-2">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{t('deliveries.title')}</h1>
-          <p className="text-sm sm:text-base text-gray-600">{t('deliveries.subtitle')}</p>
+          <h1 className="app-page-title">{t('deliveries.title')}</h1>
+          <p className="app-page-subtitle">{t('deliveries.subtitle')}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
-        >
-          <Plus className="h-4 w-4" />
-          {t('deliveries.newDelivery')}
-        </button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setShowForm(true)}
+            className="app-btn app-btn-primary app-btn-sm whitespace-nowrap"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('deliveries.newDelivery')}
+          </button>
+        </div>
       </div>
 
       {/* Navigation des vues */}
-      <div className="bg-white p-3 sm:p-4 rounded-lg shadow">
-        <div className="flex flex-wrap gap-2 sm:gap-4">
+      <div className="app-toolbar">
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setActiveView('list')}
-            className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors text-xs sm:text-sm ${activeView === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`app-btn app-btn-sm ${activeView === 'list'
+                ? 'app-btn-primary'
+                : 'app-btn-secondary'
               }`}
           >
-            <Truck className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
+            <Truck className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Liste des livraisons</span>
             <span className="sm:hidden">Liste</span>
           </button>
           <button
             onClick={() => setActiveView('schedule')}
-            className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors text-xs sm:text-sm ${activeView === 'schedule'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`app-btn app-btn-sm ${activeView === 'schedule'
+                ? 'app-btn-primary'
+                : 'app-btn-secondary'
               }`}
           >
-            <Clock className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
+            <Clock className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t('deliveries.deliverySchedule')}</span>
             <span className="sm:hidden">Planning</span>
           </button>
           <button
             onClick={() => setActiveView('report')}
-            className={`px-3 sm:px-4 py-2 rounded-md font-medium transition-colors text-xs sm:text-sm ${activeView === 'report'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`app-btn app-btn-sm ${activeView === 'report'
+                ? 'app-btn-primary'
+                : 'app-btn-secondary'
               }`}
           >
-            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 inline mr-1 sm:mr-2" />
+            <AlertTriangle className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{t('deliveries.deliveryReport')}</span>
             <span className="sm:hidden">Rapport</span>
           </button>
@@ -188,24 +194,18 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
       </div>
 
       {/* Filtres */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder={t('deliveries.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+        <div className="app-toolbar">
+          <SearchField
+            className="min-w-[12rem]"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder={t('deliveries.searchPlaceholder')}
+            inputClassName="text-xs py-1.5"
+          />
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="app-input text-xs py-1.5 w-auto md:min-w-[12rem]"
           >
             <option value="all">{t('deliveries.filters.allStatuses')}</option>
             <option value="pending">{t('deliveries.status.pending')}</option>
@@ -224,26 +224,26 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
           {/* Liste des livraisons - Mobile Card View */}
           <div className="md:hidden space-y-3">
             {filteredDeliveries.map((delivery) => (
-              <div key={delivery.id} className="bg-white rounded-lg shadow-md p-4">
+              <div key={delivery.id} className="app-list-card">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <Truck className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <Truck className="h-5 w-5 app-text-muted flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-gray-900 truncate">{delivery.delivery_number}</div>
-                      <div className="text-xs text-gray-500 truncate">
+                      <div className="text-sm font-medium app-text truncate">{delivery.delivery_number}</div>
+                      <div className="text-xs app-text-muted truncate">
                         {delivery.clients?.first_name} {delivery.clients?.last_name}
                       </div>
                     </div>
                   </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-2 flex-shrink-0 ${getStatusColor(delivery.status)}`}>
+                  <span className={`ml-2 flex-shrink-0 ${getStatusColor(delivery.status)}`}>
                     {t(`deliveries.status.${delivery.status}`)}
                   </span>
                 </div>
-                <div className="space-y-2 text-xs pt-2 border-t border-gray-100">
+                <div className="space-y-2 text-xs pt-2 border-t app-divider">
                   {delivery.sales && (
                     <div>
-                      <div className="text-gray-900 font-medium truncate">{delivery.sales.description}</div>
-                      <div className="text-gray-500">
+                      <div className="app-text font-medium truncate">{delivery.sales.description}</div>
+                      <div className="app-text-muted">
                         {new Intl.NumberFormat('fr-FR', {
                           style: 'currency',
                           currency: 'MGA',
@@ -251,29 +251,29 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center app-text-muted">
                     <Clock className="h-3 w-3 mr-1" />
-                    <span>{new Date(delivery.delivery_date).toLocaleDateString()}</span>
+                    <span>{formatDateDisplay(delivery.delivery_date)}</span>
                   </div>
-                  <div className="flex items-start text-gray-600">
+                  <div className="flex items-start app-text-muted">
                     <MapPin className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
                     <span className="truncate">{delivery.delivery_address}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between pt-2 border-t app-divider">
                     <div className="flex gap-2">
                       <button
                         onClick={() => setSelectedDeliveryId(delivery.id)}
-                        className="text-blue-600 hover:text-blue-900 text-xs font-medium"
+                        className="app-text-link hover:opacity-80 text-xs font-medium"
                       >
                         <Eye className="h-3 w-3 inline mr-1" />
                         Voir
                       </button>
                       {delivery.status !== 'delivered' && (
                         <>
-                          <span className="text-gray-300">|</span>
+                          <span className="app-text-muted opacity-40">|</span>
                           <button
                             onClick={() => setSelectedDeliveryId(delivery.id)}
-                            className="text-indigo-600 hover:text-indigo-900 text-xs font-medium"
+                            className="app-text-link hover:opacity-80 text-xs font-medium"
                           >
                             <Edit className="h-3 w-3 inline mr-1" />
                             Modifier
@@ -286,14 +286,14 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                         <button
                           onClick={() => handleStatusChange(delivery.id, 'delivered', 'Livrée')}
                           disabled={updatingStatus === delivery.id}
-                          className="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs disabled:opacity-50"
+                          className="app-btn app-btn-sm app-btn-success disabled:opacity-50"
                         >
                           <CheckCircle className="h-3 w-3 inline" />
                         </button>
                         <button
                           onClick={() => handleStatusChange(delivery.id, 'failed', 'Échouée')}
                           disabled={updatingStatus === delivery.id}
-                          className="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs disabled:opacity-50"
+                          className="app-btn app-btn-sm app-btn-danger disabled:opacity-50"
                         >
                           <XCircle className="h-3 w-3 inline" />
                         </button>
@@ -301,8 +301,8 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                     )}
                   </div>
                   {updatingStatus === delivery.id && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 pt-1">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-500"></div>
+                    <div className="flex items-center gap-1 text-xs app-text-muted pt-1">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-[var(--app-ink-muted)]"></div>
                       Mise à jour...
                     </div>
                   )}
@@ -310,49 +310,48 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
               </div>
             ))}
             {filteredDeliveries.length === 0 && (
-              <div className="text-center py-8 bg-white rounded-lg shadow-md">
-                <p className="text-gray-500 text-sm">Aucune livraison trouvée</p>
+              <div className="app-empty">
+                <p className="app-empty-text">Aucune livraison trouvée</p>
               </div>
             )}
           </div>
 
           {/* Liste des livraisons - Desktop Table View */}
-          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+          <div className="hidden md:block app-table-wrap">
+            <DataTable>
+                <thead className="app-bg-muted">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.number')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.client')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.sale')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.date')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.address')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('deliveries.table.status')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.actions')}</th>
+                    <th className={dtTh}>{t('deliveries.table.number')}</th>
+                    <th className={dtTh}>{t('deliveries.table.client')}</th>
+                    <th className={dtTh}>{t('deliveries.table.sale')}</th>
+                    <th className={dtTh}>{t('deliveries.table.date')}</th>
+                    <th className={dtTh}>{t('deliveries.table.address')}</th>
+                    <th className={dtTh}>{t('deliveries.table.status')}</th>
+                    <th className={dtTh}>{t('common.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-[var(--app-border)]">
                   {filteredDeliveries.map((delivery) => (
-                    <tr key={delivery.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={delivery.id} className="hover:bg-[var(--app-surface-muted)]">
+                      <td className={dtTd}>
                         <div className="flex items-center">
-                          <Truck className="h-5 w-5 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{delivery.delivery_number}</span>
+                          <Truck className="h-3.5 w-3.5 app-text-muted mr-1.5 flex-shrink-0" />
+                          <span className="font-medium">{delivery.delivery_number}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                      <td className={dtTdWrap}>
+                        <div className="app-text">
                           {delivery.clients?.first_name} {delivery.clients?.last_name}
                         </div>
-                        <div className="text-sm text-gray-500">{delivery.clients?.phone}</div>
+                        <div className="app-text-muted">{delivery.clients?.phone}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className={dtTdWrap}>
                         {delivery.sales ? (
-                          <div className="text-sm">
-                            <div className="text-gray-900 font-medium truncate max-w-xs" title={delivery.sales.description}>
+                          <div>
+                            <div className="app-text font-medium truncate max-w-xs" title={delivery.sales.description}>
                               {delivery.sales.description}
                             </div>
-                            <div className="text-gray-500">
+                            <div className="app-text-muted">
                               {new Intl.NumberFormat('fr-FR', {
                                 style: 'currency',
                                 currency: 'MGA',
@@ -360,36 +359,36 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400 italic">Aucune vente</span>
+                          <span className="app-text-muted italic">Aucune vente</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className={dtTd}>
                         <div className="flex items-center">
-                          <Clock className="h-4 w-4 text-gray-400 mr-1" />
-                          <span className="text-sm text-gray-900">
-                            {new Date(delivery.delivery_date).toLocaleDateString()}
+                          <Clock className="h-3.5 w-3.5 app-text-muted mr-1 flex-shrink-0" />
+                          <span>
+                            {formatDateDisplay(delivery.delivery_date)}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className={dtTdWrap}>
                         <div className="flex items-center">
-                          <MapPin className="h-4 w-4 text-gray-400 mr-1" />
-                          <span className="text-sm text-gray-900 truncate max-w-xs">
+                          <MapPin className="h-3.5 w-3.5 app-text-muted mr-1 flex-shrink-0" />
+                          <span className="truncate max-w-xs">
                             {delivery.delivery_address}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(delivery.status)}`}>
+                      <td className={dtTd}>
+                        <span className={`${getStatusColor(delivery.status)}`}>
                           {t(`deliveries.status.${delivery.status}`)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className={`${dtTd} font-medium`}>
                         <div className="flex flex-col gap-2">
                           <div className="flex gap-2">
                             <button
                               onClick={() => setSelectedDeliveryId(delivery.id)}
-                              className="text-blue-600 hover:text-blue-900 flex items-center gap-1 text-xs"
+                              className="app-text-link hover:opacity-80 flex items-center gap-1 text-xs"
                             >
                               <Eye className="h-3 w-3" />
                               {t('deliveries.viewDetails')}
@@ -398,8 +397,8 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                               onClick={() => setSelectedDeliveryId(delivery.id)}
                               disabled={delivery.status === 'delivered'}
                               className={`flex items-center gap-1 text-xs ${delivery.status === 'delivered'
-                                  ? 'text-gray-400 cursor-not-allowed'
-                                  : 'text-indigo-600 hover:text-indigo-900'
+                                  ? 'app-text-muted cursor-not-allowed'
+                                  : 'app-text-link hover:opacity-80'
                                 }`}
                               title={delivery.status === 'delivered' ? 'Impossible de modifier une livraison livrée' : 'Modifier la livraison'}
                             >
@@ -412,7 +411,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                               <button
                                 onClick={() => handleStatusChange(delivery.id, 'delivered', 'Livrée')}
                                 disabled={updatingStatus === delivery.id}
-                                className="bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
+                                className="app-btn app-btn-sm app-btn-success flex items-center gap-1 disabled:opacity-50"
                                 title="Marquer comme livrée"
                               >
                                 <CheckCircle className="h-3 w-3" />
@@ -421,7 +420,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                               <button
                                 onClick={() => handleStatusChange(delivery.id, 'failed', 'Échouée')}
                                 disabled={updatingStatus === delivery.id}
-                                className="bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
+                                className="app-btn app-btn-sm app-btn-danger flex items-center gap-1 disabled:opacity-50"
                                 title="Marquer comme échouée"
                               >
                                 <XCircle className="h-3 w-3" />
@@ -430,8 +429,8 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                             </div>
                           )}
                           {updatingStatus === delivery.id && (
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                              <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-500"></div>
+                            <div className="flex items-center gap-1 text-xs app-text-muted">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-[var(--app-ink-muted)]"></div>
                               Mise à jour...
                             </div>
                           )}
@@ -440,8 +439,7 @@ export const DeliveriesList: React.FC<DeliveriesListProps> = ({ user }) => {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+            </DataTable>
           </div>
         </>
       )}

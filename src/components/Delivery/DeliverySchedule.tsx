@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Delivery, User } from '../../types';
 import { Calendar, Truck, MapPin, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { formatDateToLocalString } from '../../lib/dateUtils';
+import { formatDateToLocalString, formatDateDisplay } from '../../lib/dateUtils';
 
 interface DeliveryScheduleProps {
   user: User;
@@ -62,13 +62,13 @@ export const DeliverySchedule: React.FC<DeliveryScheduleProps> = ({ user }) => {
       case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'in_progress':
-        return <Truck className="h-5 w-5 text-blue-500" />;
+        return <Truck className="h-5 w-5 app-text-link" />;
       case 'pending':
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'cancelled':
         return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <AlertTriangle className="h-5 w-5 text-gray-500" />;
+        return <AlertTriangle className="h-5 w-5 app-text-muted" />;
     }
   };
 
@@ -90,15 +90,15 @@ export const DeliverySchedule: React.FC<DeliveryScheduleProps> = ({ user }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'app-badge app-badge-success';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
+        return 'app-badge app-badge-info';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'app-badge bg-yellow-100 text-yellow-800';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
+        return 'app-badge app-badge-danger';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'app-badge';
     }
   };
 
@@ -113,17 +113,17 @@ export const DeliverySchedule: React.FC<DeliveryScheduleProps> = ({ user }) => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('deliveries.deliverySchedule')}</h1>
-          <p className="text-gray-600 mt-1">Planification des livraisons par date</p>
+          <h1 className="text-2xl font-bold app-text">{t('deliveries.deliverySchedule')}</h1>
+          <p className="app-text-muted mt-1">Planification des livraisons par date</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-gray-500" />
+            <Calendar className="h-5 w-5 app-text-muted" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="border app-border rounded-md px-3 py-2 "
             />
           </div>
         </div>
@@ -131,89 +131,84 @@ export const DeliverySchedule: React.FC<DeliveryScheduleProps> = ({ user }) => {
 
       {/* Statistiques du jour */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
+        <div className="app-surface p-4">
           <div className="flex items-center">
             <Clock className="h-8 w-8 text-yellow-500" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">En attente</p>
+              <p className="text-sm font-medium app-text-muted">En attente</p>
               <p className="text-2xl font-bold text-yellow-600">
                 {deliveries.filter(d => d.status === 'pending').length}
               </p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
+        <div className="app-surface p-4">
           <div className="flex items-center">
-            <Truck className="h-8 w-8 text-blue-500" />
+            <Truck className="h-8 w-8 app-text-link" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">En cours</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-sm font-medium app-text-muted">En cours</p>
+              <p className="text-2xl font-bold app-text-link">
                 {deliveries.filter(d => d.status === 'in_progress').length}
               </p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
+        <div className="app-surface p-4">
           <div className="flex items-center">
             <CheckCircle className="h-8 w-8 text-green-500" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Terminées</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-sm font-medium app-text-muted">Terminées</p>
+              <p className="text-2xl font-bold app-text-success">
                 {deliveries.filter(d => d.status === 'completed').length}
               </p>
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
+        <div className="app-surface p-4">
           <div className="flex items-center">
-            <AlertTriangle className="h-8 w-8 text-gray-500" />
+            <AlertTriangle className="h-8 w-8 app-text-muted" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-600">{deliveries.length}</p>
+              <p className="text-sm font-medium app-text-muted">Total</p>
+              <p className="text-2xl font-bold app-text-muted">{deliveries.length}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Liste des livraisons */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Livraisons du {new Date(selectedDate).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+      <div className="app-surface">
+        <div className="px-6 py-4 border-b border app-divider">
+          <h3 className="text-lg font-medium app-text">
+            Livraisons du {formatDateDisplay(selectedDate)}
           </h3>
         </div>
         
         {loading ? (
           <div className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-500">Chargement des livraisons...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--app-primary)] mx-auto"></div>
+            <p className="mt-2 app-text-muted">Chargement des livraisons...</p>
           </div>
         ) : deliveries.length === 0 ? (
           <div className="p-6 text-center">
-            <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Aucune livraison prévue pour cette date</p>
+            <Truck className="h-12 w-12 app-text-muted mx-auto mb-4" />
+            <p className="app-text-muted">Aucune livraison prévue pour cette date</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-[var(--app-border)]">
             {deliveries.map((delivery) => (
-              <div key={delivery.id} className="p-6 hover:bg-gray-50">
+              <div key={delivery.id} className="p-6 hover:bg-[var(--app-surface-muted)]">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     {getStatusIcon(delivery.status)}
                     <div>
-                      <h4 className="text-lg font-medium text-gray-900">
+                      <h4 className="text-lg font-medium app-text">
                         {delivery.clients?.first_name} {delivery.clients?.last_name}
                       </h4>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm app-text-muted">
                         {delivery.clients?.phone}
                       </p>
                       {delivery.sales && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm app-text-muted mt-1">
                           Vente: {delivery.sales.description} - {formatCurrency(delivery.sales.total_amount)}
                         </p>
                       )}
@@ -221,11 +216,11 @@ export const DeliverySchedule: React.FC<DeliveryScheduleProps> = ({ user }) => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
+                      <div className={`${getStatusColor(delivery.status)}`}>
                         {getStatusText(delivery.status)}
                       </div>
                       {delivery.delivery_address && (
-                        <div className="flex items-center mt-2 text-sm text-gray-500">
+                        <div className="flex items-center mt-2 text-sm app-text-muted">
                           <MapPin className="h-4 w-4 mr-1" />
                           {delivery.delivery_address}
                         </div>

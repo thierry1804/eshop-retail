@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase';
+import { DataTable, dtTh, dtTd, dtTdWrap } from '../ui/DataTable';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 type Expense = Database['public']['Tables']['expenses']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -20,12 +22,10 @@ interface DeletedExpensesListProps {
 }
 
 const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) => {
-  const { t } = useTranslation();
   const [expenses, setExpenses] = useState<ExpenseWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Récupération des dépenses supprimées
   const fetchDeletedExpenses = async () => {
     try {
       setLoading(true);
@@ -41,7 +41,7 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
           updated_by_user:user_profiles!expenses_updated_by_fkey(*),
           deleted_by_user:user_profiles!expenses_deleted_by_fkey(*)
         `)
-        .not('deleted_at', 'is', null) // Seulement les dépenses supprimées
+        .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false });
 
       if (expensesError) {
@@ -63,7 +63,6 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
     fetchDeletedExpenses();
   }, []);
 
-  // Restaurer une dépense
   const handleRestoreExpense = async (expenseId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir restaurer cette dépense ?')) {
       return;
@@ -84,7 +83,6 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
         return;
       }
 
-      // Rafraîchir la liste
       fetchDeletedExpenses();
       if (onRestore) {
         onRestore();
@@ -95,7 +93,6 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
     }
   };
 
-  // Supprimer définitivement une dépense
   const handlePermanentDelete = async (expenseId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement cette dépense ? Cette action est irréversible.')) {
       return;
@@ -116,7 +113,6 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
         return;
       }
 
-      // Rafraîchir la liste
       fetchDeletedExpenses();
     } catch (err) {
       console.error('Erreur inattendue lors de la suppression définitive:', err);
@@ -124,12 +120,6 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
     }
   };
 
-  // Formatage de la date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR');
-  };
-
-  // Formatage du montant
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -139,11 +129,9 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="text-gray-500 text-lg">
-            Chargement des dépenses supprimées...
-          </div>
+      <div className="p-3 sm:p-6">
+        <div className="app-surface p-8 text-center text-sm app-text-muted">
+          Chargement des dépenses supprimées...
         </div>
       </div>
     );
@@ -151,15 +139,10 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="text-red-500 text-lg mb-4">
-            {error}
-          </div>
-          <button
-            onClick={fetchDeletedExpenses}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+      <div className="p-3 sm:p-6">
+        <div className="app-surface p-8 text-center">
+          <div className="text-sm mb-4 app-text-danger">{error}</div>
+          <button onClick={fetchDeletedExpenses} className="app-btn app-btn-primary">
             Réessayer
           </button>
         </div>
@@ -168,92 +151,132 @@ const DeletedExpensesList: React.FC<DeletedExpensesListProps> = ({ onRestore }) 
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
-          Dépenses supprimées
-        </h2>
-        <p className="text-gray-600 mt-1">
-          Gérer les dépenses supprimées - restauration ou suppression définitive
+    <div className="p-3 sm:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="app-page-title">Dépenses supprimées</h2>
+        <p className="app-page-subtitle">
+          Restauration ou suppression définitive
         </p>
       </div>
 
       {expenses.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="text-gray-400 text-lg">
-            Aucune dépense supprimée
-          </div>
+        <div className="app-empty">
+          <p className="app-empty-text">Aucune dépense supprimée</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        <>
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {expenses.map((expense) => (
+              <div key={expense.id} className="app-list-card space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium app-text truncate">
+                      {expense.description || 'Sans description'}
+                    </div>
+                    <div className="text-xs app-text-muted mt-0.5">
+                      {formatDateDisplay(expense.date)}
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold app-text-danger flex-shrink-0">
+                    {formatAmount(Number(expense.amount))}
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span className="app-text-muted">Supprimé par</span>
+                    <span className="app-text truncate text-right">
+                      {expense.deleted_by_user?.name || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="app-text-muted">Date suppression</span>
+                    <span className="app-text">
+                      {expense.deleted_at ? formatDateDisplay(expense.deleted_at) : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="app-actions flex-col w-full pt-1 border-t app-border">
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreExpense(expense.id)}
+                    className="app-btn app-btn-secondary w-full min-h-[44px]"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Restaurer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePermanentDelete(expense.id)}
+                    className="app-btn app-btn-danger w-full min-h-[44px]"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Supprimer définitivement
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block app-table-wrap">
+            <DataTable>
+              <thead className="app-bg-muted">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Montant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Supprimé par
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date suppression
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className={dtTh}>Date</th>
+                  <th className={dtTh}>Description</th>
+                  <th className={dtTh}>Montant</th>
+                  <th className={dtTh}>Supprimé par</th>
+                  <th className={dtTh}>Date suppression</th>
+                  <th className={dtTh}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-[var(--app-surface)] divide-y divide-[var(--app-border)]">
                 {expenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(expense.date)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                  <tr key={expense.id} className="hover:bg-[var(--app-surface-muted)]">
+                    <td className={dtTd}>{formatDateDisplay(expense.date)}</td>
+                    <td className={dtTdWrap}>
                       <div className="max-w-xs truncate">
                         {expense.description || '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                    <td className={`${dtTd} font-medium app-text-danger`}>
                       {formatAmount(Number(expense.amount))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.deleted_by_user?.name || '-'}
+                    <td className={dtTd}>{expense.deleted_by_user?.name || '-'}</td>
+                    <td className={dtTd}>
+                      {expense.deleted_at ? formatDateDisplay(expense.deleted_at) : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.deleted_at ? formatDate(expense.deleted_at) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button 
+                    <td className={dtTd}>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
                           onClick={() => handleRestoreExpense(expense.id)}
-                          className="text-green-600 hover:text-green-900"
+                          className="app-btn app-btn-secondary app-btn-sm"
                           title="Restaurer cette dépense"
                         >
+                          <RotateCcw className="h-3.5 w-3.5" />
                           Restaurer
                         </button>
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => handlePermanentDelete(expense.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="app-btn app-btn-danger app-btn-sm"
                           title="Supprimer définitivement"
                         >
-                          Supprimer définitivement
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Supprimer
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

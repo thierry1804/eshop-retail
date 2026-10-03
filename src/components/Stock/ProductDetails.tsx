@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, User, ProductPrice, StockMovement } from '../../types';
-import { Package, Edit, Plus, TrendingUp, TrendingDown, Image as ImageIcon } from 'lucide-react';
+import { Package, Edit, TrendingUp, TrendingDown, Image as ImageIcon, X } from 'lucide-react';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody } from '../ui/Offcanvas';
 import { ProductPrices } from './ProductPrices';
 import { StockMovements } from './StockMovements';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface ProductDetailsProps {
   product: Product;
@@ -48,87 +50,89 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
   const stockStatus = getStockStatus();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-white rounded-lg p-3 sm:p-4 md:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-4 sm:mb-6">
-          <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
-            {/* Image du produit */}
-            {product.image_url && !imageError ? (
-              <div className="flex-shrink-0">
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 object-cover rounded-lg border border-gray-300 shadow-sm"
-                  onError={() => setImageError(true)}
-                />
-              </div>
-            ) : (
-              <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
-                <ImageIcon className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-gray-400" />
-              </div>
-            )}
-            <div className="flex items-center min-w-0 flex-1">
-              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">{product.name}</h2>
-                <p className="text-sm sm:text-base text-gray-600">SKU: {product.sku}</p>
+    <Offcanvas onClose={onClose} width="lg" ariaLabel={`Détails produit — ${product.name}`}>
+      <OffcanvasHeader className="pt-3 sm:pt-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {/* Image du produit */}
+              {product.image_url && !imageError ? (
+                <div className="flex-shrink-0">
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-md border app-border"
+                    onError={() => setImageError(true)}
+                  />
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 app-bg-muted rounded-md border app-border flex items-center justify-center">
+                  <ImageIcon className="h-6 w-6 app-text-muted" />
+                </div>
+              )}
+              <div className="flex items-center min-w-0 flex-1">
+                <Package className="h-5 w-5 app-text-link mr-2 flex-shrink-0" />
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-semibold truncate leading-tight">{product.name}</h2>
+                  <p className="text-xs app-text-muted">SKU: {product.sku}</p>
+                </div>
               </div>
             </div>
+            <div className="flex space-x-1.5 flex-shrink-0">
+              <button
+                onClick={onEdit}
+                className="app-btn app-btn-primary app-btn-sm"
+              >
+                <Edit className="h-3.5 w-3.5 mr-1" />
+                <span className="hidden sm:inline">Modifier</span>
+                <span className="sm:hidden">Modif.</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="app-icon-btn flex-shrink-0"
+                aria-label="Fermer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-          <div className="flex space-x-2 flex-shrink-0">
-            <button
-              onClick={onEdit}
-              className="flex items-center px-2 sm:px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm"
-            >
-              <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Modifier</span>
-              <span className="sm:hidden">Modif.</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="px-2 sm:px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-xs sm:text-sm"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
 
-        {/* Onglets */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+          {/* Onglets */}
+          <nav className="flex space-x-4">
             <button
               onClick={() => setActiveTab('details')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-1.5 px-1 border-b-2 font-medium text-xs ${
                 activeTab === 'details'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'app-tab-active'
+                  : 'app-tab'
               }`}
             >
               Détails
             </button>
             <button
               onClick={() => setActiveTab('prices')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-1.5 px-1 border-b-2 font-medium text-xs ${
                 activeTab === 'prices'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'app-tab-active'
+                  : 'app-tab'
               }`}
             >
               Prix
             </button>
             <button
               onClick={() => setActiveTab('movements')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-1.5 px-1 border-b-2 font-medium text-xs ${
                 activeTab === 'movements'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'app-tab-active'
+                  : 'app-tab'
               }`}
             >
               Mouvements
             </button>
           </nav>
-        </div>
+      </OffcanvasHeader>
 
+      <OffcanvasBody>
         {/* Contenu des onglets */}
         {activeTab === 'details' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -138,7 +142,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
               
               {/* Image en grand si disponible */}
               {product.image_url && !imageError && (
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="app-bg-muted p-4 rounded-lg">
                   <img
                     src={product.image_url}
                     alt={product.name}
@@ -149,7 +153,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
                 </div>
               )}
               
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <div className="app-bg-muted p-4 rounded-lg space-y-2">
                 <div><strong>Description:</strong> {product.description || 'Aucune'}</div>
                 <div><strong>Code-barres:</strong> {product.barcode || 'Aucun'}</div>
                 <div><strong>Unitaire:</strong> {product.unit}</div>
@@ -163,7 +167,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
               {/* Stock */}
               <div>
                 <h4 className="font-semibold mb-2">Stock</h4>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <div className="app-bg-muted p-4 rounded-lg space-y-2">
                   <div className="flex justify-between">
                     <span>Stock actuel:</span>
                     <span className="font-semibold">{product.current_stock}</span>
@@ -174,7 +178,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
                   </div>
                   <div className="flex justify-between">
                     <span>Stock disponible:</span>
-                    <span className="font-semibold text-blue-600">{product.available_stock}</span>
+                    <span className="font-semibold app-text-link">{product.available_stock}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Stock minimum:</span>
@@ -191,7 +195,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
             {/* Prix actuels */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Prix actuels</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="app-bg-muted p-4 rounded-lg">
                 {prices.length > 0 ? (
                   <div className="space-y-2">
                     {prices.slice(0, 3).map(price => (
@@ -204,14 +208,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500">Aucun prix défini</p>
+                  <p className="app-text-muted">Aucun prix défini</p>
                 )}
               </div>
 
               {/* Derniers mouvements */}
               <div>
                 <h4 className="font-semibold mb-2">Derniers mouvements</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="app-bg-muted p-4 rounded-lg">
                   {movements.length > 0 ? (
                     <div className="space-y-2">
                       {movements.map(movement => (
@@ -226,14 +230,14 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
                               {movement.movement_type === 'in' ? '+' : '-'}{movement.quantity}
                             </span>
                           </div>
-                          <span className="text-sm text-gray-500">
-                            {new Date(movement.created_at).toLocaleDateString()}
+                          <span className="text-sm app-text-muted">
+                            {formatDateDisplay(movement.created_at)}
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500">Aucun mouvement récent</p>
+                    <p className="app-text-muted">Aucun mouvement récent</p>
                   )}
                 </div>
               </div>
@@ -260,7 +264,7 @@ export const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose
             }}
           />
         )}
-      </div>
-    </div>
+      </OffcanvasBody>
+    </Offcanvas>
   );
 };

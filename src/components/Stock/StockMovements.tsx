@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Product, StockMovement, User } from '../../types';
-import { Plus, TrendingUp, TrendingDown, Package } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Package, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface StockMovementsProps {
   product: Product;
@@ -44,65 +46,84 @@ export const StockMovements: React.FC<StockMovementsProps> = ({ product, user, o
 
   const getMovementIcon = (type: string) => {
     return type === 'in' ? (
-      <TrendingUp className="h-5 w-5 text-green-600" />
+      <TrendingUp className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
     ) : (
-      <TrendingDown className="h-5 w-5 text-red-600" />
+      <TrendingDown className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
     );
+  };
+
+  const formatSignedQty = (movement: StockMovement) => {
+    const sign =
+      movement.movement_type === 'in' ||
+      (movement.movement_type === 'adjustment' && movement.quantity > 0)
+        ? '+'
+        : '-';
+    const qty =
+      movement.movement_type === 'adjustment'
+        ? Math.abs(movement.quantity)
+        : movement.quantity;
+    return `${sign}${qty} ${product.unit}`;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center p-3">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[var(--app-primary)]"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold flex items-center">
-          <Package className="h-5 w-5 mr-2" />
+    <div className="space-y-2">
+      <div className="flex justify-between items-center gap-2">
+        <h3 className="text-sm font-semibold flex items-center app-text">
+          <Package className="h-4 w-4 mr-1.5" />
           {t('stock.movements.title')}
         </h3>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+          className="app-btn app-btn-primary text-xs py-1 px-2.5"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           {t('stock.movements.addMovement')}
         </button>
       </div>
 
       {movements.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+        <div className="text-center py-4 app-text-muted text-xs">
+          <Package className="h-8 w-8 mx-auto mb-1 app-text-muted opacity-60" />
           <p>Aucun mouvement enregistré</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="border app-border rounded-md overflow-hidden divide-y divide-[var(--app-border)]">
           {movements.map((movement) => (
-            <div key={movement.id} className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  {getMovementIcon(movement.movement_type)}
-                  <div>
-                    <div className="font-medium">
-                      {getMovementTypeLabel(movement.movement_type)}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {movement.movement_type === 'in' ? '+' : '-'}{movement.quantity} {product.unit}
-                    </div>
-                    {movement.reason && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        {movement.reason}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {new Date(movement.created_at).toLocaleDateString()}
-                </div>
+            <div
+              key={movement.id}
+              className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-[var(--app-surface)] hover:bg-[var(--app-surface-muted)]"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {getMovementIcon(movement.movement_type)}
+                <span className="text-xs font-medium app-text whitespace-nowrap">
+                  {getMovementTypeLabel(movement.movement_type)}
+                </span>
+                <span
+                  className={`text-xs whitespace-nowrap ${
+                    movement.movement_type === 'in' ||
+                    (movement.movement_type === 'adjustment' && movement.quantity > 0)
+                      ? 'text-green-700'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {formatSignedQty(movement)}
+                </span>
+                {movement.reason && (
+                  <span className="text-[11px] app-text-muted truncate">
+                    {movement.reason}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] app-text-muted whitespace-nowrap flex-shrink-0">
+                {formatDateDisplay(movement.created_at)}
               </div>
             </div>
           ))}
@@ -174,20 +195,27 @@ const MovementForm: React.FC<MovementFormProps> = ({ product, onClose, onSave, u
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-bold mb-4">
-          {t('stock.movements.addMovement')}
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Offcanvas onClose={onClose} width="md" panelZ={85} backdropZ={80}>
+      <OffcanvasHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold app-text">
+            {t('stock.movements.addMovement')}
+          </h3>
+          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-[var(--app-surface-muted)] app-text-muted">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </OffcanvasHeader>
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="app-label">
               {t('stock.movements.movementType')}
             </label>
             <select
               value={formData.movement_type}
               onChange={(e) => setFormData({...formData, movement_type: e.target.value as any})}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full border app-border rounded-md px-3 py-2"
             >
               <option value="in">{t('stock.movements.types.in')}</option>
               <option value="out">{t('stock.movements.types.out')}</option>
@@ -195,7 +223,7 @@ const MovementForm: React.FC<MovementFormProps> = ({ product, onClose, onSave, u
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="app-label">
               {t('stock.movements.quantity')}
             </label>
             <input
@@ -205,54 +233,55 @@ const MovementForm: React.FC<MovementFormProps> = ({ product, onClose, onSave, u
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: e.target.value})}
               onFocus={(e) => e.target.select()}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full border app-border rounded-md px-3 py-2"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="app-label">
               {t('stock.movements.reason')}
             </label>
             <input
               type="text"
               value={formData.reason}
               onChange={(e) => setFormData({...formData, reason: e.target.value})}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full border app-border rounded-md px-3 py-2"
               placeholder="Raison du mouvement"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="app-label">
               {t('stock.movements.notes')}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              className="mt-1 block w-full border app-border rounded-md px-3 py-2"
               rows={3}
               placeholder="Notes supplémentaires"
             />
           </div>
-
+        </OffcanvasBody>
+        <OffcanvasFooter>
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="app-btn app-btn-primary disabled:opacity-50"
             >
               {loading ? t('app.saving') : t('app.save')}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </OffcanvasFooter>
+      </form>
+    </Offcanvas>
   );
 };

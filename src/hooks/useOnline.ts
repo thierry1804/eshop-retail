@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
+import { devLog } from '../lib/devLog';
 
 export const useOnline = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Connexion internet rétablie');
+      devLog('🌐 Connexion internet rétablie');
       setIsOnline(true);
     };
 
     const handleOffline = () => {
-      console.log('📴 Mode offline activé');
+      devLog('📴 Mode offline activé');
       setIsOnline(false);
     };
 

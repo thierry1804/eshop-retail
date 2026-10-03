@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PurchaseOrder, PurchaseOrderItem, Product, User } from '../../types';
-import { X, Plus, Trash2, Package, Search } from 'lucide-react';
+import { X, Plus, Trash2, Package } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { useTranslation } from 'react-i18next';
 import { ProductQuickCreate } from './ProductQuickCreate';
 import { SupplierQuickCreate } from './SupplierQuickCreate';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
 
 interface PurchaseOrderFormProps {
   order?: PurchaseOrder | null;
@@ -250,25 +252,27 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold">
+    <Offcanvas onClose={onClose} width="lg">
+        <OffcanvasHeader>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">
             {isEditing ? t('supply.editOrder') : t('supply.createOrder')}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="app-text-muted hover:text-[var(--app-ink-muted)]"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
+        </OffcanvasHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <OffcanvasBody>
           {/* Informations générales */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.supplier')}
               </label>
               <div className="flex gap-2">
@@ -282,7 +286,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                       supplier_name: supplier?.name || ''
                     });
                   }}
-                  className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                  className="app-input flex-1"
                 >
                   <option value="">{t('supply.selectSupplier')}</option>
                   {suppliers.map(supplier => (
@@ -303,7 +307,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.orderDate')}
               </label>
               <input
@@ -311,7 +315,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                 required
                 value={formData.order_date}
                 onChange={(e) => setFormData({...formData, order_date: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               />
             </div>
           </div>
@@ -319,25 +323,25 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           {/* Date de livraison prévue, Devise et Numéro de suivi sur la même ligne */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.expectedDeliveryDate')}
               </label>
               <input
                 type="date"
                 value={formData.expected_delivery_date}
                 onChange={(e) => setFormData({...formData, expected_delivery_date: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('supply.currency')}
               </label>
               <select
                 value={formData.currency}
                 onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               >
                 <option value="MGA">MGA</option>
                 <option value="EUR">EUR</option>
@@ -347,7 +351,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="app-label">
                 {t('deliveries.trackingNumber')}
               </label>
               <input
@@ -355,19 +359,19 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                 value={formData.tracking_number}
                 onChange={(e) => setFormData({...formData, tracking_number: e.target.value})}
                 placeholder={t('deliveries.trackingPlaceholder')}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="app-input"
               />
             </div>
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="app-label">
               {t('supply.notes')}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
+              className="app-input"
               rows={3}
             />
           </div>
@@ -380,7 +384,7 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                 <button
                   type="button"
                   onClick={() => setShowProductSearch(true)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 flex items-center gap-1 text-sm"
+                  className="app-btn app-btn-primary app-btn-sm"
                 >
                   <Plus className="h-4 w-4" />
                   {t('supply.addExistingItem')}
@@ -397,29 +401,29 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             </div>
 
             {items.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 app-text-muted">
+                <Package className="h-12 w-12 mx-auto mb-2 app-text-muted opacity-60" />
                 <p>{t('supply.noItems')}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {items.map((item, index) => (
-                  <div key={item.id} className="bg-gray-50 p-4 rounded-lg">
+                  <div key={item.id} className="app-bg-muted p-4 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="app-label">
                           {t('supply.product')}
                         </label>
                         <div className="text-sm font-medium">
                           {item.product_name}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs app-text-muted">
                           {item.product_sku}
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="app-label">
                           {t('supply.quantity')}
                         </label>
                         <input
@@ -428,12 +432,12 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                           value={item.quantity_ordered}
                           onChange={(e) => updateItem(index, 'quantity_ordered', parseInt(e.target.value))}
                           onFocus={(e) => e.target.select()}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
+                          className="app-input"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="app-label">
                           {t('supply.unitPrice')}
                         </label>
                         <input
@@ -443,12 +447,12 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
                           value={item.unit_price}
                           onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
                           onFocus={(e) => e.target.select()}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
+                          className="app-input"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="app-label">
                           {t('supply.total')}
                         </label>
                         <div className="text-sm font-medium">
@@ -473,95 +477,99 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
           </div>
 
           {/* Total */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+          <div className="app-badge-info p-4 rounded-lg mb-6">
             <div className="flex justify-between items-center">
               <span className="text-lg font-semibold">{t('supply.totalAmount')}:</span>
-              <span className="text-xl font-bold text-blue-600">
+              <span className="text-xl font-bold app-text-link">
                 {totalAmount.toLocaleString()} {formData.currency}
               </span>
             </div>
           </div>
 
-          {/* Boutons */}
-          <div className="flex justify-end space-x-3">
+        </OffcanvasBody>
+        <OffcanvasFooter>
+          <div className="app-actions">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="app-btn app-btn-secondary"
             >
               {t('app.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || items.length === 0}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="app-btn app-btn-primary"
             >
               {loading ? t('app.saving') : t('app.save')}
             </button>
           </div>
+        </OffcanvasFooter>
         </form>
 
-        {/* Modal de recherche de produits */}
+        {/* Recherche de produits */}
         {showProductSearch && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
-              <div className="p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
-                  <button
-                    onClick={() => {
-                      setShowProductSearch(false);
-                      setProductSearchTerm('');
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
+          <Offcanvas
+            onClose={() => {
+              setShowProductSearch(false);
+              setProductSearchTerm('');
+            }}
+            width="md"
+            panelZ={90}
+            backdropZ={85}
+          >
+            <OffcanvasHeader>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">{t('supply.selectProduct')}</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductSearch(false);
+                    setProductSearchTerm('');
+                  }}
+                  className="app-text-muted hover:text-[var(--app-ink-muted)]"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="mt-3">
+                <SearchField
+                  value={productSearchTerm}
+                  onChange={setProductSearchTerm}
+                  placeholder={t('supply.searchProducts')}
+                  className="w-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductSearch(false);
+                    setShowProductCreate(true);
+                  }}
+                  className="app-btn app-btn-success w-full mt-3"
+                >
+                  <Package className="h-4 w-4" />
+                  {t('supply.createNewProduct')}
+                </button>
+              </div>
+            </OffcanvasHeader>
+            <OffcanvasBody>
+              <div className="space-y-2">
+                {filteredProducts.map(product => (
+                  <div
+                    key={product.id}
+                    onClick={() => addItem(product)}
+                    className="p-3 border app-border rounded-md hover:bg-[var(--app-surface-muted)] cursor-pointer"
                   >
-                    <X className="h-6 w-6" />
-                  </button>
-                </div>
-                <div className="mt-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder={t('supply.searchProducts')}
-                      value={productSearchTerm}
-                      onChange={(e) => setProductSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <button
-                      onClick={() => {
-                        setShowProductSearch(false);
-                        setShowProductCreate(true);
-                      }}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
-                    >
-                      <Package className="h-4 w-4" />
-                      {t('supply.createNewProduct')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 overflow-y-auto max-h-[60vh]">
-                <div className="space-y-2">
-                  {filteredProducts.map(product => (
-                    <div
-                      key={product.id}
-                      onClick={() => addItem(product)}
-                      className="p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
-                    >
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-gray-500">SKU: {product.sku}</div>
-                      <div className="text-sm text-gray-500">
-                        Stock: {product.current_stock} {product.unit}
-                      </div>
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm app-text-muted">SKU: {product.sku}</div>
+                    <div className="text-sm app-text-muted">
+                      Stock: {product.current_stock} {product.unit}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
+            </OffcanvasBody>
+          </Offcanvas>
         )}
 
         {/* Modal de création rapide de produit */}
@@ -582,7 +590,6 @@ export const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ order, onC
             user={user}
           />
         )}
-      </div>
-    </div>
+    </Offcanvas>
   );
 };

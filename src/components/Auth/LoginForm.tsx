@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { devLog } from '../../lib/devLog';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { signIn } from '../../lib/supabase';
@@ -17,7 +18,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔐 LoginForm: Tentative de connexion...');
+    devLog('🔐 LoginForm: Tentative de connexion...');
     const startTime = performance.now();
     
     setLoading(true);
@@ -29,81 +30,96 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       console.error('❌ LoginForm: Erreur de connexion:', error);
       setError(t('auth.loginError'));
     } else {
-      console.log('✅ LoginForm: Connexion réussie');
+      devLog('✅ LoginForm: Connexion réussie');
       onLogin();
     }
     
     const endTime = performance.now();
-    console.log(`⏱️ LoginForm: Connexion terminée en ${(endTime - startTime).toFixed(2)}ms`);
+    devLog(`⏱️ LoginForm: Connexion terminée en ${(endTime - startTime).toFixed(2)}ms`);
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('app.title')}</h1>
-          <h2 className="text-xl font-semibold text-gray-700">{t('auth.login')}</h2>
-          <p className="text-gray-500 mt-2">{t('app.subtitle')}</p>
+    <div
+      className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
+      style={{ backgroundColor: 'var(--app-canvas)' }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="mb-6">
+          <h1 className="app-page-title" style={{ fontSize: '1.5rem', color: 'var(--app-primary)' }}>
+            {t('app.title')}
+          </h1>
+          <p className="app-page-subtitle">{t('auth.login')}</p>
         </div>
-        
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md" onSubmit={handleSubmit}>
+
+        <form className="app-surface p-5 space-y-4" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+            <div
+              className="px-3 py-2 rounded-md text-sm"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--app-danger) 10%, var(--app-surface))',
+                border: '1px solid color-mix(in srgb, var(--app-danger) 30%, var(--app-border))',
+                color: 'var(--app-danger)'
+              }}
+            >
               {error}
             </div>
           )}
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('auth.email')}
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder={t('auth.emailPlaceholder')}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('auth.password')}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder={t('auth.passwordPlaceholder')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-                  title={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
+
+          <div className="app-field">
+            <label htmlFor="email" className="app-label">
+              {t('auth.email')}
+            </label>
+            <div className="relative">
+              <Mail
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4"
+                style={{ color: 'var(--app-ink-muted)' }}
+              />
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="app-input pl-9"
+                placeholder={t('auth.emailPlaceholder')}
+              />
             </div>
           </div>
-          
+
+          <div className="app-field mb-0">
+            <label htmlFor="password" className="app-label">
+              {t('auth.password')}
+            </label>
+            <div className="relative">
+              <Lock
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4"
+                style={{ color: 'var(--app-ink-muted)' }}
+              />
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="app-input pl-9 pr-10"
+                placeholder={t('auth.passwordPlaceholder')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 app-icon-btn"
+                title={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="app-btn app-btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? t('auth.loggingIn') : t('auth.loginButton')}
           </button>

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Inventory, InventoryItem, Product, User } from '../../types';
-import { X, Search, Filter, CheckCircle, AlertTriangle, Save } from 'lucide-react';
+import { X, Filter, CheckCircle, AlertTriangle, Save } from 'lucide-react';
+import { SearchField } from '../ui/SearchField';
 import { InventorySummary } from './InventorySummary';
 import { InventoryItemRow } from './InventoryItemRow';
 import { logger } from '../../lib/logger';
+import { Offcanvas, OffcanvasHeader, OffcanvasBody, OffcanvasFooter } from '../ui/Offcanvas';
+import { formatDateDisplay } from '../../lib/dateUtils';
 
 interface InventoryDetailsProps {
   inventory: Inventory;
@@ -277,48 +280,44 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
                       localInventoryStats.counted_products === localInventoryStats.total_products &&
                       localInventoryStats.total_products > 0;
 
+  const handleClose = () => {
+    onUpdate();
+    onClose();
+  };
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <Offcanvas onClose={handleClose} width="xl">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--app-primary)]"></div>
         </div>
-      </div>
+      </Offcanvas>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl my-8 max-h-[90vh] flex flex-col">
-        {/* En-tête */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+    <Offcanvas onClose={handleClose} width="xl">
+        <OffcanvasHeader>
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Inventaire du {new Date(inventory.inventory_date).toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
+            <h2 className="text-lg sm:text-xl font-semibold app-text">
+              Inventaire du {formatDateDisplay(inventory.inventory_date)}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs app-text-muted mt-0.5">
               ID: {inventory.id.substring(0, 8)}...
             </p>
           </div>
           <button
-            onClick={() => {
-              // Synchroniser les données avant de fermer
-              onUpdate();
-              onClose();
-            }}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={handleClose}
+            className="app-text-muted hover:text-[var(--app-ink-muted)] transition-colors"
             disabled={finalizing}
           >
             <X className="h-6 w-6" />
           </button>
         </div>
+        </OffcanvasHeader>
 
-        {/* Contenu */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <OffcanvasBody className="px-4 sm:px-6 py-4">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
               <p className="text-sm text-red-800">{error}</p>
@@ -334,26 +333,22 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
           }} />
 
           {/* Filtres et recherche */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <div className="app-bg-muted rounded-lg p-4 mb-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Rechercher un produit..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                <SearchField
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  placeholder="Rechercher un produit..."
+                  className="w-full"
+                />
               </div>
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-400" />
+                <Filter className="h-4 w-4 app-text-muted" />
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-4 py-2 border app-border rounded-lg focus:ring-2 focus:ring-[var(--app-primary)] focus:border-transparent"
                 >
                   <option value="all">Tous</option>
                   <option value="not_counted">Non comptés</option>
@@ -365,35 +360,35 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
           </div>
 
           {/* Tableau des produits */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="app-surface overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="app-table-striped min-w-full divide-y divide-[var(--app-border)]">
+                <thead className="app-bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Produit
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Stock théorique
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Quantité réelle
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Écart
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Notes
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left app-label uppercase text-xs font-medium tracking-wider">
                       Statut
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-[var(--app-surface)] divide-y divide-[var(--app-border)]">
                   {filteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-6 py-8 text-center app-text-muted">
                         Aucun produit trouvé
                       </td>
                     </tr>
@@ -418,11 +413,11 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
               </table>
             </div>
           </div>
-        </div>
+        </OffcanvasBody>
 
-        {/* Pied de page */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <div className="text-sm text-gray-600">
+        <OffcanvasFooter className="app-bg-muted">
+          <div className="flex items-center justify-between gap-3">
+          <div className="text-sm app-text-muted">
             {filteredItems.length} produit(s) affiché(s) sur {items.length}
           </div>
           <div className="flex items-center gap-3">
@@ -430,10 +425,10 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
               <button
                 onClick={handleFinalize}
                 disabled={!canFinalize || finalizing}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                className={`app-btn ${
                   canFinalize && !finalizing
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    ? 'app-btn-success'
+                    : 'app-btn-secondary opacity-50 cursor-not-allowed'
                 }`}
               >
                 {finalizing ? (
@@ -450,20 +445,16 @@ export const InventoryDetails: React.FC<InventoryDetailsProps> = ({
               </button>
             )}
             <button
-              onClick={() => {
-                // Synchroniser les données avant de fermer
-                onUpdate();
-                onClose();
-              }}
+              onClick={handleClose}
               disabled={finalizing}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="app-btn app-btn-secondary"
             >
               Fermer
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+          </div>
+        </OffcanvasFooter>
+    </Offcanvas>
   );
 };
 
