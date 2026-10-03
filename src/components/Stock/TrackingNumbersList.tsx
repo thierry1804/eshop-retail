@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import {
   parseIeApiTrackingPayload,
@@ -13,7 +14,7 @@ import { TrackingNumber, User } from '../../types';
 import { useTranslation } from 'react-i18next';
 import {
   PackageSearch, Trash2,
-  X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download, Database
+  X, CheckCircle, Clock, Truck, RefreshCw, Save, Braces, Download, Database, ChevronDown
 } from 'lucide-react';
 import { Offcanvas, OffcanvasHeader, OffcanvasBody } from '../ui/Offcanvas';
 import { SearchField } from '../ui/SearchField';
@@ -21,6 +22,159 @@ import { DataTable, dtTh, dtThRight, dtTd } from '../ui/DataTable';
 
 const IMPORTATION_EXPRESS_PUBLIC_TRACKING_URL =
   'https://api.importation-express.com/public/tracking?customerId=3239&phoneNumber=0384271168';
+
+const TRACKING_STATUSES = ['pending', 'in_transit', 'arrived', 'received'] as const;
+
+function trackingStatusIcon(status: string, className = 'h-3.5 w-3.5') {
+  switch (status) {
+    case 'pending':
+      return <Clock className={`${className} app-text-muted`} />;
+    case 'in_transit':
+      return <Truck className={`${className} app-text-link`} />;
+    case 'arrived':
+      return <PackageSearch className={`${className} text-orange-500`} />;
+    case 'received':
+      return <CheckCircle className={`${className} app-text-success`} />;
+    default:
+      return <Clock className={`${className} app-text-muted`} />;
+  }
+}
+
+/** Fermé : icône seule. Ouvert : icône + libellé (portal : hors overflow du tableau). */
+function TrackingStatusSelect({
+  value,
+  onChange,
+  getLabel,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  getLabel: (status: string) => string;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updateMenuPos = () => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 176; // ~11rem
+    const gap = 4;
+    const left = Math.min(
+      Math.max(8, rect.right - menuWidth),
+      window.innerWidth - menuWidth - 8
+    );
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const openUp = spaceBelow < 160 && rect.top > spaceBelow;
+    const top = openUp ? rect.top - gap : rect.bottom + gap;
+    setMenuPos({ top, left, openUp });
+  };
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    updateMenuPos();
+    const onScrollOrResize = () => updateMenuPos();
+    window.addEventListener('resize', onScrollOrResize);
+    // capture: scroll dans le tableau aussi
+    window.addEventListener('scroll', onScrollOrResize, true);
+    return () => {
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex items-center justify-center gap-0.5 h-7 w-7 rounded-md border border-transparent bg-transparent transition-colors focus-visible:outline-none focus-visible:shadow-[var(--app-focus)] hover:bg-[var(--app-surface-muted)] ${
+          open ? 'bg-[var(--app-surface-muted)]' : ''
+        }`}
+        aria-label={`${ariaLabel}: ${getLabel(value)}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title={getLabel(value)}
+      >
+        {trackingStatusIcon(value, 'h-4 w-4')}
+        <ChevronDown
+          className={`h-2.5 w-2.5 app-text-muted opacity-50 ${open ? 'opacity-80' : ''}`}
+          aria-hidden
+        />
+      </button>
+
+      {open &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            aria-label={ariaLabel}
+            className="fixed z-[80] min-w-[11rem] py-1 app-surface shadow-[var(--app-shadow-panel)]"
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              transform: menuPos.openUp ? 'translateY(-100%)' : undefined,
+            }}
+          >
+            {TRACKING_STATUSES.map((status) => {
+              const selected = status === value;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => {
+                    onChange(status);
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-left transition-colors ${
+                    selected
+                      ? 'bg-[var(--app-primary-soft)] app-text-link'
+                      : 'app-text hover:bg-[var(--app-surface-muted)]'
+                  }`}
+                >
+                  {trackingStatusIcon(status)}
+                  <span>{getLabel(status)}</span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
 
 /** Poids (kg) et volume (m³) tels qu’ils seront après le patch IE (même règles qu’en apply). */
 function getPostSyncVolumeM3AndKg(
@@ -328,19 +482,16 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-4 w-4 app-text-muted" />;
-      case 'in_transit': return <Truck className="h-4 w-4 app-text-link" />;
-      case 'arrived': return <PackageSearch className="h-4 w-4 text-orange-500" />;
-      case 'received': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
+  const getStatusLabel = (status: string) => t(`tracking.status.${status}`);
 
-  const getStatusLabel = (status: string) => {
-    return t(`tracking.status.${status}`);
-  };
+  const renderStatusSelect = (status: string, onChange: (value: string) => void) => (
+    <TrackingStatusSelect
+      value={status}
+      onChange={onChange}
+      getLabel={getStatusLabel}
+      ariaLabel={t('tracking.statusLabel')}
+    />
+  );
 
   // Calculer les valeurs pour une ligne en cours d'édition (volume, coûts)
   const getCalculatedValues = (tn: TrackingNumber, editedData?: Partial<TrackingNumber>) => {
@@ -836,19 +987,10 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {getStatusIcon(displayData.status)}
-                    <select
-                      value={displayData.status}
-                      onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
-                      className="app-input text-xs py-1 max-w-[7rem]"
-                      title={getStatusLabel(displayData.status)}
-                    >
-                      <option value="pending">{t('tracking.status.pending')}</option>
-                      <option value="in_transit">{t('tracking.status.in_transit')}</option>
-                      <option value="arrived">{t('tracking.status.arrived')}</option>
-                      <option value="received">{t('tracking.status.received')}</option>
-                    </select>
+                  <div className="flex-shrink-0">
+                    {renderStatusSelect(displayData.status, (value) =>
+                      handleFieldChange(tn.id, 'status', value)
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2 text-xs pt-2 border-t app-divider">
@@ -947,13 +1089,22 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                 </th>
                 <th className={dtTh}>{t('tracking.exchangeRate')}</th>
                 <th className={dtTh}>{t('tracking.costUSD')}</th>
-                <th className={`${dtTh} z-40`} style={{ right: '200px' }}>
+                <th
+                  className={`${dtTh} z-40 whitespace-nowrap px-2 text-right`}
+                  style={{ right: '9.5rem', width: '6.5rem', minWidth: '6.5rem' }}
+                >
                   {t('tracking.costMGA')}
                 </th>
-                <th className={`${dtTh} z-40`} style={{ right: '100px' }}>
+                <th
+                  className={`${dtTh} z-40 whitespace-nowrap px-2 text-center`}
+                  style={{ right: '5rem', width: '4.5rem', minWidth: '4.5rem' }}
+                >
                   {t('tracking.statusLabel')}
                 </th>
-                <th className={`${dtThRight} right-0 z-40`}>
+                <th
+                  className={`${dtThRight} right-0 z-40 whitespace-nowrap px-2`}
+                  style={{ width: '5rem', minWidth: '5rem' }}
+                >
                   {t('common.actions')}
                 </th>
               </tr>
@@ -1086,37 +1237,34 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                       <td className="px-3 py-1.5 whitespace-nowrap text-xs text-sm font-medium app-text-success">
                         ${calculated.totalCostUSD.toFixed(2)}
                       </td>
-                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs text-sm font-medium app-text-link sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`} style={{ right: '200px' }}>
+                      <td
+                        className={`px-2 py-1.5 whitespace-nowrap text-xs font-medium app-text-link text-right sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : 'bg-[var(--app-surface)]'}`}
+                        style={{ right: '9.5rem', width: '6.5rem', minWidth: '6.5rem' }}
+                      >
                         {calculated.totalCostMGA.toLocaleString('fr-FR')} MGA
                       </td>
-                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`} style={{ right: '100px' }}>
-                        <div className="flex items-center gap-1.5">
-                          {getStatusIcon(displayData.status)}
-                        <select
-                          value={displayData.status}
-                          onChange={(e) => handleFieldChange(tn.id, 'status', e.target.value)}
-                          onFocus={handleInputFocus}
-                          className="app-input text-sm px-2 py-1"
-                          title={getStatusLabel(displayData.status)}
-                        >
-                          <option value="pending">{t('tracking.status.pending')}</option>
-                          <option value="in_transit">{t('tracking.status.in_transit')}</option>
-                          <option value="arrived">{t('tracking.status.arrived')}</option>
-                          <option value="received">{t('tracking.status.received')}</option>
-                        </select>
-                        </div>
+                      <td
+                        className={`px-2 py-1.5 whitespace-nowrap text-xs text-center sticky z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : 'bg-[var(--app-surface)]'}`}
+                        style={{ right: '5rem', width: '4.5rem', minWidth: '4.5rem' }}
+                      >
+                        {renderStatusSelect(displayData.status, (value) =>
+                          handleFieldChange(tn.id, 'status', value)
+                        )}
                       </td>
-                      <td className={`px-3 py-1.5 whitespace-nowrap text-xs text-right text-sm font-medium sticky right-0 z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : ''}`}>
-                        <div className="flex items-center justify-end gap-2">
+                      <td
+                        className={`px-2 py-1.5 whitespace-nowrap text-xs text-right font-medium sticky right-0 z-10 ${isEditing ? 'bg-[color-mix(in_srgb,var(--app-primary)_10%,var(--app-surface))]' : 'bg-[var(--app-surface)]'}`}
+                        style={{ width: '5rem', minWidth: '5rem' }}
+                      >
+                        <div className="inline-flex items-center justify-end gap-1">
                           {isEditing && (
                             <button
                               onClick={() => handleSave(tn)}
                               disabled={isSaving}
-                              className="app-text-success hover:text-green-800 disabled:opacity-50"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md app-text-success hover:bg-[var(--app-surface-muted)] disabled:opacity-50"
                               title={t('app.save')}
                             >
                               {isSaving ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--app-success)]"></div>
                               ) : (
                                 <Save className="h-4 w-4" />
                               )}
@@ -1129,7 +1277,7 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                                 alert(t('tracking.cannotDeleteReceived'));
                                 return;
                               }
-                              
+
                               if (confirm(t('tracking.confirmDelete'))) {
                                 const { error } = await supabase
                                   .from('tracking_numbers')
@@ -1143,13 +1291,15 @@ export const TrackingNumbersList: React.FC<TrackingNumbersListProps> = ({ user }
                               }
                             }}
                             disabled={tn.status === 'received'}
-                            className={`${tn.status === 'received' 
-                              ? 'app-text-muted cursor-not-allowed' 
-                              : 'app-text-danger hover:text-red-800'
+                            className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
+                              tn.status === 'received'
+                                ? 'app-text-muted cursor-not-allowed'
+                                : 'app-text-danger hover:bg-[var(--app-surface-muted)]'
                             }`}
-                            title={tn.status === 'received' 
-                              ? t('tracking.cannotDeleteReceived') 
-                              : t('common.delete')
+                            title={
+                              tn.status === 'received'
+                                ? t('tracking.cannotDeleteReceived')
+                                : t('common.delete')
                             }
                           >
                             <Trash2 className="h-4 w-4" />

@@ -47,6 +47,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // SPA : navigation /stock, /sales… → index.html (si le SW contrôle la page)
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//, /\.\w+$/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
